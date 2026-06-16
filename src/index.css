@@ -1,0 +1,131 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Poppins:wght@400;500;600;700;800&display=swap');
+
+@import "tailwindcss";
+
+@theme {
+  --color-brand-indigo: #4F46E5;
+  --color-brand-orange: #F97316;
+  --color-brand-slate: #F8FAFC;
+  
+  --font-sans: "Inter", sans-serif;
+  --font-display: "Poppins", sans-serif;
+}
+
+/* Custom global rules */
+body {
+  font-family: "Inter", var(--font-sans);
+  background-color: #F8FAFC; /* Slate-white (#F8FAFC) */
+  margin: 0;
+  padding: 0;
+  min-height: 100vh;
+  color: #1E293B;
+  overflow-x: hidden;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: "Poppins", var(--font-display);
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #F1F5F9;
+}
+::-webkit-scrollbar-thumb {
+  background: #CBD5E1;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #94A3B8;
+}
+
+/* Animation utilities */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.4s ease-out forwards;
+}
+
+/* Custom typography for Learning Hub articles */
+.prose h3 {
+  font-size: 1.15rem; /* text-base/lg */
+  font-weight: 700;
+  color: #1E293B; /* Slate-800 */
+  margin-top: 1.5rem;
+  margin-bottom: 0.75rem;
+  font-family: "Poppins", sans-serif;
+  border-bottom: 1.5px solid #E2E8F0;
+  padding-bottom: 0.375rem;
+}
+.prose h4 {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #334155; /* Slate-700 */
+  margin-top: 1.25rem;
+  margin-bottom: 0.5rem;
+  font-family: "Poppins", sans-serif;
+}
+.prose p {
+  font-size: 0.825rem; /* text-xs/sm */
+  color: #475569; /* Slate-600 */
+  line-height: 1.625;
+  margin-bottom: 1rem;
+}
+.prose ul {
+  list-style-type: disc;
+  padding-left: 1.5rem;
+  margin-bottom: 1.25rem;
+  color: #475569;
+  space-y: 0.5rem;
+}
+.prose li {
+  font-size: 0.825rem;
+  line-height: 1.6;
+  margin-bottom: 0.5rem;
+}
+.prose strong {
+  font-weight: 600;
+  color: #0F172A; /* Slate-900 */
+}
+
+/* Custom styled boxes for formulas and parameters */
+.prose img {
+  border-radius: 1rem;
+  max-width: 100%;
+  margin: 1.5rem auto;
+  display: block;
+  box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.08);
+  border: 1px solid #E2E8F0;
+}
+.prose .parameter-box {
+  background-color: #F8FAFC; /* Slate-50 */
+  border-left: 4px solid #4F46E5; /* Indigo */
+  padding: 0.75rem 1.25rem;
+  margin: 1rem 0;
+  border-radius: 0 0.75rem 0.75rem 0;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.02);
+}
+.prose .parameter-box p {
+  margin-bottom: 0;
+}
+.prose .parameter-box strong {
+  color: #4F46E5; /* Brand Indigo */
+}
+.prose .formula-block {
+  font-family: Consolas, Monaco, "Andale Mono", monospace;
+  background-color: #F1F5F9;
+  padding: 0.15rem 0.4rem;
+  border-radius: 0.375rem;
+  color: #0F172A;
+  font-size: 0.75rem;
+  font-weight: 600;
+  border: 1px solid #E2E8F0;
+}
+
+

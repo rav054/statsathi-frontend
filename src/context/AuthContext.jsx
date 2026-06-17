@@ -2,7 +2,7 @@ import React, { createContext, useState, useEffect, useContext } from 'react';
 
 const AuthContext = createContext(null);
 
-export const API_URL = 'http://localhost:8000';
+export const API_URL = 'https://statsathi-backend.onrender.com';
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
@@ -99,8 +99,8 @@ export const AuthProvider = ({ children }) => {
 
       if (!res.ok) {
         // Handle array validation errors if any or direct string details
-        const errorMsg = Array.isArray(data.detail) 
-          ? data.detail[0]?.msg 
+        const errorMsg = Array.isArray(data.detail)
+          ? data.detail[0]?.msg
           : data.detail || 'Registration failed.';
         throw new Error(errorMsg);
       }

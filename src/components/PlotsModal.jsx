@@ -144,6 +144,14 @@ const PlotsModal = ({ isOpen, onClose }) => {
     }
   };
 
+  const handleSaveEditedData = async (editedFile) => {
+    setResults(null);
+    setError(null);
+    if (editedFile) {
+      await handleFileSelected(editedFile);
+    }
+  };
+
   const handleFileSelected = async (selectedFile) => {
     setError(null);
     const ext = selectedFile.name.split('.').pop().toLowerCase();
@@ -1152,7 +1160,7 @@ const PlotsModal = ({ isOpen, onClose }) => {
         isOpen={viewerOpen}
         onClose={() => setViewerOpen(false)}
         file={file}
-        onSave={(newFile) => setFile(newFile)}
+        onSave={handleSaveEditedData}
       />
     </div>
   );

@@ -308,6 +308,14 @@ const DescriptiveModal = ({ isOpen, onClose }) => {
     }
   };
 
+  const handleSaveEditedData = async (editedFile) => {
+    setResults(null);
+    setError(null);
+    if (editedFile) {
+      await processFile(editedFile);
+    }
+  };
+
   const processFile = async (selectedFile) => {
     setError(null);
     const ext = selectedFile.name.split('.').pop().toLowerCase();
@@ -1445,7 +1453,7 @@ const DescriptiveModal = ({ isOpen, onClose }) => {
         isOpen={viewerOpen}
         onClose={() => setViewerOpen(false)}
         file={file}
-        onSave={(newFile) => setFile(newFile)}
+        onSave={handleSaveEditedData}
       />
     </div>
   );

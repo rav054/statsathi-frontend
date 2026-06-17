@@ -64,6 +64,15 @@ const CorrelationModal = ({ isOpen, onClose }) => {
     setFile(selectedFile);
   };
 
+  const handleSaveEditedData = async (editedFile) => {
+    setImageUrl(null);
+    setMatrix(null);
+    setError(null);
+    if (editedFile) {
+      validateAndSetFile(editedFile);
+    }
+  };
+
   const triggerFileInput = () => {
     fileInputRef.current.click();
   };
@@ -521,7 +530,7 @@ const CorrelationModal = ({ isOpen, onClose }) => {
         isOpen={viewerOpen}
         onClose={() => setViewerOpen(false)}
         file={file}
-        onSave={(newFile) => { setFile(newFile); setImageUrl(null); setMatrix(null); }}
+        onSave={handleSaveEditedData}
       />
     </div>
   );

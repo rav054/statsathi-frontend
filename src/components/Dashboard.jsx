@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { useAuth } from '../context/AuthContext';
+import { useAuth, API_URL } from '../context/AuthContext';
 import { Calculator, BarChart3, Binary, Compass, Cpu, GitCompare, Info, Lock, Milestone, Upload, Grid, Layers, Network, TrendingUp } from 'lucide-react';
+import DatasetViewerModal from './DatasetViewerModal';
 import CorrelationModal from './CorrelationModal';
 import ParametricModal from './ParametricModal';
 import NonParametricModal from './NonParametricModal';
@@ -27,6 +28,33 @@ const Dashboard = ({ onAuthClick }) => {
   const [comingSoonOpen, setComingSoonOpen] = useState(false);
   const [selectedModule, setSelectedModule] = useState('');
   const [authPromptOpen, setAuthPromptOpen] = useState(false);
+  const [file, setFile] = useState(null);
+  const [viewerOpen, setViewerOpen] = useState(false);
+
+  const handleSaveEditedData = async (editedFile) => {
+    setFile(editedFile);
+    
+    const token = localStorage.getItem('token');
+    const formData = new FormData();
+    formData.append('file', editedFile);
+    
+    try {
+      const res = await fetch(`${API_URL}/analyze/upload-edited-data`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        },
+        body: formData
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.detail || 'Failed to upload edited data.');
+      }
+      console.log('Edited data uploaded successfully:', data);
+    } catch (err) {
+      console.error('Error saving edited data:', err);
+    }
+  };
 
   const modules = [
     {
@@ -321,6 +349,13 @@ const Dashboard = ({ onAuthClick }) => {
       <RegressionModal
         isOpen={regressionOpen}
         onClose={() => setRegressionOpen(false)}
+      />
+
+      <DatasetViewerModal
+        isOpen={viewerOpen}
+        onClose={() => setViewerOpen(false)}
+        file={file}
+        onSave={handleSaveEditedData}
       />
     </div>
   );

@@ -63,6 +63,14 @@ const PcaModal = ({ isOpen, onClose }) => {
     }
   };
 
+  const handleSaveEditedData = async (editedFile) => {
+    setResults(null);
+    setError(null);
+    if (editedFile) {
+      await processFile(editedFile);
+    }
+  };
+
   const processFile = async (selectedFile) => {
     setFile(selectedFile);
     setColumns([]);
@@ -791,7 +799,7 @@ const PcaModal = ({ isOpen, onClose }) => {
         isOpen={viewerOpen}
         onClose={() => setViewerOpen(false)}
         file={file}
-        onSave={(newFile) => setFile(newFile)}
+        onSave={handleSaveEditedData}
       />
     </div>
   );

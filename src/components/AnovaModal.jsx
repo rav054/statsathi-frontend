@@ -121,6 +121,11 @@ const AnovaModal = ({ isOpen, onClose }) => {
   const [postHocModalOpen, setPostHocModalOpen] = useState(false);
   const chartRef = useRef(null);
 
+  // Customizations for Post-Hoc Comparison Graph
+  const [postHocFontSize, setPostHocFontSize] = useState(10);
+  const [postHocFontColor, setPostHocFontColor] = useState('#334155');
+  const [postHocBarColor, setPostHocBarColor] = useState('');
+
   useEffect(() => {
     let active = true;
     if (postHocModalOpen && results && chartRef.current) {
@@ -144,6 +149,7 @@ const AnovaModal = ({ isOpen, onClose }) => {
       };
 
       const currentTheme = paletteMap[palette] || paletteMap.Oranges;
+      const barColor = postHocBarColor || currentTheme.primary;
 
       const data = [
         {
@@ -151,7 +157,7 @@ const AnovaModal = ({ isOpen, onClose }) => {
           y: yData,
           type: 'bar',
           marker: {
-            color: currentTheme.primary,
+            color: barColor,
             line: {
               color: currentTheme.line,
               width: 1.5
@@ -176,13 +182,15 @@ const AnovaModal = ({ isOpen, onClose }) => {
         height: 320,
         width: 680,
         margin: { l: 50, r: 20, t: 40, b: 60 },
-        font: { family: 'Inter, sans-serif', size: 10 },
+        font: { family: 'Inter, sans-serif', size: postHocFontSize, color: postHocFontColor },
         xaxis: {
-          title: { text: 'Treatment Groups', font: { size: 11, family: 'Inter', weight: 'bold' } },
-          tickangle: 15
+          title: { text: 'Treatment Groups', font: { size: postHocFontSize + 1, family: 'Inter', weight: 'bold', color: postHocFontColor } },
+          tickangle: 15,
+          tickfont: { color: postHocFontColor, size: postHocFontSize }
         },
         yaxis: {
-          title: { text: 'Treatment Means', font: { size: 11, family: 'Inter', weight: 'bold' } }
+          title: { text: 'Treatment Means', font: { size: postHocFontSize + 1, family: 'Inter', weight: 'bold', color: postHocFontColor } },
+          tickfont: { color: postHocFontColor, size: postHocFontSize }
         },
         paper_bgcolor: 'rgba(0,0,0,0)',
         plot_bgcolor: 'rgba(0,0,0,0)'
@@ -202,13 +210,20 @@ const AnovaModal = ({ isOpen, onClose }) => {
         Plotly.purge(chartRef.current);
       }
     };
-  }, [postHocModalOpen, results, palette]);
+  }, [postHocModalOpen, results, palette, postHocFontSize, postHocFontColor, postHocBarColor]);
 
   const handleDownloadPostHocReport = (format) => {
     if (!results) return;
 
+    const posthocMethodLabels = {
+      tukey: "Tukey's HSD / LSD",
+      duncan: "Duncan's Multiple Range Test (DMRT)",
+      games_howell: "Games-Howell"
+    };
+    const currentMethodLabel = posthocMethodLabels[posthocMethod] || posthocMethod;
+
     let reportText = `================================================================================\n`;
-    reportText += `POST-HOC MEAN SEPARATION ANALYSIS REPORT (LSD)\n`;
+    reportText += `POST-HOC MEAN SEPARATION ANALYSIS REPORT (${currentMethodLabel.toUpperCase()})\n`;
     reportText += `================================================================================\n`;
     reportText += `Generated on: ${new Date().toLocaleString()}\n`;
     reportText += `Dependent Variable: ${depVar}\n`;
@@ -223,6 +238,7 @@ const AnovaModal = ({ isOpen, onClose }) => {
     const layoutNames = {
       oneway: "Completely Randomized Design (CRD) - One Factor",
       rbd_oneway: "Randomized Block Design (RBD) - One Factor",
+      lsd: "Latin Square Design (LSD)",
       twoway: "Completely Randomized Design (CRD) - Two Factors",
       rbd_twoway: "Randomized Block Design (RBD) - Two Factors",
       splitplot: "Split-plot Design"
@@ -268,7 +284,7 @@ const AnovaModal = ({ isOpen, onClose }) => {
     reportText += `================================================================================\n`;
 
     const fileName = `StatSathi_PostHoc_Report_${depVar}`;
-    const title = `Stat Sathi Post-Hoc LSD Report`;
+    const title = `Stat Sathi Post-Hoc ${currentMethodLabel} Report`;
 
     if (format === 'txt') {
       const blob = new Blob([reportText], { type: 'text/plain;charset=utf-8' });
@@ -311,6 +327,7 @@ const AnovaModal = ({ isOpen, onClose }) => {
       const layoutNames = {
         oneway: "Completely Randomized Design (CRD) - One Factor",
         rbd_oneway: "Randomized Block Design (RBD) - One Factor",
+        lsd: "Latin Square Design (LSD)",
         twoway: "Completely Randomized Design (CRD) - Two Factors",
         rbd_twoway: "Randomized Block Design (RBD) - Two Factors",
         splitplot: "Split-plot Design"
@@ -339,7 +356,7 @@ const AnovaModal = ({ isOpen, onClose }) => {
           </style>
         </head>
         <body>
-          <h1>Post-Hoc Mean Separation Analysis Report (LSD)</h1>
+          <h1>Post-Hoc Mean Separation Analysis Report (${currentMethodLabel})</h1>
           
           <div align="center">
           <table align="center" class="meta-table">
@@ -2758,7 +2775,7 @@ const AnovaModal = ({ isOpen, onClose }) => {
             <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4">
               <div>
                 <h3 className="font-display text-lg font-bold text-slate-800">
-                  Post-Hoc Mean Separation Analysis (LSD)
+                  Post-Hoc Mean Separation Analysis ({posthocMethod === 'games_howell' ? 'Games-Howell' : posthocMethod === 'duncan' ? "Duncan's DMRT" : "Tukey's HSD / LSD"})
                 </h3>
                 <p className="font-sans text-xs text-slate-400">
                   Pairwise comparison of treatment means with significance groupings at the 5% level.
@@ -2800,6 +2817,63 @@ const AnovaModal = ({ isOpen, onClose }) => {
                         ))}
                     </tbody>
                   </table>
+                </div>
+              </div>
+
+              {/* Graph Customization Settings */}
+              <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-xs space-y-3">
+                <h5 className="font-display text-xs font-bold text-slate-700">Customize Graph Settings</h5>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {/* Font Size */}
+                  <div className="space-y-1">
+                    <label className="font-sans text-[9px] font-bold text-slate-400 uppercase">Font Size (px)</label>
+                    <input
+                      type="number"
+                      min="6"
+                      max="24"
+                      value={postHocFontSize}
+                      onChange={(e) => setPostHocFontSize(parseInt(e.target.value) || 10)}
+                      className="w-full rounded-xl border border-slate-200 bg-white py-1.5 px-3 font-sans text-xs outline-hidden focus:border-brand-indigo focus:ring-4 focus:ring-brand-indigo/10 transition-all"
+                    />
+                  </div>
+                  {/* Font Color */}
+                  <div className="space-y-1">
+                    <label className="font-sans text-[9px] font-bold text-slate-400 uppercase">Font Color</label>
+                    <div className="flex space-x-2">
+                      <input
+                        type="color"
+                        value={postHocFontColor.startsWith('#') && postHocFontColor.length === 7 ? postHocFontColor : '#334155'}
+                        onChange={(e) => setPostHocFontColor(e.target.value)}
+                        className="h-8 w-10 border border-slate-200 rounded-lg cursor-pointer shrink-0"
+                      />
+                      <input
+                        type="text"
+                        placeholder="#334155"
+                        value={postHocFontColor}
+                        onChange={(e) => setPostHocFontColor(e.target.value)}
+                        className="w-full rounded-xl border border-slate-200 bg-white py-1.5 px-3 font-mono text-xs outline-hidden focus:border-brand-indigo focus:ring-4 focus:ring-brand-indigo/10 transition-all"
+                      />
+                    </div>
+                  </div>
+                  {/* Bar Color */}
+                  <div className="space-y-1">
+                    <label className="font-sans text-[9px] font-bold text-slate-400 uppercase">Bar Color</label>
+                    <div className="flex space-x-2">
+                      <input
+                        type="color"
+                        value={postHocBarColor.startsWith('#') && postHocBarColor.length === 7 ? postHocBarColor : '#EA580C'}
+                        onChange={(e) => setPostHocBarColor(e.target.value)}
+                        className="h-8 w-10 border border-slate-200 rounded-lg cursor-pointer shrink-0"
+                      />
+                      <input
+                        type="text"
+                        placeholder="Default theme color"
+                        value={postHocBarColor}
+                        onChange={(e) => setPostHocBarColor(e.target.value)}
+                        className="w-full rounded-xl border border-slate-200 bg-white py-1.5 px-3 font-mono text-xs outline-hidden focus:border-brand-indigo focus:ring-4 focus:ring-brand-indigo/10 transition-all"
+                      />
+                    </div>
+                  </div>
                 </div>
               </div>
 

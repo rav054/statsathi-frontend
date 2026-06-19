@@ -135,8 +135,19 @@ const ParametricModal = ({ isOpen, onClose }) => {
   };
 
   const runAnalysis = async (e) => {
-    e.preventDefault();
-    if (!file || !col1) return;
+    if (e && e.preventDefault) {
+      e.preventDefault();
+    }
+    setError(null);
+
+    if (!file) {
+      setError("Please upload a dataset first.");
+      return;
+    }
+    if (!col1) {
+      setError("Please select the Primary Variable (Col 1).");
+      return;
+    }
 
     // Validation for hypothesized mean
     if (['one_sample_t', 'z_test'].includes(testType) && (testType === 'one_sample_t' || !col2)) {

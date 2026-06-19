@@ -610,8 +610,24 @@ const AnovaModal = ({ isOpen, onClose }) => {
   };
 
   const runAnalysis = async (e) => {
-    e.preventDefault();
-    if (!file || !depVar || !indVar1) return;
+    if (e && e.preventDefault) {
+      e.preventDefault();
+    }
+    setError(null);
+    console.log("runAnalysis started:", { file, depVar, indVar1 });
+
+    if (!file) {
+      setError("Please upload a dataset first.");
+      return;
+    }
+    if (!depVar) {
+      setError("Please select a Dependent Variable (Numeric/Yield).");
+      return;
+    }
+    if (!indVar1) {
+      setError(testType === 'lsd' ? "Please select a Treatment column." : "Please select Independent Factor 1.");
+      return;
+    }
 
     if (['twoway', 'rbd_twoway', 'splitplot', 'lsd'].includes(testType) && !indVar2) {
       setError(testType === 'lsd' ? "Column Factor is required for LSD design." : "Independent Factor 2 (Factor B) is required for this configuration.");

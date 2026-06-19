@@ -125,8 +125,14 @@ const NonParametricModal = ({ isOpen, onClose }) => {
   };
 
   const runAnalysis = async (e) => {
-    e.preventDefault();
-    if (!file) return;
+    if (e && e.preventDefault) {
+      e.preventDefault();
+    }
+    setError(null);
+    if (!file) {
+      setError("Please upload a dataset first.");
+      return;
+    }
 
     // Validation based on test type
     if (testType === 'mann_whitney' || testType === 'kruskal_wallis') {

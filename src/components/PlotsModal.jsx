@@ -223,8 +223,19 @@ const PlotsModal = ({ isOpen, onClose }) => {
   };
 
   const runAnalysis = async (e) => {
-    e.preventDefault();
-    if (!file || !xVar) return;
+    if (e && e.preventDefault) {
+      e.preventDefault();
+    }
+    setError(null);
+
+    if (!file) {
+      setError("Please upload a dataset first.");
+      return;
+    }
+    if (!xVar) {
+      setError("Please select the primary variable (X-axis).");
+      return;
+    }
 
     if (['scatter', 'line', 'barplot', 'violin'].includes(plotType) && !yVar) {
       setError(`Y Variable is required for ${plotType} charts.`);

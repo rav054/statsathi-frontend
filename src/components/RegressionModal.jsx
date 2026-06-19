@@ -323,8 +323,23 @@ const RegressionModal = ({ isOpen, onClose }) => {
 
   // Submit form
   const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!file || depVars.length === 0 || indVars.length === 0) return;
+    if (e && e.preventDefault) {
+      e.preventDefault();
+    }
+    setError(null);
+
+    if (!file) {
+      setError("Please upload a dataset first.");
+      return;
+    }
+    if (depVars.length === 0) {
+      setError("Please select at least one Dependent Variable.");
+      return;
+    }
+    if (indVars.length === 0) {
+      setError("Please select at least one Independent Variable.");
+      return;
+    }
 
     setLoadingAnalysis(true);
     setError(null);

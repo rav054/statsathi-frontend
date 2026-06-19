@@ -2,8 +2,6 @@ import React, { useState, useRef, useEffect } from 'react';
 import { X, Grid, Download, RefreshCw } from 'lucide-react';
 
 const LayoutGeneratorModal = ({ isOpen, onClose }) => {
-  if (!isOpen) return null;
-
   // Parameters
   const [designType, setDesignType] = useState('rbd_oneway');
   const [replications, setReplications] = useState(3);
@@ -626,6 +624,8 @@ const LayoutGeneratorModal = ({ isOpen, onClose }) => {
       </svg>
     );
   };
+
+  if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-xs animate-fade-in">

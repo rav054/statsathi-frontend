@@ -506,8 +506,6 @@ const AnovaModal = ({ isOpen, onClose }) => {
     }
   }, [testType]);
 
-  if (!isOpen) return null;
-
   const handleDrag = (e) => {
     e.preventDefault();
     e.stopPropagation();
@@ -1484,6 +1482,8 @@ const AnovaModal = ({ isOpen, onClose }) => {
       return `${label}: ${r.se_d.toFixed(3)}`;
     }).join('; ');
   };
+
+  if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-xs animate-fade-in">

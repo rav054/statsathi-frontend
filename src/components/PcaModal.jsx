@@ -36,8 +36,6 @@ const PcaModal = ({ isOpen, onClose }) => {
   const [viewerOpen, setViewerOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('eigenvalues'); // 'eigenvalues', 'loadings', 'scores', 'biplot'
 
-  if (!isOpen) return null;
-
   const handleDrag = (e) => {
     e.preventDefault();
     e.stopPropagation();
@@ -405,6 +403,8 @@ const PcaModal = ({ isOpen, onClose }) => {
     link.click();
     document.body.removeChild(link);
   };
+
+  if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-xs animate-fade-in">

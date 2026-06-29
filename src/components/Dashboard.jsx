@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useAuth, API_URL } from '../context/AuthContext';
-import { Calculator, BarChart3, Binary, Compass, Cpu, GitCompare, Info, Lock, Milestone, Upload, Grid, Layers, Network, TrendingUp } from 'lucide-react';
+import { Calculator, BarChart3, Binary, Compass, Cpu, GitCompare, Info, Lock, Milestone, Upload, Grid, Layers, Network, TrendingUp, RefreshCw } from 'lucide-react';
 import DatasetViewerModal from './DatasetViewerModal';
 import CorrelationModal from './CorrelationModal';
 import ParametricModal from './ParametricModal';
@@ -30,6 +30,9 @@ const Dashboard = ({ onAuthClick }) => {
   const [authPromptOpen, setAuthPromptOpen] = useState(false);
   const [file, setFile] = useState(null);
   const [viewerOpen, setViewerOpen] = useState(false);
+  const [converting, setConverting] = useState(false);
+  const [conversionError, setConversionError] = useState(null);
+  const excelInputRef = useRef(null);
 
   const handleSaveEditedData = async (editedFile) => {
     setFile(editedFile);
@@ -53,6 +56,65 @@ const Dashboard = ({ onAuthClick }) => {
       console.log('Edited data uploaded successfully:', data);
     } catch (err) {
       console.error('Error saving edited data:', err);
+    }
+  };
+
+  const handleExcelToCsvClick = () => {
+    if (!user) {
+      setAuthPromptOpen(true);
+      return;
+    }
+    if (excelInputRef.current) {
+      excelInputRef.current.click();
+    }
+  };
+
+  const handleExcelFileChange = async (e) => {
+    const selectedFile = e.target.files?.[0];
+    if (!selectedFile) return;
+
+    setConverting(true);
+    setConversionError(null);
+
+    const token = localStorage.getItem('token');
+    const formData = new FormData();
+    formData.append('file', selectedFile);
+
+    try {
+      const res = await fetch(`${API_URL}/analyze/excel-to-csv`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        },
+        body: formData
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.detail || 'Failed to convert Excel to CSV.');
+      }
+
+      const blob = await res.blob();
+      const downloadUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = downloadUrl;
+      
+      const originalName = selectedFile.name;
+      const baseName = originalName.substring(0, originalName.lastIndexOf('.')) || originalName;
+      link.download = `${baseName}.csv`;
+      
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(downloadUrl);
+    } catch (err) {
+      console.error(err);
+      setConversionError(err.message || 'An error occurred during conversion.');
+    } finally {
+      setConverting(false);
+      if (excelInputRef.current) {
+        excelInputRef.current.value = '';
+      }
     }
   };
 
@@ -182,14 +244,43 @@ const Dashboard = ({ onAuthClick }) => {
           </p>
         </div>
 
-        {/* Sunset Orange Upload Button */}
-        <button
-          onClick={handleGlobalUpload}
-          className="flex items-center space-x-2 rounded-2xl bg-brand-orange px-6 py-3.5 font-display text-sm font-bold text-white shadow-md shadow-orange-100 hover:bg-orange-600 hover:shadow-lg focus:outline-none focus:ring-4 focus:ring-brand-orange/20 active:scale-[0.98] transition-all duration-200"
-        >
-          <Upload className="h-4.5 w-4.5" />
-          <span>Upload Your Dataset (CSV/Excel)</span>
-        </button>
+        {/* Sunset Orange Add CSV & Convert Buttons */}
+        <div className="flex flex-col items-end space-y-2">
+          <div className="flex flex-col sm:flex-row gap-3">
+            <button
+              onClick={handleGlobalUpload}
+              className="flex items-center space-x-2 rounded-2xl bg-brand-orange px-6 py-3.5 font-display text-sm font-bold text-white shadow-md shadow-orange-100 hover:bg-orange-600 hover:shadow-lg focus:outline-none focus:ring-4 focus:ring-brand-orange/20 active:scale-[0.98] transition-all duration-200 cursor-pointer"
+            >
+              <Upload className="h-4.5 w-4.5" />
+              <span>Add your CSV file</span>
+            </button>
+
+            <button
+              onClick={handleExcelToCsvClick}
+              disabled={converting}
+              className="flex items-center space-x-2 rounded-2xl border border-brand-orange text-brand-orange bg-white px-6 py-3.5 font-display text-sm font-bold shadow-xs hover:bg-orange-50 active:scale-[0.98] transition-all duration-200 disabled:opacity-50 cursor-pointer"
+            >
+              {converting ? (
+                <div className="h-4.5 w-4.5 animate-spin rounded-full border border-brand-orange border-t-transparent" />
+              ) : (
+                <RefreshCw className="h-4.5 w-4.5" />
+              )}
+              <span>Excel to CSV convert</span>
+            </button>
+            <input
+              type="file"
+              ref={excelInputRef}
+              onChange={handleExcelFileChange}
+              accept=".xlsx, .xls"
+              className="hidden"
+            />
+          </div>
+          {conversionError && (
+            <p className="font-sans text-[11px] text-red-500 font-medium">
+              {conversionError}
+            </p>
+          )}
+        </div>
       </div>
 
       {/* Modules CSS Grid */}

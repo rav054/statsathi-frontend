@@ -551,7 +551,21 @@ const SemModal = ({ isOpen, onClose }) => {
         </body>
         </html>
       `;
-      const blob = new Blob(['\ufeff' + htmlContent], { type: 'application/msword;charset=utf-8' });
+      const centeredHtml = htmlContent
+        .replace(/<table([^>]*)>/gi, (match, attrs) => {
+          let newAttrs = attrs;
+          if (/style="/i.test(newAttrs)) {
+            newAttrs = newAttrs.replace(/style="/i, 'style="mso-table-align: center; margin-left: auto; margin-right: auto; ');
+          } else {
+            newAttrs = ' style="mso-table-align: center; margin-left: auto; margin-right: auto;"' + newAttrs;
+          }
+          if (!/align=/i.test(newAttrs)) {
+            newAttrs = ' align="center"' + newAttrs;
+          }
+          return `<center><table${newAttrs}>`;
+        })
+        .replace(/<\/table>/gi, '</table></center>');
+      const blob = new Blob(['\ufeff' + centeredHtml], { type: 'application/msword;charset=utf-8' });
       const link = document.createElement('a');
       link.href = URL.createObjectURL(blob);
       link.download = `${fileName}.doc`;

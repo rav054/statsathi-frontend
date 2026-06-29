@@ -289,6 +289,40 @@ const DatasetViewerModal = ({ isOpen, onClose, file, onSave }) => {
     showToast('New column added');
   };
 
+  const renameSelectedCol = (col) => {
+    const newName = prompt(`Enter new name for column "${col}":`, col);
+    if (newName === null) return;
+    const trimmed = newName.trim();
+    if (!trimmed) return showToast('Column name cannot be empty', 'warn');
+    if (trimmed === col) return;
+    if (columns.includes(trimmed)) return showToast('Column name already exists', 'warn');
+    
+    pushHistory();
+    setColumns(prev => prev.map(c => c === col ? trimmed : c));
+    setData(prev => prev.map(row => {
+      const newRow = { ...row };
+      newRow[trimmed] = newRow[col];
+      delete newRow[col];
+      return newRow;
+    }));
+    setSelectedCols(new Set([trimmed]));
+    showToast(`Column renamed to "${trimmed}"`);
+  };
+
+  const renameSelectedRow = (idx) => {
+    if (columns.length === 0) return;
+    const firstCol = columns[0];
+    const currentValue = data[idx][firstCol];
+    const newValue = prompt(`Enter new value for row ${idx + 1} (${firstCol}):`, currentValue || '');
+    if (newValue === null) return;
+    
+    pushHistory();
+    const newData = [...data];
+    newData[idx] = { ...newData[idx], [firstCol]: newValue };
+    setData(newData);
+    showToast(`Row ${idx + 1} renamed`);
+  };
+
   // ── CELL EDITING ────────────────────────────────────────────
   const startEdit = (rowIdx, colName) => {
     const val = data[rowIdx][colName];
@@ -449,6 +483,7 @@ const DatasetViewerModal = ({ isOpen, onClose, file, onSave }) => {
                 <ToolbarBtn icon={Copy} label="Duplicate" onClick={copySelectedRows} disabled={!hasRowSelection} />
                 <ToolbarBtn icon={ArrowUp} label="Move Up" onClick={() => moveSelectedRows('up')} disabled={!hasRowSelection} />
                 <ToolbarBtn icon={ArrowDown} label="Move Down" onClick={() => moveSelectedRows('down')} disabled={!hasRowSelection} />
+                <ToolbarBtn icon={Pencil} label="Rename Row" onClick={() => renameSelectedRow([...selectedRows][0])} disabled={selectedRows.size !== 1} />
                 <ToolbarBtn icon={Plus} label="Add Row" onClick={addRowBelow} accent />
               </>
             ) : (
@@ -462,6 +497,7 @@ const DatasetViewerModal = ({ isOpen, onClose, file, onSave }) => {
                 <ToolbarBtn icon={Copy} label="Duplicate" onClick={copySelectedCols} disabled={!hasColSelection} />
                 <ToolbarBtn icon={ArrowLeft} label="Move Left" onClick={() => moveSelectedCols('left')} disabled={selectedCols.size !== 1} />
                 <ToolbarBtn icon={ArrowRight} label="Move Right" onClick={() => moveSelectedCols('right')} disabled={selectedCols.size !== 1} />
+                <ToolbarBtn icon={Pencil} label="Rename Column" onClick={() => renameSelectedCol([...selectedCols][0])} disabled={selectedCols.size !== 1} />
                 <ToolbarBtn icon={Plus} label="Add Column" onClick={addColumn} accent />
               </>
             )}
@@ -658,6 +694,7 @@ const DatasetViewerModal = ({ isOpen, onClose, file, onSave }) => {
               <ContextMenuItem icon={Copy} label="Duplicate selected row(s)" onClick={() => { copySelectedRows(); setContextMenu(null); }} />
               <ContextMenuItem icon={ArrowUp} label="Move up" onClick={() => { moveSelectedRows('up'); setContextMenu(null); }} />
               <ContextMenuItem icon={ArrowDown} label="Move down" onClick={() => { moveSelectedRows('down'); setContextMenu(null); }} />
+              <ContextMenuItem icon={Pencil} label="Rename row" onClick={() => { renameSelectedRow([...selectedRows][0]); setContextMenu(null); }} />
               <ContextMenuItem icon={Plus} label="Insert row below" onClick={() => { addRowBelow(); setContextMenu(null); }} />
             </>
           ) : (
@@ -666,6 +703,7 @@ const DatasetViewerModal = ({ isOpen, onClose, file, onSave }) => {
               <ContextMenuItem icon={Copy} label="Duplicate selected column(s)" onClick={() => { copySelectedCols(); setContextMenu(null); }} />
               <ContextMenuItem icon={ArrowLeft} label="Move left" onClick={() => { moveSelectedCols('left'); setContextMenu(null); }} />
               <ContextMenuItem icon={ArrowRight} label="Move right" onClick={() => { moveSelectedCols('right'); setContextMenu(null); }} />
+              <ContextMenuItem icon={Pencil} label="Rename column" onClick={() => { renameSelectedCol([...selectedCols][0]); setContextMenu(null); }} />
               <ContextMenuItem icon={Plus} label="Insert column" onClick={() => { addColumn(); setContextMenu(null); }} />
             </>
           )}

@@ -125,6 +125,7 @@ const AnovaModal = ({ isOpen, onClose }) => {
   const [postHocFontSize, setPostHocFontSize] = useState(10);
   const [postHocFontColor, setPostHocFontColor] = useState('#334155');
   const [postHocBarColor, setPostHocBarColor] = useState('');
+  const [downloadDpi, setDownloadDpi] = useState(300);
 
   useEffect(() => {
     let active = true;
@@ -177,20 +178,27 @@ const AnovaModal = ({ isOpen, onClose }) => {
         }
       ];
 
+      const dynamicMarginL = Math.max(60, postHocFontSize * 4);
+      const dynamicMarginB = Math.max(70, postHocFontSize * 4);
+      const dynamicMarginT = Math.max(50, postHocFontSize * 3);
+      const dynamicMarginR = Math.max(30, postHocFontSize * 2);
+
       const layout = {
         autosize: true,
-        height: 320,
+        height: Math.max(320, 280 + postHocFontSize * 4),
         width: 680,
-        margin: { l: 50, r: 20, t: 40, b: 60 },
+        margin: { l: dynamicMarginL, r: dynamicMarginR, t: dynamicMarginT, b: dynamicMarginB },
         font: { family: 'Inter, sans-serif', size: postHocFontSize, color: postHocFontColor },
         xaxis: {
-          title: { text: 'Treatment Groups', font: { size: postHocFontSize + 1, family: 'Inter', weight: 'bold', color: postHocFontColor } },
+          title: { text: 'Treatment Groups', font: { size: postHocFontSize + 1, family: 'Inter', weight: 'bold', color: postHocFontColor }, standoff: Math.max(10, postHocFontSize * 0.8) },
           tickangle: 15,
-          tickfont: { color: postHocFontColor, size: postHocFontSize }
+          tickfont: { color: postHocFontColor, size: postHocFontSize },
+          automargin: true
         },
         yaxis: {
-          title: { text: 'Treatment Means', font: { size: postHocFontSize + 1, family: 'Inter', weight: 'bold', color: postHocFontColor } },
-          tickfont: { color: postHocFontColor, size: postHocFontSize }
+          title: { text: 'Treatment Means', font: { size: postHocFontSize + 1, family: 'Inter', weight: 'bold', color: postHocFontColor }, standoff: Math.max(10, postHocFontSize * 0.8) },
+          tickfont: { color: postHocFontColor, size: postHocFontSize },
+          automargin: true
         },
         paper_bgcolor: 'rgba(0,0,0,0)',
         plot_bgcolor: 'rgba(0,0,0,0)'
@@ -463,7 +471,21 @@ const AnovaModal = ({ isOpen, onClose }) => {
         </body>
         </html>
       `;
-      const blob = new Blob(['\ufeff' + htmlContent], { type: 'application/msword;charset=utf-8' });
+      const centeredHtml = htmlContent
+        .replace(/<table([^>]*)>/gi, (match, attrs) => {
+          let newAttrs = attrs;
+          if (/style="/i.test(newAttrs)) {
+            newAttrs = newAttrs.replace(/style="/i, 'style="mso-table-align: center; margin-left: auto; margin-right: auto; ');
+          } else {
+            newAttrs = ' style="mso-table-align: center; margin-left: auto; margin-right: auto;"' + newAttrs;
+          }
+          if (!/align=/i.test(newAttrs)) {
+            newAttrs = ' align="center"' + newAttrs;
+          }
+          return `<center><table${newAttrs}>`;
+        })
+        .replace(/<\/table>/gi, '</table></center>');
+      const blob = new Blob(['\ufeff' + centeredHtml], { type: 'application/msword;charset=utf-8' });
       const link = document.createElement('a');
       link.href = URL.createObjectURL(blob);
       link.download = `${fileName}.doc`;
@@ -475,11 +497,13 @@ const AnovaModal = ({ isOpen, onClose }) => {
 
   const handleDownloadPostHocChart = (format) => {
     if (!chartRef.current) return;
-    const filename = `StatSathi_PostHoc_Chart_${depVar}`;
+    const scale = downloadDpi / 96;
+    const filename = `StatSathi_PostHoc_Chart_${depVar}_${downloadDpi}dpi`;
     Plotly.downloadImage(chartRef.current, {
       format: format,
       width: 800,
       height: 500,
+      scale: scale,
       filename: filename
     });
   };
@@ -1455,7 +1479,21 @@ const AnovaModal = ({ isOpen, onClose }) => {
         </body>
         </html>
       `;
-      const blob = new Blob(['\ufeff' + htmlContent], { type: 'application/msword;charset=utf-8' });
+      const centeredHtml = htmlContent
+        .replace(/<table([^>]*)>/gi, (match, attrs) => {
+          let newAttrs = attrs;
+          if (/style="/i.test(newAttrs)) {
+            newAttrs = newAttrs.replace(/style="/i, 'style="mso-table-align: center; margin-left: auto; margin-right: auto; ');
+          } else {
+            newAttrs = ' style="mso-table-align: center; margin-left: auto; margin-right: auto;"' + newAttrs;
+          }
+          if (!/align=/i.test(newAttrs)) {
+            newAttrs = ' align="center"' + newAttrs;
+          }
+          return `<center><table${newAttrs}>`;
+        })
+        .replace(/<\/table>/gi, '</table></center>');
+      const blob = new Blob(['\ufeff' + centeredHtml], { type: 'application/msword;charset=utf-8' });
       const link = document.createElement('a');
       link.href = URL.createObjectURL(blob);
       link.download = `${fileName}.doc`;
@@ -2881,7 +2919,22 @@ const AnovaModal = ({ isOpen, onClose }) => {
               <div className="rounded-2xl border border-slate-100 bg-slate-50/50 p-4 flex flex-col items-center justify-center">
                 <div className="w-full flex items-center justify-between mb-3">
                   <h5 className="font-display text-xs font-bold text-slate-700">Mean Separation Chart (with Error Bars & Groupings)</h5>
-                  <div className="flex space-x-2">
+                  <div className="flex items-center space-x-3">
+                    <div className="flex items-center space-x-1">
+                      <span className="font-sans text-[9px] font-bold text-slate-400 uppercase">DPI:</span>
+                      {[150, 300, 600].map(dpiVal => (
+                        <button
+                          key={dpiVal}
+                          onClick={() => setDownloadDpi(dpiVal)}
+                          className={`px-1.5 py-0.5 font-sans text-[8px] font-bold rounded-md cursor-pointer transition-colors ${
+                            downloadDpi === dpiVal ? 'bg-brand-indigo text-white shadow-xs' : 'bg-white border border-slate-200 text-slate-500 hover:bg-slate-50'
+                          }`}
+                        >
+                          {dpiVal}
+                        </button>
+                      ))}
+                    </div>
+                    <div className="h-4 w-px bg-slate-200" />
                     <button
                       onClick={() => handleDownloadPostHocChart('png')}
                       className="inline-flex items-center space-x-1 rounded-lg border border-slate-200 bg-white px-2 py-1 font-sans text-[10px] font-semibold text-slate-600 hover:bg-slate-50 hover:text-slate-800 transition-colors cursor-pointer"

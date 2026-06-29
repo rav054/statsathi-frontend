@@ -9,47 +9,17 @@ const Projects = ({ onAuthClick }) => {
   const defaultProjects = [
     {
       id: 1,
-      name: "Soil Nutrient Vertisols Analysis (2026)",
-      created: "2026-05-12",
-      samples: 124,
-      variables: 8,
-      status: "Ready",
-      testUsed: "Pearson Correlation, Heatmaps",
-      tasks: [
-        { id: 101, text: "Upload soils dataset", completed: true },
-        { id: 102, text: "Clean missing nutrient cells", completed: true },
-        { id: 103, text: "Run correlation matrix", completed: false },
-        { id: 104, text: "Save heatmap visual", completed: false }
-      ]
-    },
-    {
-      id: 2,
-      name: "Soybean Inter-cropping Yield Factors",
-      created: "2026-05-28",
-      samples: 48,
+      name: "Dummy project",
+      created: "2026-06-29",
+      samples: 120,
       variables: 6,
-      status: "In Progress",
-      testUsed: "One-Way ANOVA",
+      status: "Ready",
+      testUsed: "One-Way ANOVA, LSD Test",
       tasks: [
-        { id: 201, text: "Collect soybean trials data", completed: true },
-        { id: 202, text: "Upload Excel sheet", completed: false },
-        { id: 203, text: "Run RBD ANOVA", completed: false },
-        { id: 204, text: "Calculate DMRT post-hoc letters", completed: false }
-      ]
-    },
-    {
-      id: 3,
-      name: "Wheat Cultivar Germination Rates",
-      created: "2026-06-02",
-      samples: 96,
-      variables: 12,
-      status: "Completed",
-      testUsed: "Mann-Whitney U Test",
-      tasks: [
-        { id: 301, text: "Germination count checks", completed: true },
-        { id: 302, text: "Run normality test on groups", completed: true },
-        { id: 303, text: "Execute Wilcoxon rank sum test", completed: true },
-        { id: 304, text: "Download Word format report", completed: true }
+        { id: 101, text: "Add your CSV dataset file", completed: true },
+        { id: 102, text: "Verify variable columns in data editor", completed: true },
+        { id: 103, text: "Run ANOVA with Duncan / LSD post-hoc", completed: false },
+        { id: 104, text: "Download high-resolution 300 DPI chart", completed: false }
       ]
     }
   ];
@@ -58,7 +28,11 @@ const Projects = ({ onAuthClick }) => {
     const saved = localStorage.getItem('statsathi_projects');
     if (saved) {
       try {
-        return JSON.parse(saved);
+        const parsed = JSON.parse(saved);
+        if (parsed.length === 0 || !parsed.some(p => p.name === "Dummy project")) {
+          return defaultProjects;
+        }
+        return parsed;
       } catch (e) {
         return defaultProjects;
       }

@@ -14,6 +14,7 @@ const CorrelationModal = ({ isOpen, onClose }) => {
   const [zoomLevel, setZoomLevel] = useState(1);
   const [viewerOpen, setViewerOpen] = useState(false);
   const [palette, setPalette] = useState('coolwarm');
+  const [downloadDpi, setDownloadDpi] = useState(300);
   const fileInputRef = useRef(null);
 
   const colormaps = [
@@ -88,6 +89,7 @@ const CorrelationModal = ({ isOpen, onClose }) => {
     const formData = new FormData();
     formData.append('file', file);
     formData.append('palette', palette);
+    formData.append('dpi', downloadDpi.toString());
 
     try {
       const res = await fetch(`${API_URL}/analyze/correlation`, {
@@ -116,7 +118,7 @@ const CorrelationModal = ({ isOpen, onClose }) => {
     if (file && imageUrl) {
       handleUpload();
     }
-  }, [palette]);
+  }, [palette, downloadDpi]);
 
   if (!isOpen) return null;
 
@@ -285,7 +287,21 @@ const CorrelationModal = ({ isOpen, onClose }) => {
         </body>
         </html>
       `;
-      const blob = new Blob(['\ufeff' + htmlContent], { type: 'application/msword;charset=utf-8' });
+      const centeredHtml = htmlContent
+        .replace(/<table([^>]*)>/gi, (match, attrs) => {
+          let newAttrs = attrs;
+          if (/style="/i.test(newAttrs)) {
+            newAttrs = newAttrs.replace(/style="/i, 'style="mso-table-align: center; margin-left: auto; margin-right: auto; ');
+          } else {
+            newAttrs = ' style="mso-table-align: center; margin-left: auto; margin-right: auto;"' + newAttrs;
+          }
+          if (!/align=/i.test(newAttrs)) {
+            newAttrs = ' align="center"' + newAttrs;
+          }
+          return `<center><table${newAttrs}>`;
+        })
+        .replace(/<\/table>/gi, '</table></center>');
+      const blob = new Blob(['\ufeff' + centeredHtml], { type: 'application/msword;charset=utf-8' });
       const link = document.createElement('a');
       link.href = URL.createObjectURL(blob);
       link.download = `${fileName}.doc`;
@@ -418,21 +434,37 @@ const CorrelationModal = ({ isOpen, onClose }) => {
                   Test Applied: Pearson Correlation Analysis (Heatmap Matrix)
                 </p>
               </div>
-              <div className="mb-4 flex space-x-2">
-                <button
-                  onClick={() => setZoomLevel(prev => Math.max(0.5, prev - 0.25))}
-                  className="rounded-lg bg-white border border-slate-200 p-1.5 hover:bg-slate-50 text-slate-600"
-                  title="Zoom Out"
-                >
-                  <ZoomOut className="h-4 w-4" />
-                </button>
-                <button
-                  onClick={() => setZoomLevel(prev => Math.min(2.5, prev + 0.25))}
-                  className="rounded-lg bg-white border border-slate-200 p-1.5 hover:bg-slate-50 text-slate-600"
-                  title="Zoom In"
-                >
-                  <ZoomIn className="h-4 w-4" />
-                </button>
+              <div className="mb-4 flex flex-wrap gap-2 items-center">
+                <div className="flex space-x-1.5">
+                  <button
+                    onClick={() => setZoomLevel(prev => Math.max(0.5, prev - 0.25))}
+                    className="rounded-lg bg-white border border-slate-200 p-1.5 hover:bg-slate-50 text-slate-600 cursor-pointer"
+                    title="Zoom Out"
+                  >
+                    <ZoomOut className="h-4 w-4" />
+                  </button>
+                  <button
+                    onClick={() => setZoomLevel(prev => Math.min(2.5, prev + 0.25))}
+                    className="rounded-lg bg-white border border-slate-200 p-1.5 hover:bg-slate-50 text-slate-600 cursor-pointer"
+                    title="Zoom In"
+                  >
+                    <ZoomIn className="h-4 w-4" />
+                  </button>
+                </div>
+                <div className="flex items-center space-x-1 bg-brand-indigo/10 p-1 rounded-xl border border-brand-indigo/20">
+                  <span className="font-sans text-[9px] font-bold text-brand-indigo px-2 uppercase shrink-0">DPI:</span>
+                  {[150, 300, 600].map(dpiVal => (
+                    <button
+                      key={dpiVal}
+                      onClick={() => setDownloadDpi(dpiVal)}
+                      className={`px-1.5 py-0.5 font-sans text-[8px] font-bold rounded-md cursor-pointer transition-colors ${
+                        downloadDpi === dpiVal ? 'bg-brand-indigo text-white shadow-xs' : 'bg-white border border-slate-200 text-slate-500 hover:bg-slate-50'
+                      }`}
+                    >
+                      {dpiVal}
+                    </button>
+                  ))}
+                </div>
                 <div className="flex items-center space-x-1 bg-emerald-50/50 p-1 rounded-xl border border-emerald-100">
                   <span className="font-sans text-[9px] font-bold text-emerald-600 px-2 uppercase shrink-0">Report:</span>
                   <button

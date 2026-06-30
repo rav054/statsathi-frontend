@@ -4,7 +4,7 @@ import { X, Upload, Check, AlertCircle, Download, RefreshCw, ZoomIn, ZoomOut, Ey
 import DatasetViewerModal from './DatasetViewerModal';
 
 const CorrelationModal = ({ isOpen, onClose, sharedFile, setSharedFile }) => {
-  const { token } = useAuth();
+  const { token, user } = useAuth();
   const [file, setFile] = useState(null);
 
   useEffect(() => {
@@ -217,7 +217,7 @@ const CorrelationModal = ({ isOpen, onClose, sharedFile, setSharedFile }) => {
         matrixTable = `
           <h2 style="color: #4F46E5; font-family: Arial, sans-serif; font-size: 14pt; margin-top: 20px;">Correlation Coefficient Matrix</h2>
           <div align="center">
-          <table align="center" style="border-collapse: collapse; width: 95%; font-family: Arial, sans-serif; font-size: 10pt; margin-left: auto; margin-right: auto; margin-bottom: 20px;">
+          <table align="center" style="border-collapse: collapse; width: 80%; font-family: Arial, sans-serif; font-size: 10pt; margin-left: auto; margin-right: auto; margin-bottom: 20px;">
             <thead>
               <tr style="background-color: #4F46E5; color: white;">
                 <th style="border: 1px solid #CBD5E1; padding: 10px; text-align: left; font-weight: bold;">Variable</th>
@@ -256,7 +256,7 @@ const CorrelationModal = ({ isOpen, onClose, sharedFile, setSharedFile }) => {
             p { margin-bottom: 15px; }
             ul { margin-bottom: 15px; padding-left: 20px; }
             li { margin-bottom: 5px; }
-            .meta-table { border-collapse: collapse; width: 95%; margin-left: auto; margin-right: auto; margin-bottom: 25px; }
+            .meta-table { border-collapse: collapse; width: 75%; margin-left: auto; margin-right: auto; margin-bottom: 25px; }
             .meta-table td { padding: 8px; border: 1px solid #E2E8F0; }
             .meta-label { font-weight: bold; background-color: #F8FAFC; width: 30%; }
           </style>
@@ -265,7 +265,7 @@ const CorrelationModal = ({ isOpen, onClose, sharedFile, setSharedFile }) => {
           <h1>Stat Sathi Correlation Analysis Report</h1>
           
           <div align="center">
-          <table align="center" class="meta-table">
+          <table align="center" class="meta-table" style="width: 75%;">
             <tr>
               <td class="meta-label">Test Applied</td>
               <td>Pearson Correlation Analysis (Heatmap Matrix)</td>
@@ -280,7 +280,7 @@ const CorrelationModal = ({ isOpen, onClose, sharedFile, setSharedFile }) => {
             </tr>
             <tr>
               <td class="meta-label">Curator</td>
-              <td>Ravi, PhD Scholar ICAR-IISS</td>
+              <td>${user ? user.full_name : 'Guest Researcher'}</td>
             </tr>
           </table>
           </div>
@@ -299,14 +299,19 @@ const CorrelationModal = ({ isOpen, onClose, sharedFile, setSharedFile }) => {
           </ul>
           
           <p style="margin-top: 40px; font-size: 9pt; color: #64748B; border-top: 1px solid #E2E8F0; padding-top: 10px; text-align: center;">
-            Stat Sathi &copy; 2026 - Your Trustworthy Research Analytics Companion
+            Stat Sathi &copy; 2026 - Your Trustworthy Research Analytics Companion - developed by Ravi, PhD Scholar in IISS Bhopal
           </p>
         </body>
         </html>
       `;
       const centeredHtml = htmlContent
+        .replace(/width:\s*95%/gi, 'width: 80%')
+        .replace(/class="meta-table"/gi, 'class="meta-table" style="width: 75%;"')
         .replace(/<table([^>]*)>/gi, (match, attrs) => {
           let newAttrs = attrs;
+          if (/width:\s*95%/i.test(newAttrs)) {
+            newAttrs = newAttrs.replace(/width:\s*95%/i, 'width: 80%');
+          }
           if (/style="/i.test(newAttrs)) {
             newAttrs = newAttrs.replace(/style="/i, 'style="mso-table-align: center; margin-left: auto; margin-right: auto; ');
           } else {

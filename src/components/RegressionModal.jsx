@@ -5,7 +5,7 @@ import Plotly from 'plotly.js-dist-min';
 import DatasetViewerModal from './DatasetViewerModal';
 
 const RegressionModal = ({ isOpen, onClose, sharedFile, setSharedFile }) => {
-  const { token } = useAuth();
+  const { token, user } = useAuth();
 
   // Dataset states
   const [file, setFile] = useState(null);
@@ -564,8 +564,8 @@ const RegressionModal = ({ isOpen, onClose, sharedFile, setSharedFile }) => {
 
     html += `
         <div class="footer">
-          Report compiled by Stat Sathi<br/>
-          <em>Curated by Ravi, PhD Scholar ICAR-IISS</em>
+          Stat Sathi &copy; 2026 - Your Trustworthy Research Analytics Companion - developed by Ravi, PhD Scholar in IISS Bhopal<br/>
+          <em>Curated by ${user ? user.full_name : 'Guest Researcher'}</em>
         </div>
       </body>
       </html>
@@ -1203,7 +1203,7 @@ const RegressionModal = ({ isOpen, onClose, sharedFile, setSharedFile }) => {
 
         {/* Footer */}
         <div className="border-t border-slate-200/50 bg-white px-6 py-4 flex justify-between items-center text-[10px] text-slate-400 font-sans">
-          <span>Curated by Ravi, PhD Scholar ICAR-IISS</span>
+          <span>Curated by ${user ? user.full_name : 'Guest Researcher'}</span>
           {file && (
             <div className="flex items-center space-x-1">
               <span className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse"></span>

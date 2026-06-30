@@ -4,7 +4,7 @@ import { X, Upload, Check, AlertCircle, Download, RefreshCw, Info, Eye } from 'l
 import DatasetViewerModal from './DatasetViewerModal';
 
 const NonParametricModal = ({ isOpen, onClose, sharedFile, setSharedFile }) => {
-  const { token } = useAuth();
+  const { token, user } = useAuth();
   
   // State for dataset selection
   const [file, setFile] = useState(null);
@@ -320,7 +320,7 @@ const NonParametricModal = ({ isOpen, onClose, sharedFile, setSharedFile }) => {
     report += `\n==================================================\n`;
     report += `Report generated on ${new Date().toLocaleString()}\n`;
     report += `Stat Sathi - Your Trustworthy Research Analytics Companion\n`;
-    report += `Curated by Ravi, PhD Scholar ICAR-IISS\n`;
+    report += `Curated by ${user ? user.full_name : 'Guest Researcher'}\n`;
     report += `==================================================\n`;
 
     const fileName = `StatSathi_NonParametricReport_${testType}_${selectedCols.join('_')}`;
@@ -570,7 +570,7 @@ const NonParametricModal = ({ isOpen, onClose, sharedFile, setSharedFile }) => {
             h1 { color: #4F46E5; font-size: 18pt; border-bottom: 2px solid #4F46E5; padding-bottom: 6px; margin-bottom: 20px; }
             h2 { color: #1E293B; font-size: 14pt; margin-top: 25px; border-bottom: 1px solid #E2E8F0; padding-bottom: 4px; }
             p { margin-bottom: 15px; }
-            .meta-table { border-collapse: collapse; width: 95%; margin-left: auto; margin-right: auto; margin-bottom: 25px; }
+            .meta-table { border-collapse: collapse; width: 75%; margin-left: auto; margin-right: auto; margin-bottom: 25px; }
             .meta-table td { padding: 8px; border: 1px solid #E2E8F0; }
             .meta-label { font-weight: bold; background-color: #F8FAFC; width: 30%; }
           </style>
@@ -579,7 +579,7 @@ const NonParametricModal = ({ isOpen, onClose, sharedFile, setSharedFile }) => {
           <h1>Stat Sathi Non-Parametric Hypothesis Test Report</h1>
           
           <div align="center">
-          <table align="center" class="meta-table">
+          <table align="center" class="meta-table" style="width: 75%;">
             <tr>
               <td class="meta-label">Test Applied</td>
               <td>${results.statistics.test_name || 'Non-Parametric Test'}</td>
@@ -594,7 +594,7 @@ const NonParametricModal = ({ isOpen, onClose, sharedFile, setSharedFile }) => {
             </tr>
             <tr>
               <td class="meta-label">Curator</td>
-              <td>Ravi, PhD Scholar ICAR-IISS</td>
+              <td>${user ? user.full_name : 'Guest Researcher'}</td>
             </tr>
           </table>
           </div>
@@ -621,14 +621,23 @@ const NonParametricModal = ({ isOpen, onClose, sharedFile, setSharedFile }) => {
           ${normalityTableMarkup}
 
           <p style="margin-top: 40px; font-size: 9pt; color: #64748B; border-top: 1px solid #E2E8F0; padding-top: 10px; text-align: center;">
-            Stat Sathi &copy; 2026 - Your Trustworthy Research Analytics Companion
+            Stat Sathi &copy; 2026 - Your Trustworthy Research Analytics Companion - developed by Ravi, PhD Scholar in IISS Bhopal
           </p>
         </body>
         </html>
       `;
       const centeredHtml = htmlContent
+        .replace(/width:\s*100%/gi, 'width: 80%')
+        .replace(/width:\s*95%/gi, 'width: 80%')
+        .replace(/class="meta-table"/gi, 'class="meta-table" style="width: 75%;"')
         .replace(/<table([^>]*)>/gi, (match, attrs) => {
           let newAttrs = attrs;
+          if (/width:\s*100%/i.test(newAttrs)) {
+            newAttrs = newAttrs.replace(/width:\s*100%/i, 'width: 80%');
+          }
+          if (/width:\s*95%/i.test(newAttrs)) {
+            newAttrs = newAttrs.replace(/width:\s*95%/i, 'width: 80%');
+          }
           if (/style="/i.test(newAttrs)) {
             newAttrs = newAttrs.replace(/style="/i, 'style="mso-table-align: center; margin-left: auto; margin-right: auto; ');
           } else {

@@ -3,11 +3,27 @@ import { useAuth, API_URL } from '../context/AuthContext';
 import { X, Upload, Check, AlertCircle, Download, RefreshCw, Eye, Sliders, Layout } from 'lucide-react';
 import DatasetViewerModal from './DatasetViewerModal';
 
-const PlotsModal = ({ isOpen, onClose }) => {
+const PlotsModal = ({ isOpen, onClose, sharedFile, setSharedFile }) => {
   const { token } = useAuth();
   
   // State for dataset selection
   const [file, setFile] = useState(null);
+
+  useEffect(() => {
+    if (isOpen && sharedFile && (!file || sharedFile.name !== file.name || sharedFile.size !== file.size)) {
+      if (typeof handleFileSelected === 'function') {
+        handleFileSelected(sharedFile);
+      }
+    } else if (isOpen && !sharedFile && file) {
+      handleReset();
+    }
+  }, [isOpen, sharedFile]);
+
+  useEffect(() => {
+    if (file !== sharedFile && setSharedFile) {
+      setSharedFile(file);
+    }
+  }, [file, sharedFile, setSharedFile]);
   const [columns, setColumns] = useState([]);
   const [numericColumns, setNumericColumns] = useState([]);
   const [loadingCols, setLoadingCols] = useState(false);

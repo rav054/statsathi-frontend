@@ -33,6 +33,7 @@ const Dashboard = ({ onAuthClick }) => {
   const [converting, setConverting] = useState(false);
   const [conversionError, setConversionError] = useState(null);
   const excelInputRef = useRef(null);
+  const csvInputRef = useRef(null);
 
   const handleSaveEditedData = async (editedFile) => {
     setFile(editedFile);
@@ -228,7 +229,23 @@ const Dashboard = ({ onAuthClick }) => {
       setAuthPromptOpen(true);
       return;
     }
-    setCorrOpen(true);
+    if (csvInputRef.current) {
+      csvInputRef.current.click();
+    }
+  };
+
+  const handleCsvFileChange = (e) => {
+    const selectedFile = e.target.files?.[0];
+    if (!selectedFile) return;
+
+    const ext = selectedFile.name.split('.').pop().toLowerCase();
+    if (ext !== 'csv') {
+      alert("Please upload a valid CSV file. (Excel files can be converted to CSV using the Excel to CSV converter next to this button).");
+      return;
+    }
+
+    setFile(selectedFile);
+    setViewerOpen(true);
   };
 
   return (
@@ -272,6 +289,13 @@ const Dashboard = ({ onAuthClick }) => {
               ref={excelInputRef}
               onChange={handleExcelFileChange}
               accept=".xlsx, .xls"
+              className="hidden"
+            />
+            <input
+              type="file"
+              ref={csvInputRef}
+              onChange={handleCsvFileChange}
+              accept=".csv"
               className="hidden"
             />
           </div>
@@ -386,42 +410,56 @@ const Dashboard = ({ onAuthClick }) => {
       <DescriptiveModal
         isOpen={descriptiveOpen}
         onClose={() => setDescriptiveOpen(false)}
+        sharedFile={file}
+        setSharedFile={setFile}
       />
 
       {/* Core Correlation Analysis Modal */}
       <CorrelationModal
         isOpen={corrOpen}
         onClose={() => setCorrOpen(false)}
+        sharedFile={file}
+        setSharedFile={setFile}
       />
 
       {/* Parametric Hypothesis Testing Modal */}
       <ParametricModal
         isOpen={parametricOpen}
         onClose={() => setParametricOpen(false)}
+        sharedFile={file}
+        setSharedFile={setFile}
       />
 
       {/* Non-Parametric Hypothesis Testing Modal */}
       <NonParametricModal
         isOpen={nonParametricOpen}
         onClose={() => setNonParametricOpen(false)}
+        sharedFile={file}
+        setSharedFile={setFile}
       />
 
       {/* ANOVA Hypothesis Testing Modal */}
       <AnovaModal
         isOpen={anovaOpen}
         onClose={() => setAnovaOpen(false)}
+        sharedFile={file}
+        setSharedFile={setFile}
       />
 
       {/* PCA Analysis Modal */}
       <PcaModal
         isOpen={pcaOpen}
         onClose={() => setPcaOpen(false)}
+        sharedFile={file}
+        setSharedFile={setFile}
       />
 
       {/* Plots Visualization Modal */}
       <PlotsModal
         isOpen={plotsOpen}
         onClose={() => setPlotsOpen(false)}
+        sharedFile={file}
+        setSharedFile={setFile}
       />
 
       {/* Field Layout Generator Modal */}
@@ -434,12 +472,16 @@ const Dashboard = ({ onAuthClick }) => {
       <ClusteringModal
         isOpen={clusteringOpen}
         onClose={() => setClusteringOpen(false)}
+        sharedFile={file}
+        setSharedFile={setFile}
       />
 
       {/* Regression Analysis Modal */}
       <RegressionModal
         isOpen={regressionOpen}
         onClose={() => setRegressionOpen(false)}
+        sharedFile={file}
+        setSharedFile={setFile}
       />
 
       <DatasetViewerModal

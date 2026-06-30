@@ -3,9 +3,26 @@ import { useAuth, API_URL } from '../context/AuthContext';
 import { X, Upload, Check, AlertCircle, Download, RefreshCw, ZoomIn, ZoomOut, Eye } from 'lucide-react';
 import DatasetViewerModal from './DatasetViewerModal';
 
-const CorrelationModal = ({ isOpen, onClose }) => {
+const CorrelationModal = ({ isOpen, onClose, sharedFile, setSharedFile }) => {
   const { token } = useAuth();
   const [file, setFile] = useState(null);
+
+  useEffect(() => {
+    if (isOpen && sharedFile && (!file || sharedFile.name !== file.name || sharedFile.size !== file.size)) {
+      if (typeof validateAndSetFile === 'function') {
+        validateAndSetFile(sharedFile);
+      }
+    } else if (isOpen && !sharedFile && file) {
+      handleReset();
+    }
+  }, [isOpen, sharedFile]);
+
+  useEffect(() => {
+    if (file !== sharedFile && setSharedFile) {
+      setSharedFile(file);
+    }
+  }, [file, sharedFile, setSharedFile]);
+
   const [loading, setLoading] = useState(false);
   const [imageUrl, setImageUrl] = useState(null);
   const [matrix, setMatrix] = useState(null);

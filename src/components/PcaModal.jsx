@@ -12,11 +12,27 @@ const pcaPalettes = [
   { value: 'magma', label: 'Magma Pink-Black' }
 ];
 
-const PcaModal = ({ isOpen, onClose }) => {
+const PcaModal = ({ isOpen, onClose, sharedFile, setSharedFile }) => {
   const { user } = useAuth();
   
   // File state
   const [file, setFile] = useState(null);
+
+  useEffect(() => {
+    if (isOpen && sharedFile && (!file || sharedFile.name !== file.name || sharedFile.size !== file.size)) {
+      if (typeof processFile === 'function') {
+        processFile(sharedFile);
+      }
+    } else if (isOpen && !sharedFile && file) {
+      handleReset();
+    }
+  }, [isOpen, sharedFile]);
+
+  useEffect(() => {
+    if (file !== sharedFile && setSharedFile) {
+      setSharedFile(file);
+    }
+  }, [file, sharedFile, setSharedFile]);
   const [columns, setColumns] = useState([]);
   const [numericColumns, setNumericColumns] = useState([]);
   const [loadingCols, setLoadingCols] = useState(false);

@@ -4,11 +4,27 @@ import { X, Upload, Check, AlertCircle, Download, RefreshCw, Eye, Info, Trending
 import Plotly from 'plotly.js-dist-min';
 import DatasetViewerModal from './DatasetViewerModal';
 
-const RegressionModal = ({ isOpen, onClose }) => {
+const RegressionModal = ({ isOpen, onClose, sharedFile, setSharedFile }) => {
   const { token } = useAuth();
 
   // Dataset states
   const [file, setFile] = useState(null);
+
+  useEffect(() => {
+    if (isOpen && sharedFile && (!file || sharedFile.name !== file.name || sharedFile.size !== file.size)) {
+      if (typeof processFile === 'function') {
+        processFile(sharedFile);
+      }
+    } else if (isOpen && !sharedFile && file) {
+      handleReset();
+    }
+  }, [isOpen, sharedFile]);
+
+  useEffect(() => {
+    if (file !== sharedFile && setSharedFile) {
+      setSharedFile(file);
+    }
+  }, [file, sharedFile, setSharedFile]);
   const [columns, setColumns] = useState([]);
   const [numericColumns, setNumericColumns] = useState([]);
   const [loadingCols, setLoadingCols] = useState(false);

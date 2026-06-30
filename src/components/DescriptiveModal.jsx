@@ -66,10 +66,10 @@ const DescriptiveModal = ({ isOpen, onClose, sharedFile, setSharedFile }) => {
   }, [isOpen, sharedFile]);
 
   useEffect(() => {
-    if (file !== sharedFile && setSharedFile) {
+    if (isOpen && file !== sharedFile && setSharedFile) {
       setSharedFile(file);
     }
-  }, [file, sharedFile, setSharedFile]);
+  }, [isOpen, file, sharedFile, setSharedFile]);
   const [columns, setColumns] = useState([]);
   const [numericColumns, setNumericColumns] = useState([]);
   const [loadingCols, setLoadingCols] = useState(false);

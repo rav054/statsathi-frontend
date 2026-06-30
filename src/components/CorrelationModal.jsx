@@ -18,10 +18,10 @@ const CorrelationModal = ({ isOpen, onClose, sharedFile, setSharedFile }) => {
   }, [isOpen, sharedFile]);
 
   useEffect(() => {
-    if (file !== sharedFile && setSharedFile) {
+    if (isOpen && file !== sharedFile && setSharedFile) {
       setSharedFile(file);
     }
-  }, [file, sharedFile, setSharedFile]);
+  }, [isOpen, file, sharedFile, setSharedFile]);
 
   const [loading, setLoading] = useState(false);
   const [imageUrl, setImageUrl] = useState(null);

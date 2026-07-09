@@ -92,25 +92,15 @@ const anovaPalettes = [
   { value: 'crest', label: 'Crest Teal' }
 ];
 
-const AnovaModal = ({ isOpen, onClose, sharedFile, setSharedFile }) => {
+const AnovaModal = ({ isOpen, onClose }) => {
   const { token, user } = useAuth();
   
   // State for dataset selection
   const [file, setFile] = useState(null);
 
-  useEffect(() => {
-    if (isOpen && sharedFile && (!file || sharedFile.name !== file.name || sharedFile.size !== file.size)) {
-      handleFileSelected(sharedFile);
-    } else if (isOpen && !sharedFile && file) {
-      handleReset();
-    }
-  }, [isOpen, sharedFile]);
 
-  useEffect(() => {
-    if (isOpen && file !== sharedFile && setSharedFile) {
-      setSharedFile(file);
-    }
-  }, [isOpen, file, sharedFile, setSharedFile]);
+
+
   const [columns, setColumns] = useState([]);
   const [numericColumns, setNumericColumns] = useState([]);
   const [loadingCols, setLoadingCols] = useState(false);

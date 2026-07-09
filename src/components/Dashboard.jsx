@@ -410,56 +410,42 @@ const Dashboard = ({ onAuthClick }) => {
       <DescriptiveModal
         isOpen={descriptiveOpen}
         onClose={() => setDescriptiveOpen(false)}
-        sharedFile={file}
-        setSharedFile={setFile}
       />
 
       {/* Core Correlation Analysis Modal */}
       <CorrelationModal
         isOpen={corrOpen}
         onClose={() => setCorrOpen(false)}
-        sharedFile={file}
-        setSharedFile={setFile}
       />
 
       {/* Parametric Hypothesis Testing Modal */}
       <ParametricModal
         isOpen={parametricOpen}
         onClose={() => setParametricOpen(false)}
-        sharedFile={file}
-        setSharedFile={setFile}
       />
 
       {/* Non-Parametric Hypothesis Testing Modal */}
       <NonParametricModal
         isOpen={nonParametricOpen}
         onClose={() => setNonParametricOpen(false)}
-        sharedFile={file}
-        setSharedFile={setFile}
       />
 
       {/* ANOVA Hypothesis Testing Modal */}
       <AnovaModal
         isOpen={anovaOpen}
         onClose={() => setAnovaOpen(false)}
-        sharedFile={file}
-        setSharedFile={setFile}
       />
 
       {/* PCA Analysis Modal */}
       <PcaModal
         isOpen={pcaOpen}
         onClose={() => setPcaOpen(false)}
-        sharedFile={file}
-        setSharedFile={setFile}
       />
 
       {/* Plots Visualization Modal */}
       <PlotsModal
         isOpen={plotsOpen}
         onClose={() => setPlotsOpen(false)}
-        sharedFile={file}
-        setSharedFile={setFile}
       />
 
       {/* Field Layout Generator Modal */}
@@ -472,16 +458,12 @@ const Dashboard = ({ onAuthClick }) => {
       <ClusteringModal
         isOpen={clusteringOpen}
         onClose={() => setClusteringOpen(false)}
-        sharedFile={file}
-        setSharedFile={setFile}
       />
 
       {/* Regression Analysis Modal */}
       <RegressionModal
         isOpen={regressionOpen}
         onClose={() => setRegressionOpen(false)}
-        sharedFile={file}
-        setSharedFile={setFile}
       />
 
       <DatasetViewerModal

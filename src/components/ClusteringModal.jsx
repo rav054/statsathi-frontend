@@ -31,27 +31,15 @@ const CLUSTER_PALETTES = {
   }
 };
 
-const ClusteringModal = ({ isOpen, onClose, sharedFile, setSharedFile }) => {
+const ClusteringModal = ({ isOpen, onClose }) => {
   const { token, user } = useAuth();
 
   // Dataset states
   const [file, setFile] = useState(null);
 
-  useEffect(() => {
-    if (isOpen && sharedFile && (!file || sharedFile.name !== file.name || sharedFile.size !== file.size)) {
-      if (typeof processFile === 'function') {
-        processFile(sharedFile);
-      }
-    } else if (isOpen && !sharedFile && file) {
-      handleReset();
-    }
-  }, [isOpen, sharedFile]);
 
-  useEffect(() => {
-    if (isOpen && file !== sharedFile && setSharedFile) {
-      setSharedFile(file);
-    }
-  }, [isOpen, file, sharedFile, setSharedFile]);
+
+
   const [columns, setColumns] = useState([]);
   const [numericColumns, setNumericColumns] = useState([]);
   const [loadingCols, setLoadingCols] = useState(false);

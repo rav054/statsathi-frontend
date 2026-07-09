@@ -3,7 +3,7 @@ import { useAuth, API_URL } from '../context/AuthContext';
 import { X, Upload, Check, AlertCircle, Download, RefreshCw, Eye, Info, Layers, Play, Plus, Trash2, HelpCircle } from 'lucide-react';
 import DatasetViewerModal from './DatasetViewerModal';
 
-const SemModal = ({ isOpen, onClose, sharedFile, setSharedFile }) => {
+const SemModal = ({ isOpen, onClose }) => {
   const { token, user } = useAuth();
 
   // Wizard state
@@ -13,21 +13,9 @@ const SemModal = ({ isOpen, onClose, sharedFile, setSharedFile }) => {
   // Dataset states
   const [file, setFile] = useState(null);
 
-  useEffect(() => {
-    if (isOpen && sharedFile && (!file || sharedFile.name !== file.name || sharedFile.size !== file.size)) {
-      if (typeof processFile === 'function') {
-        processFile(sharedFile);
-      }
-    } else if (isOpen && !sharedFile && file) {
-      handleReset();
-    }
-  }, [isOpen, sharedFile]);
 
-  useEffect(() => {
-    if (isOpen && file !== sharedFile && setSharedFile) {
-      setSharedFile(file);
-    }
-  }, [isOpen, file, sharedFile, setSharedFile]);
+
+
   const [columns, setColumns] = useState([]);
   const [numericColumns, setNumericColumns] = useState([]);
   const [loadingCols, setLoadingCols] = useState(false);

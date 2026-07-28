@@ -154,7 +154,16 @@ const AnovaModal = ({ isOpen, onClose }) => {
   const [postHocFontSize, setPostHocFontSize] = useState(10);
   const [postHocFontColor, setPostHocFontColor] = useState('#334155');
   const [postHocBarColor, setPostHocBarColor] = useState('');
+  const [postHocChartTitle, setPostHocChartTitle] = useState('');
+  const [postHocXLabel, setPostHocXLabel] = useState('Treatment Groups');
+  const [postHocYLabel, setPostHocYLabel] = useState('Treatment Means');
   const [downloadDpi, setDownloadDpi] = useState(300);
+
+  useEffect(() => {
+    if (depVar) {
+      setPostHocYLabel(depVar);
+    }
+  }, [depVar]);
 
   useEffect(() => {
     let active = true;
@@ -216,16 +225,20 @@ const AnovaModal = ({ isOpen, onClose }) => {
         autosize: true,
         height: Math.max(320, 280 + postHocFontSize * 4),
         width: 680,
-        margin: { l: dynamicMarginL, r: dynamicMarginR, t: dynamicMarginT, b: dynamicMarginB },
+        margin: { l: dynamicMarginL, r: dynamicMarginR, t: dynamicMarginT + (postHocChartTitle ? 30 : 0), b: dynamicMarginB },
         font: { family: 'Inter, sans-serif', size: postHocFontSize, color: postHocFontColor },
+        title: postHocChartTitle ? {
+          text: postHocChartTitle,
+          font: { size: postHocFontSize + 3, family: 'Inter', weight: 'bold', color: postHocFontColor }
+        } : undefined,
         xaxis: {
-          title: { text: 'Treatment Groups', font: { size: postHocFontSize + 1, family: 'Inter', weight: 'bold', color: postHocFontColor }, standoff: Math.max(10, postHocFontSize * 0.8) },
+          title: { text: postHocXLabel, font: { size: postHocFontSize + 1, family: 'Inter', weight: 'bold', color: postHocFontColor }, standoff: Math.max(10, postHocFontSize * 0.8) },
           tickangle: 15,
           tickfont: { color: postHocFontColor, size: postHocFontSize },
           automargin: true
         },
         yaxis: {
-          title: { text: 'Treatment Means', font: { size: postHocFontSize + 1, family: 'Inter', weight: 'bold', color: postHocFontColor }, standoff: Math.max(10, postHocFontSize * 0.8) },
+          title: { text: postHocYLabel, font: { size: postHocFontSize + 1, family: 'Inter', weight: 'bold', color: postHocFontColor }, standoff: Math.max(10, postHocFontSize * 0.8) },
           tickfont: { color: postHocFontColor, size: postHocFontSize },
           automargin: true
         },
@@ -247,7 +260,7 @@ const AnovaModal = ({ isOpen, onClose }) => {
         Plotly.purge(chartRef.current);
       }
     };
-  }, [postHocModalOpen, results, palette, postHocFontSize, postHocFontColor, postHocBarColor]);
+  }, [postHocModalOpen, results, palette, postHocFontSize, postHocFontColor, postHocBarColor, postHocChartTitle, postHocXLabel, postHocYLabel]);
 
   const handleDownloadPostHocReport = (format) => {
     if (!results) return;
@@ -559,6 +572,9 @@ const AnovaModal = ({ isOpen, onClose }) => {
     setRepVar('');
     setSelectedFactors([]);
     setPosthocMethod('tukey');
+    setPostHocChartTitle('');
+    setPostHocXLabel('Treatment Groups');
+    setPostHocYLabel('Treatment Means');
     setResults(null);
     setError(null);
     setShowFormatGuide(false);
@@ -1595,7 +1611,7 @@ const AnovaModal = ({ isOpen, onClose }) => {
 
   const getSEmValue = () => {
     if (!results) return '-';
-    if (results.sem !== undefined && (testType === 'oneway' || testType === 'rbd_oneway' || testType === 'lsd')) {
+    if (results.sem !== undefined && (testType === 'oneway' || testType === 'rbd_oneway' || testType === 'lsd' || testType === 'crd_multifactor' || testType === 'rbd_multifactor')) {
       return results.sem.toFixed(3);
     }
     if (!results.cd_results || results.cd_results.length === 0) return '-';
@@ -2263,9 +2279,9 @@ const AnovaModal = ({ isOpen, onClose }) => {
                       <tr className="border-b border-slate-100 text-slate-400 font-bold">
                         <th className="py-2 pr-4">Source of Variation</th>
                         <th className="py-2 text-right">Sum of Squares (SS)</th>
-                        <th className="py-2 text-right">df</th>
-                        <th className="py-2 text-right">Mean Square (MS)</th>
-                        <th className="py-2 text-right">F-Statistic</th>
+                        <th className="py-2 text-right">DF</th>
+                        <th className="py-2 text-right">Mean Sum of Squares (MSS)</th>
+                        <th className="py-2 text-right">F-Value</th>
                         <th className="py-2 text-right">p-value</th>
                         <th className="py-2 text-right">Significance</th>
                       </tr>
@@ -2906,12 +2922,20 @@ const AnovaModal = ({ isOpen, onClose }) => {
 
               {/* Base64 Plot View */}
               {results.plot && (
-                <div className="flex flex-col items-center justify-center bg-slate-50 rounded-3xl p-6 border border-slate-100 shadow-inner">
+                <div className="flex flex-col items-center justify-center bg-slate-50 rounded-3xl p-6 border border-slate-100 shadow-inner space-y-4">
                   <img
                     src={`data:image/png;base64,${results.plot}`}
                     alt="ANOVA Plot Chart"
                     className="max-h-[320px] w-auto object-contain rounded-2xl border border-slate-200/50 bg-white p-2 shadow-sm"
                   />
+                  <button
+                    type="button"
+                    onClick={handleDownloadPlot}
+                    className="flex items-center space-x-1.5 rounded-xl bg-brand-orange hover:bg-orange-600 text-white font-sans text-xs font-bold px-4 py-2.5 transition-colors shadow-sm cursor-pointer"
+                  >
+                    <Download className="h-4 w-4" />
+                    <span>Download ANOVA Plot</span>
+                  </button>
                 </div>
               )}
 
@@ -3064,6 +3088,42 @@ const AnovaModal = ({ isOpen, onClose }) => {
                         className="w-full rounded-xl border border-slate-200 bg-white py-1.5 px-3 font-mono text-xs outline-hidden focus:border-brand-indigo focus:ring-4 focus:ring-brand-indigo/10 transition-all"
                       />
                     </div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-1">
+                  {/* Chart Title */}
+                  <div className="space-y-1">
+                    <label className="font-sans text-[9px] font-bold text-slate-400 uppercase">Chart Title</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Mean Separation Plot"
+                      value={postHocChartTitle}
+                      onChange={(e) => setPostHocChartTitle(e.target.value)}
+                      className="w-full rounded-xl border border-slate-200 bg-white py-1.5 px-3 font-sans text-xs outline-hidden focus:border-brand-indigo focus:ring-4 focus:ring-brand-indigo/10 transition-all"
+                    />
+                  </div>
+                  {/* X-Axis Label */}
+                  <div className="space-y-1">
+                    <label className="font-sans text-[9px] font-bold text-slate-400 uppercase">X-Axis Label</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Treatments"
+                      value={postHocXLabel}
+                      onChange={(e) => setPostHocXLabel(e.target.value)}
+                      className="w-full rounded-xl border border-slate-200 bg-white py-1.5 px-3 font-sans text-xs outline-hidden focus:border-brand-indigo focus:ring-4 focus:ring-brand-indigo/10 transition-all"
+                    />
+                  </div>
+                  {/* Y-Axis Label */}
+                  <div className="space-y-1">
+                    <label className="font-sans text-[9px] font-bold text-slate-400 uppercase">Y-Axis Label</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Yield"
+                      value={postHocYLabel}
+                      onChange={(e) => setPostHocYLabel(e.target.value)}
+                      className="w-full rounded-xl border border-slate-200 bg-white py-1.5 px-3 font-sans text-xs outline-hidden focus:border-brand-indigo focus:ring-4 focus:ring-brand-indigo/10 transition-all"
+                    />
                   </div>
                 </div>
               </div>

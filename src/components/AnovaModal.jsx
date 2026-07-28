@@ -78,6 +78,30 @@ const DATA_FORMAT_GUIDES = {
       ["T1", "Row2", "Col3", "51.5"]
     ],
     note: "The size of rows, columns, and treatments must be equal (e.g. 3x3, 4x4). Each treatment must occur exactly once in each row and column."
+  },
+  crd_multifactor: {
+    title: "Multi-Factor (CRD) Expected Format",
+    description: "Evaluates the main effects and all interaction effects among 3 or more categorical factors.",
+    headers: ["Factor_A", "Factor_B", "Factor_C", "Yield"],
+    rows: [
+      ["N_Level1", "Irrigated", "Var1", "65.2"],
+      ["N_Level1", "Rainfed", "Var2", "54.8"],
+      ["N_Level2", "Irrigated", "Var1", "78.4"],
+      ["N_Level2", "Rainfed", "Var2", "62.1"]
+    ],
+    note: "Select 3 or more factor columns and the numeric dependent variable."
+  },
+  rbd_multifactor: {
+    title: "Multi-Factor (RBD) Expected Format",
+    description: "Multi-factor factorial design grouped/blocked by replication/block factor.",
+    headers: ["Factor_A", "Factor_B", "Factor_C", "Replication", "Yield"],
+    rows: [
+      ["N_Level1", "Irrigated", "Var1", "R1", "65.2"],
+      ["N_Level1", "Irrigated", "Var1", "R2", "66.8"],
+      ["N_Level2", "Rainfed", "Var2", "R1", "54.8"],
+      ["N_Level2", "Rainfed", "Var2", "R2", "53.5"]
+    ],
+    note: "Requires a Replication block column and 3 or more treatment factor columns."
   }
 };
 
@@ -113,6 +137,7 @@ const AnovaModal = ({ isOpen, onClose }) => {
   const [indVar1, setIndVar1] = useState('');
   const [indVar2, setIndVar2] = useState('');
   const [repVar, setRepVar] = useState('');
+  const [selectedFactors, setSelectedFactors] = useState([]);
   const [posthocMethod, setPosthocMethod] = useState('tukey');
   const [palette, setPalette] = useState('Oranges');
   const [showFormatGuide, setShowFormatGuide] = useState(false);
@@ -532,6 +557,7 @@ const AnovaModal = ({ isOpen, onClose }) => {
     setIndVar1('');
     setIndVar2('');
     setRepVar('');
+    setSelectedFactors([]);
     setPosthocMethod('tukey');
     setResults(null);
     setError(null);
@@ -551,8 +577,11 @@ const AnovaModal = ({ isOpen, onClose }) => {
     if (!['twoway', 'rbd_twoway', 'splitplot', 'lsd'].includes(testType)) {
       setIndVar2('');
     }
-    if (!['rbd_oneway', 'rbd_twoway', 'splitplot', 'lsd'].includes(testType)) {
+    if (!['rbd_oneway', 'rbd_twoway', 'splitplot', 'lsd', 'rbd_multifactor'].includes(testType)) {
       setRepVar('');
+    }
+    if (!['crd_multifactor', 'rbd_multifactor'].includes(testType)) {
+      setSelectedFactors([]);
     }
   }, [testType]);
 
@@ -674,29 +703,53 @@ const AnovaModal = ({ isOpen, onClose }) => {
       setError("Please select a Dependent Variable (Numeric/Yield).");
       return;
     }
-    if (!indVar1) {
-      setError(testType === 'lsd' ? "Please select a Treatment column." : "Please select Independent Factor 1.");
-      return;
-    }
 
-    if (['twoway', 'rbd_twoway', 'splitplot', 'lsd'].includes(testType) && !indVar2) {
-      setError(testType === 'lsd' ? "Column Factor is required for LSD design." : "Independent Factor 2 (Factor B) is required for this configuration.");
-      return;
-    }
+    const isMultiFactor = ['crd_multifactor', 'rbd_multifactor'].includes(testType);
 
-    if (['rbd_oneway', 'rbd_twoway', 'splitplot', 'lsd'].includes(testType) && !repVar) {
-      setError(testType === 'lsd' ? "Row Factor is required for LSD design." : "Replication/Block Factor is required for this configuration.");
-      return;
-    }
+    if (isMultiFactor) {
+      if (selectedFactors.length < 3) {
+        setError("Please select at least 3 factors for Multi-Factor ANOVA.");
+        return;
+      }
+      if (selectedFactors.includes(depVar)) {
+        setError("Dependent variable cannot be one of the factors.");
+        return;
+      }
+      if (testType === 'rbd_multifactor') {
+        if (!repVar) {
+          setError("Replication/Block Factor is required for RBD Multi-Factor.");
+          return;
+        }
+        if (selectedFactors.includes(repVar)) {
+          setError("Replication/Block factor cannot be one of the factors.");
+          return;
+        }
+      }
+    } else {
+      if (!indVar1) {
+        setError(testType === 'lsd' ? "Please select a Treatment column." : "Please select Independent Factor 1.");
+        return;
+      }
 
-    if (['twoway', 'rbd_twoway', 'splitplot', 'lsd'].includes(testType) && indVar1 === indVar2) {
-      setError(testType === 'lsd' ? "Treatments and Column Factor must be different columns." : "Factor A and Factor B must be different columns.");
-      return;
-    }
+      if (['twoway', 'rbd_twoway', 'splitplot', 'lsd'].includes(testType) && !indVar2) {
+        setError(testType === 'lsd' ? "Column Factor is required for LSD design." : "Independent Factor 2 (Factor B) is required for this configuration.");
+        return;
+      }
 
-    if (['rbd_oneway', 'rbd_twoway', 'splitplot', 'lsd'].includes(testType) && (indVar1 === repVar || indVar2 === repVar)) {
-      setError(testType === 'lsd' ? "Row Factor must be a different column than Treatments or Column Factor." : "Replication/Block factor must be a different column than Factor A or Factor B.");
-      return;
+      if (['rbd_oneway', 'rbd_twoway', 'splitplot', 'lsd'].includes(testType) && !repVar) {
+        setError(testType === 'lsd' ? "Row Factor is required for LSD design." : "Replication/Block Factor is required for this configuration.");
+        return;
+      }
+
+      if (['twoway', 'rbd_twoway', 'splitplot', 'lsd'].includes(testType) && indVar1 === indVar2) {
+        setError(testType === 'lsd' ? "Treatments and Column Factor must be different columns." : "Factor A and Factor B must be different columns.");
+        return;
+      }
+
+      if (['rbd_oneway', 'rbd_twoway', 'splitplot', 'lsd'].includes(testType) && (indVar1 === repVar || indVar2 === repVar)) {
+        setError(testType === 'lsd' ? "Row Factor must be a different column than Treatments or Column Factor." : "Replication/Block factor must be a different column than Factor A or Factor B.");
+        return;
+      }
     }
 
     setLoadingAnalysis(true);
@@ -707,11 +760,18 @@ const AnovaModal = ({ isOpen, onClose }) => {
     formData.append('file', file);
     formData.append('test_type', testType);
     formData.append('dep_var', depVar);
-    formData.append('ind_var1', indVar1);
-    if (['twoway', 'rbd_twoway', 'splitplot', 'lsd'].includes(testType) && indVar2) {
-      formData.append('ind_var2', indVar2);
+    
+    if (isMultiFactor) {
+      formData.append('factors', selectedFactors.join(','));
+      formData.append('ind_var1', selectedFactors[0]);
+    } else {
+      formData.append('ind_var1', indVar1);
+      if (['twoway', 'rbd_twoway', 'splitplot', 'lsd'].includes(testType) && indVar2) {
+        formData.append('ind_var2', indVar2);
+      }
     }
-    if (['rbd_oneway', 'rbd_twoway', 'splitplot', 'lsd'].includes(testType) && repVar) {
+    
+    if (['rbd_oneway', 'rbd_twoway', 'splitplot', 'lsd', 'rbd_multifactor'].includes(testType) && repVar) {
       formData.append('rep_var', repVar);
     }
     formData.append('posthoc_method', posthocMethod);
@@ -1638,13 +1698,15 @@ const AnovaModal = ({ isOpen, onClose }) => {
                   <HelpCircle className="h-5 w-5 text-brand-indigo" />
                 </div>
                 
-                <div className="grid grid-cols-2 sm:grid-cols-6 gap-2">
+                <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2">
                   {[
                     { id: 'oneway', label: 'CRD (1 Factor)' },
                     { id: 'rbd_oneway', label: 'RBD (1 Factor)' },
                     { id: 'lsd', label: 'Latin Square (LSD)' },
                     { id: 'twoway', label: 'CRD (2 Factors)' },
                     { id: 'rbd_twoway', label: 'RBD (2 Factors)' },
+                    { id: 'crd_multifactor', label: 'CRD (Multi-Factor)' },
+                    { id: 'rbd_multifactor', label: 'RBD (Multi-Factor)' },
                     { id: 'splitplot', label: 'Split-plot' },
                   ].map(layout => (
                     <button
@@ -1775,6 +1837,8 @@ const AnovaModal = ({ isOpen, onClose }) => {
                     <option value="lsd">Latin Square Design (LSD) Analysis</option>
                     <option value="twoway">Two Factors (CRD) Analysis</option>
                     <option value="rbd_twoway">Two Factors (RBD) Analysis</option>
+                    <option value="crd_multifactor">Multi-Factor (CRD) Analysis</option>
+                    <option value="rbd_multifactor">Multi-Factor (RBD) Analysis</option>
                     <option value="splitplot">Two Factors (Split-plot) Analysis</option>
                   </select>
 
@@ -1840,19 +1904,54 @@ const AnovaModal = ({ isOpen, onClose }) => {
                 </div>
 
                 {/* Independent Variable 1 / Factor A */}
-                <div className="space-y-1.5">
-                  <label className="font-sans text-xs font-bold text-slate-500">
-                    {testType === 'splitplot' ? 'Main Plot Factor A (Categorical)' : testType === 'lsd' ? 'Treatments (Categorical)' : 'Independent Factor 1 (Categorical)'}
-                  </label>
-                  <select
-                    value={indVar1}
-                    onChange={(e) => setIndVar1(e.target.value)}
-                    className="w-full rounded-xl border border-slate-200 bg-white py-3 px-4 font-sans text-sm outline-hidden focus:border-brand-indigo focus:ring-4 focus:ring-brand-indigo/10 transition-all"
-                  >
-                    <option value="">{testType === 'lsd' ? '-- Select Treatments --' : '-- Select Factor 1 --'}</option>
-                    {columns.map(c => <option key={c} value={c}>{c}</option>)}
-                  </select>
-                </div>
+                {!['crd_multifactor', 'rbd_multifactor'].includes(testType) && (
+                  <div className="space-y-1.5 animate-fade-in">
+                    <label className="font-sans text-xs font-bold text-slate-500">
+                      {testType === 'splitplot' ? 'Main Plot Factor A (Categorical)' : testType === 'lsd' ? 'Treatments (Categorical)' : 'Independent Factor 1 (Categorical)'}
+                    </label>
+                    <select
+                      value={indVar1}
+                      onChange={(e) => setIndVar1(e.target.value)}
+                      className="w-full rounded-xl border border-slate-200 bg-white py-3 px-4 font-sans text-sm outline-hidden focus:border-brand-indigo focus:ring-4 focus:ring-brand-indigo/10 transition-all"
+                    >
+                      <option value="">{testType === 'lsd' ? '-- Select Treatments --' : '-- Select Factor 1 --'}</option>
+                      {columns.map(c => <option key={c} value={c}>{c}</option>)}
+                    </select>
+                  </div>
+                )}
+
+                {/* Multi-Factor Checklist */}
+                {['crd_multifactor', 'rbd_multifactor'].includes(testType) && (
+                  <div className="space-y-1.5 col-span-1 md:col-span-2 animate-fade-in text-left">
+                    <label className="font-sans text-xs font-bold text-slate-500">
+                      Select Treatment Factors (Choose 3 or more categorical variables)
+                    </label>
+                    <div className="grid grid-cols-2 gap-2 p-4 rounded-xl border border-slate-200 bg-slate-50/50 max-h-48 overflow-y-auto">
+                      {columns
+                        .filter(c => c !== depVar && c !== repVar)
+                        .map(c => {
+                          const isChecked = selectedFactors.includes(c);
+                          return (
+                            <label key={c} className="flex items-center space-x-2.5 p-2 rounded-lg bg-white border border-slate-100 hover:border-brand-indigo/30 transition-colors cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={isChecked}
+                                onChange={() => {
+                                  if (isChecked) {
+                                    setSelectedFactors(selectedFactors.filter(f => f !== c));
+                                  } else {
+                                    setSelectedFactors([...selectedFactors, c]);
+                                  }
+                                }}
+                                className="rounded-sm border-slate-300 text-brand-indigo focus:ring-brand-indigo/20 h-4 w-4"
+                              />
+                              <span className="font-sans text-sm text-slate-700 font-medium select-none truncate">{c}</span>
+                            </label>
+                          );
+                        })}
+                    </div>
+                  </div>
+                )}
 
                 {/* Independent Variable 2 / Factor B (Only for Two Factors, Split-plot, or Column Factor for LSD) */}
                 {['twoway', 'rbd_twoway', 'splitplot', 'lsd'].includes(testType) && (
@@ -1871,8 +1970,8 @@ const AnovaModal = ({ isOpen, onClose }) => {
                   </div>
                 )}
 
-                {/* Replication / Block variable (For RBD, Split-plot, or Row Factor for LSD) */}
-                {['rbd_oneway', 'rbd_twoway', 'splitplot', 'lsd'].includes(testType) && (
+                {/* Replication / Block variable (For RBD, Split-plot, Row Factor for LSD, or Multi-Factor RBD) */}
+                {['rbd_oneway', 'rbd_twoway', 'splitplot', 'lsd', 'rbd_multifactor'].includes(testType) && (
                   <div className="space-y-1.5 animate-fade-in">
                     <label className="font-sans text-xs font-bold text-slate-500">
                       {testType === 'lsd' ? 'Row Factor (Categorical)' : 'Replication / Block Factor (Categorical)'}
@@ -2468,6 +2567,46 @@ const AnovaModal = ({ isOpen, onClose }) => {
                           </tr>
                           <tr className="border-b border-slate-50 text-slate-700">
                             <td className="py-2.5 font-semibold">Error (Residual)</td>
+                            <td className="py-2.5 text-right">{results.anova_table?.error?.ss?.toFixed(3)}</td>
+                            <td className="py-2.5 text-right">{results.anova_table?.error?.df}</td>
+                            <td className="py-2.5 text-right">{results.anova_table?.error?.ms?.toFixed(3)}</td>
+                            <td className="py-2.5 text-right">-</td>
+                            <td className="py-2.5 text-right">-</td>
+                            <td className="py-2.5 text-right">-</td>
+                          </tr>
+                          <tr className="border-b border-slate-50 text-slate-700 font-semibold bg-slate-50/30">
+                            <td className="py-2.5">Total</td>
+                            <td className="py-2.5 text-right">{results.anova_table?.total?.ss?.toFixed(3)}</td>
+                            <td className="py-2.5 text-right">{results.anova_table?.total?.df}</td>
+                            <td className="py-2.5 text-right">-</td>
+                            <td className="py-2.5 text-right">-</td>
+                            <td className="py-2.5 text-right">-</td>
+                            <td className="py-2.5 text-right">-</td>
+                          </tr>
+                        </>
+                      )}
+                      {/* Multi-Factor CRD/RBD */}
+                      {['crd_multifactor', 'rbd_multifactor'].includes(testType) && results.anova_table?.effects && (
+                        <>
+                          {results.anova_table.effects.map((eff, index) => (
+                            <tr key={index} className="border-b border-slate-50 text-slate-700">
+                              <td className="py-2.5 font-semibold">{eff.source}</td>
+                              <td className="py-2.5 text-right">{eff.ss?.toFixed(3)}</td>
+                              <td className="py-2.5 text-right">{eff.df}</td>
+                              <td className="py-2.5 text-right">{eff.ms?.toFixed(3)}</td>
+                              <td className="py-2.5 text-right font-medium">{eff.f_statistic?.toFixed(3)}</td>
+                              <td className="py-2.5 text-right">{formatPValue(eff.p_value)}</td>
+                              <td className="py-2.5 text-right">
+                                <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                                  eff.significant ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-50 text-slate-400'
+                                }`}>
+                                  {eff.significant ? 'Significant' : 'Not Significant'}
+                                </span>
+                              </td>
+                            </tr>
+                          ))}
+                          <tr className="border-b border-slate-50 text-slate-700">
+                            <td className="py-2.5 font-semibold font-sans">Error (Residual)</td>
                             <td className="py-2.5 text-right">{results.anova_table?.error?.ss?.toFixed(3)}</td>
                             <td className="py-2.5 text-right">{results.anova_table?.error?.df}</td>
                             <td className="py-2.5 text-right">{results.anova_table?.error?.ms?.toFixed(3)}</td>

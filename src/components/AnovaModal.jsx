@@ -157,7 +157,57 @@ const AnovaModal = ({ isOpen, onClose }) => {
   const [postHocChartTitle, setPostHocChartTitle] = useState('');
   const [postHocXLabel, setPostHocXLabel] = useState('Treatment Groups');
   const [postHocYLabel, setPostHocYLabel] = useState('Treatment Means');
+  const [postHocSplitFactor, setPostHocSplitFactor] = useState('');
   const [downloadDpi, setDownloadDpi] = useState(300);
+
+  const getAvailableFactors = () => {
+    if (['crd_multifactor', 'rbd_multifactor'].includes(testType)) {
+      return selectedFactors;
+    }
+    if (['twoway', 'rbd_twoway', 'splitplot'].includes(testType)) {
+      return [indVar1, indVar2].filter(Boolean);
+    }
+    return [];
+  };
+
+  const getSplitLevels = () => {
+    if (!results || !results.descriptives || !postHocSplitFactor) return [];
+    const factors = getAvailableFactors();
+    const splitIndex = factors.indexOf(postHocSplitFactor);
+    if (splitIndex === -1) return [];
+
+    const levelsSet = new Set();
+    Object.keys(results.descriptives).forEach(cellName => {
+      const parts = cellName.split(' / ');
+      if (parts[splitIndex] !== undefined) {
+        levelsSet.add(parts[splitIndex].trim());
+      }
+    });
+    return Array.from(levelsSet).sort();
+  };
+
+  const getFilteredDataForLevel = (level) => {
+    const factors = getAvailableFactors();
+    const splitIndex = factors.indexOf(postHocSplitFactor);
+    if (splitIndex === -1) return [];
+
+    return Object.entries(results.descriptives || {})
+      .filter(([cellName]) => {
+        const parts = cellName.split(' / ');
+        return parts[splitIndex] && parts[splitIndex].trim() === level;
+      })
+      .map(([cellName, info]) => {
+        const parts = cellName.split(' / ');
+        const otherParts = parts.filter((_, idx) => idx !== splitIndex);
+        const remainingLabel = otherParts.join(' / ');
+        return {
+          originalName: cellName,
+          displayName: remainingLabel,
+          info
+        };
+      })
+      .sort((a, b) => a.displayName.localeCompare(b.displayName, undefined, {numeric: true, sensitivity: 'base'}));
+  };
 
   useEffect(() => {
     if (depVar) {
@@ -167,29 +217,27 @@ const AnovaModal = ({ isOpen, onClose }) => {
 
   useEffect(() => {
     let active = true;
-    if (postHocModalOpen && results && chartRef.current) {
-      const sortedDescriptives = Object.entries(results.descriptives || {})
-        .sort((a, b) => a[0].localeCompare(b[0], undefined, {numeric: true, sensitivity: 'base'}));
+    if (!postHocModalOpen || !results) return;
 
-      const xData = sortedDescriptives.map(([name, info]) => name);
-      const yData = sortedDescriptives.map(([name, info]) => info.mean);
-      const seData = sortedDescriptives.map(([name, info]) => info.se || 0);
-      const textData = sortedDescriptives.map(([name, info]) => results.posthoc_letters?.[name] || '');
+    const factors = getAvailableFactors();
+    const splitIndex = factors.indexOf(postHocSplitFactor);
 
-      const paletteMap = {
-        Oranges: { primary: '#EA580C', line: '#9A3412', accent: '#D97706' },
-        Blues: { primary: '#2563EB', line: '#1E40AF', accent: '#0284C7' },
-        Greens: { primary: '#16A34A', line: '#166534', accent: '#0D9488' },
-        coolwarm: { primary: '#4F46E5', line: '#3730A3', accent: '#EF4444' },
-        Purples: { primary: '#9333EA', line: '#6B21A8', accent: '#EC4899' },
-        magma: { primary: '#581C87', line: '#3B0764', accent: '#F97316' },
-        sunset: { primary: '#BE123C', line: '#9F1239', accent: '#F59E0B' },
-        crest: { primary: '#047857', line: '#065F46', accent: '#06B6D4' }
-      };
+    const paletteMap = {
+      Oranges: { primary: '#EA580C', line: '#9A3412', accent: '#D97706' },
+      Blues: { primary: '#2563EB', line: '#1E40AF', accent: '#0284C7' },
+      Greens: { primary: '#16A34A', line: '#166534', accent: '#0D9488' },
+      coolwarm: { primary: '#4F46E5', line: '#3730A3', accent: '#EF4444' },
+      Purples: { primary: '#9333EA', line: '#6B21A8', accent: '#EC4899' },
+      magma: { primary: '#581C87', line: '#3B0764', accent: '#F97316' },
+      sunset: { primary: '#BE123C', line: '#9F1239', accent: '#F59E0B' },
+      crest: { primary: '#047857', line: '#065F46', accent: '#06B6D4' }
+    };
 
-      const currentTheme = paletteMap[palette] || paletteMap.Oranges;
-      const barColor = postHocBarColor || currentTheme.primary;
+    const currentTheme = paletteMap[palette] || paletteMap.Oranges;
+    const barColor = postHocBarColor || currentTheme.primary;
 
+    const renderChart = (element, xData, yData, seData, textData, subTitle) => {
+      if (!element) return;
       const data = [
         {
           x: xData,
@@ -218,19 +266,19 @@ const AnovaModal = ({ isOpen, onClose }) => {
 
       const dynamicMarginL = Math.max(60, postHocFontSize * 4);
       const dynamicMarginB = Math.max(70, postHocFontSize * 4);
-      const dynamicMarginT = Math.max(50, postHocFontSize * 3);
+      const dynamicMarginT = Math.max(60, postHocFontSize * 3 + 10);
       const dynamicMarginR = Math.max(30, postHocFontSize * 2);
 
       const layout = {
         autosize: true,
         height: Math.max(320, 280 + postHocFontSize * 4),
         width: 680,
-        margin: { l: dynamicMarginL, r: dynamicMarginR, t: dynamicMarginT + (postHocChartTitle ? 30 : 0), b: dynamicMarginB },
+        margin: { l: dynamicMarginL, r: dynamicMarginR, t: dynamicMarginT, b: dynamicMarginB },
         font: { family: 'Inter, sans-serif', size: postHocFontSize, color: postHocFontColor },
-        title: postHocChartTitle ? {
-          text: postHocChartTitle,
+        title: {
+          text: postHocChartTitle ? `${postHocChartTitle} (${subTitle})` : `${subTitle} Mean Comparison`,
           font: { size: postHocFontSize + 3, family: 'Inter', weight: 'bold', color: postHocFontColor }
-        } : undefined,
+        },
         xaxis: {
           title: { text: postHocXLabel, font: { size: postHocFontSize + 1, family: 'Inter', weight: 'bold', color: postHocFontColor }, standoff: Math.max(10, postHocFontSize * 0.8) },
           tickangle: 15,
@@ -247,20 +295,52 @@ const AnovaModal = ({ isOpen, onClose }) => {
       };
 
       const config = { responsive: true, displayModeBar: false };
+      Plotly.newPlot(element, data, layout, config);
+    };
 
-      setTimeout(() => {
-        if (active && chartRef.current) {
-          Plotly.newPlot(chartRef.current, data, layout, config);
+    setTimeout(() => {
+      if (!active) return;
+      if (splitIndex !== -1 && postHocSplitFactor) {
+        const levels = getSplitLevels();
+        levels.forEach((level, idx) => {
+          const el = document.getElementById(`plotly-posthoc-${idx}`);
+          if (el) {
+            const filtered = getFilteredDataForLevel(level);
+            const xData = filtered.map(item => item.displayName);
+            const yData = filtered.map(item => item.info.mean);
+            const seData = filtered.map(item => item.info.se || 0);
+            const textData = filtered.map(item => results.posthoc_letters?.[item.originalName] || '');
+            renderChart(el, xData, yData, seData, textData, `${postHocSplitFactor}: ${level}`);
+          }
+        });
+      } else {
+        const el = chartRef.current;
+        if (el) {
+          const sortedDescriptives = Object.entries(results.descriptives || {})
+            .sort((a, b) => a[0].localeCompare(b[0], undefined, {numeric: true, sensitivity: 'base'}));
+          const xData = sortedDescriptives.map(([name]) => name);
+          const yData = sortedDescriptives.map(([_, info]) => info.mean);
+          const seData = sortedDescriptives.map(([_, info]) => info.se || 0);
+          const textData = sortedDescriptives.map(([name]) => results.posthoc_letters?.[name] || '');
+          renderChart(el, xData, yData, seData, textData, 'All Treatments');
         }
-      }, 50);
-    }
+      }
+    }, 100);
+
     return () => {
       active = false;
       if (chartRef.current) {
         Plotly.purge(chartRef.current);
       }
+      const levels = getSplitLevels();
+      levels.forEach((_, idx) => {
+        const el = document.getElementById(`plotly-posthoc-${idx}`);
+        if (el) {
+          Plotly.purge(el);
+        }
+      });
     };
-  }, [postHocModalOpen, results, palette, postHocFontSize, postHocFontColor, postHocBarColor, postHocChartTitle, postHocXLabel, postHocYLabel]);
+  }, [postHocModalOpen, results, palette, postHocFontSize, postHocFontColor, postHocBarColor, postHocChartTitle, postHocXLabel, postHocYLabel, postHocSplitFactor]);
 
   const handleDownloadPostHocReport = (format) => {
     if (!results) return;
@@ -543,16 +623,36 @@ const AnovaModal = ({ isOpen, onClose }) => {
   };
 
   const handleDownloadPostHocChart = (format) => {
-    if (!chartRef.current) return;
     const scale = downloadDpi / 96;
-    const filename = `StatSathi_PostHoc_Chart_${depVar}_${downloadDpi}dpi`;
-    Plotly.downloadImage(chartRef.current, {
-      format: format,
-      width: 800,
-      height: 500,
-      scale: scale,
-      filename: filename
-    });
+    const filenameBase = `StatSathi_PostHoc_Chart_${depVar}_${downloadDpi}dpi`;
+
+    const factors = getAvailableFactors();
+    const splitIndex = factors.indexOf(postHocSplitFactor);
+
+    if (splitIndex !== -1 && postHocSplitFactor) {
+      const levels = getSplitLevels();
+      levels.forEach((level, idx) => {
+        const el = document.getElementById(`plotly-posthoc-${idx}`);
+        if (el) {
+          Plotly.downloadImage(el, {
+            format: format,
+            width: 800,
+            height: 500,
+            scale: scale,
+            filename: `${filenameBase}_${postHocSplitFactor}_${level}`
+          });
+        }
+      });
+    } else {
+      if (!chartRef.current) return;
+      Plotly.downloadImage(chartRef.current, {
+        format: format,
+        width: 800,
+        height: 500,
+        scale: scale,
+        filename: filenameBase
+      });
+    }
   };
 
   const formatPValue = (p) => {
@@ -575,6 +675,7 @@ const AnovaModal = ({ isOpen, onClose }) => {
     setPostHocChartTitle('');
     setPostHocXLabel('Treatment Groups');
     setPostHocYLabel('Treatment Means');
+    setPostHocSplitFactor('');
     setResults(null);
     setError(null);
     setShowFormatGuide(false);
@@ -3006,39 +3107,74 @@ const AnovaModal = ({ isOpen, onClose }) => {
 
             {/* Body */}
             <div className="flex-1 overflow-y-auto p-6 space-y-6">
-              {/* Grouping Letters Table */}
-              <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-xs">
-                <h5 className="font-display text-xs font-bold text-slate-700 mb-3">Significance Grouping Table</h5>
-                <div className="overflow-x-auto">
-                  <table className="w-full border-collapse font-sans text-xs text-left">
-                    <thead>
-                      <tr className="border-b border-slate-100 text-slate-400 font-bold">
-                        <th className="py-2 pr-4">Treatment</th>
-                        <th className="py-2 text-right">Mean</th>
-                        <th className="py-2 text-right">S.E.</th>
-                        <th className="py-2 text-right">Significance Group</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                       {Object.entries(results.descriptives || {})
-                        .sort((a, b) => a[0].localeCompare(b[0], undefined, {numeric: true, sensitivity: 'base'}))
-                        .map(([cellName, info]) => (
-                          <tr key={cellName} className="border-b border-slate-50 text-slate-700">
-                            <td className="py-2.5 font-semibold">{cellName}</td>
-                            <td className="py-2.5 text-right font-mono">{info.mean.toFixed(3)}</td>
-                            <td className="py-2.5 text-right font-mono">{info.se !== undefined ? info.se.toFixed(3) : '-'}</td>
-                            <td className="py-2.5 text-right font-bold text-brand-indigo">{results.posthoc_letters?.[cellName] || '-'}</td>
-                          </tr>
-                        ))}
-                    </tbody>
-                  </table>
+              {/* Grouping Letters Table(s) */}
+              {!(postHocSplitFactor && getAvailableFactors().includes(postHocSplitFactor)) ? (
+                // Single table
+                <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-xs">
+                  <h5 className="font-display text-xs font-bold text-slate-700 mb-3">Significance Grouping Table</h5>
+                  <div className="overflow-x-auto">
+                    <table className="w-full border-collapse font-sans text-xs text-left">
+                      <thead>
+                        <tr className="border-b border-slate-100 text-slate-400 font-bold">
+                          <th className="py-2 pr-4">Treatment</th>
+                          <th className="py-2 text-right">Mean</th>
+                          <th className="py-2 text-right">S.E.</th>
+                          <th className="py-2 text-right">Significance Group</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {Object.entries(results.descriptives || {})
+                          .sort((a, b) => a[0].localeCompare(b[0], undefined, {numeric: true, sensitivity: 'base'}))
+                          .map(([cellName, info]) => (
+                            <tr key={cellName} className="border-b border-slate-50 text-slate-700">
+                              <td className="py-2.5 font-semibold">{cellName}</td>
+                              <td className="py-2.5 text-right font-mono">{info.mean.toFixed(3)}</td>
+                              <td className="py-2.5 text-right font-mono">{info.se !== undefined ? info.se.toFixed(3) : '-'}</td>
+                              <td className="py-2.5 text-right font-bold text-brand-indigo">{results.posthoc_letters?.[cellName] || '-'}</td>
+                            </tr>
+                          ))}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
-              </div>
+              ) : (
+                // Multiple split tables
+                getSplitLevels().map((level, lIdx) => (
+                  <div key={level} className="rounded-2xl border border-slate-100 bg-white p-4 shadow-xs">
+                    <h5 className="font-display text-xs font-bold text-slate-700 mb-3 flex items-center justify-between">
+                      <span>Significance Grouping Table ({postHocSplitFactor}: {level})</span>
+                      <span className="text-[10px] text-slate-400 font-normal">Level {lIdx + 1} of {getSplitLevels().length}</span>
+                    </h5>
+                    <div className="overflow-x-auto">
+                      <table className="w-full border-collapse font-sans text-xs text-left">
+                        <thead>
+                          <tr className="border-b border-slate-100 text-slate-400 font-bold">
+                            <th className="py-2 pr-4">Treatment (Other Factors)</th>
+                            <th className="py-2 text-right">Mean</th>
+                            <th className="py-2 text-right">S.E.</th>
+                            <th className="py-2 text-right">Significance Group</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {getFilteredDataForLevel(level).map((item) => (
+                            <tr key={item.originalName} className="border-b border-slate-50 text-slate-700">
+                              <td className="py-2.5 font-semibold">{item.displayName}</td>
+                              <td className="py-2.5 text-right font-mono">{item.info.mean.toFixed(3)}</td>
+                              <td className="py-2.5 text-right font-mono">{item.info.se !== undefined ? item.info.se.toFixed(3) : '-'}</td>
+                              <td className="py-2.5 text-right font-bold text-brand-indigo">{results.posthoc_letters?.[item.originalName] || '-'}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                ))
+              )}
 
               {/* Graph Customization Settings */}
               <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-xs space-y-3">
                 <h5 className="font-display text-xs font-bold text-slate-700">Customize Graph Settings</h5>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                   {/* Font Size */}
                   <div className="space-y-1">
                     <label className="font-sans text-[9px] font-bold text-slate-400 uppercase">Font Size (px)</label>
@@ -3070,6 +3206,24 @@ const AnovaModal = ({ isOpen, onClose }) => {
                       />
                     </div>
                   </div>
+                  {/* Color Scheme (Palette) */}
+                  <div className="space-y-1">
+                    <label className="font-sans text-[9px] font-bold text-slate-400 uppercase">Color Scheme</label>
+                    <select
+                      value={palette}
+                      onChange={(e) => setPalette(e.target.value)}
+                      className="w-full rounded-xl border border-slate-200 bg-white py-1.5 px-3 font-sans text-xs outline-hidden focus:border-brand-indigo focus:ring-4 focus:ring-brand-indigo/10 transition-all"
+                    >
+                      <option value="Oranges">Agricultural Orange</option>
+                      <option value="Blues">Ocean Blue</option>
+                      <option value="Greens">Forest Green</option>
+                      <option value="coolwarm">Divergent Coolwarm</option>
+                      <option value="Purples">Deep Purple</option>
+                      <option value="magma">Magma Pink-Black</option>
+                      <option value="sunset">Sunset Glow</option>
+                      <option value="crest">Crest Teal</option>
+                    </select>
+                  </div>
                   {/* Bar Color */}
                   <div className="space-y-1">
                     <label className="font-sans text-[9px] font-bold text-slate-400 uppercase">Bar Color</label>
@@ -3091,7 +3245,22 @@ const AnovaModal = ({ isOpen, onClose }) => {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-1">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 pt-1">
+                  {/* Split Chart By Factor */}
+                  <div className="space-y-1">
+                    <label className="font-sans text-[9px] font-bold text-slate-400 uppercase">Split Charts by Factor</label>
+                    <select
+                      value={postHocSplitFactor}
+                      onChange={(e) => setPostHocSplitFactor(e.target.value)}
+                      disabled={getAvailableFactors().length === 0}
+                      className="w-full rounded-xl border border-slate-200 bg-white py-1.5 px-3 font-sans text-xs outline-hidden focus:border-brand-indigo focus:ring-4 focus:ring-brand-indigo/10 transition-all disabled:bg-slate-50 disabled:text-slate-400 cursor-pointer"
+                    >
+                      <option value="">-- Show All Combinations --</option>
+                      {getAvailableFactors().map(f => (
+                        <option key={f} value={f}>{f}</option>
+                      ))}
+                    </select>
+                  </div>
                   {/* Chart Title */}
                   <div className="space-y-1">
                     <label className="font-sans text-[9px] font-bold text-slate-400 uppercase">Chart Title</label>
@@ -3128,9 +3297,9 @@ const AnovaModal = ({ isOpen, onClose }) => {
                 </div>
               </div>
 
-              {/* Plotly Chart */}
-              <div className="rounded-2xl border border-slate-100 bg-slate-50/50 p-4 flex flex-col items-center justify-center">
-                <div className="w-full flex items-center justify-between mb-3">
+              {/* Plotly Chart(s) */}
+              <div className="rounded-2xl border border-slate-100 bg-slate-50/50 p-4 flex flex-col space-y-4">
+                <div className="w-full flex items-center justify-between border-b border-slate-200/50 pb-3">
                   <h5 className="font-display text-xs font-bold text-slate-700">Mean Separation Chart (with Error Bars & Groupings)</h5>
                   <div className="flex items-center space-x-3">
                     <div className="flex items-center space-x-1">
@@ -3166,9 +3335,22 @@ const AnovaModal = ({ isOpen, onClose }) => {
                     </button>
                   </div>
                 </div>
-                <div className="w-full bg-white rounded-xl p-2 border border-slate-100 shadow-xs flex justify-center">
-                  <div ref={chartRef} className="w-full max-w-full" />
-                </div>
+
+                {!(postHocSplitFactor && getAvailableFactors().includes(postHocSplitFactor)) ? (
+                  // Single Chart
+                  <div className="w-full bg-white rounded-xl p-2 border border-slate-100 shadow-xs flex justify-center">
+                    <div ref={chartRef} className="w-full max-w-full" />
+                  </div>
+                ) : (
+                  // Split Charts
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-fade-in">
+                    {getSplitLevels().map((level, idx) => (
+                      <div key={level} className="w-full bg-white rounded-xl p-4 border border-slate-100 shadow-xs flex flex-col items-center">
+                        <div id={`plotly-posthoc-${idx}`} className="w-full max-w-full" />
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
 

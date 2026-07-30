@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useAuth, API_URL } from '../context/AuthContext';
-import { X, Upload, Check, AlertCircle, Download, RefreshCw, Info, HelpCircle, Eye } from 'lucide-react';
+import { X, Upload, Check, AlertCircle, Download, RefreshCw, Info, HelpCircle, Eye, Table, Copy } from 'lucide-react';
 import DatasetViewerModal from './DatasetViewerModal';
 import Plotly from 'plotly.js-dist-min';
 
@@ -159,6 +159,326 @@ const AnovaModal = ({ isOpen, onClose }) => {
   const [postHocYLabel, setPostHocYLabel] = useState('Treatment Means');
   const [postHocSplitFactor, setPostHocSplitFactor] = useState('');
   const [downloadDpi, setDownloadDpi] = useState(300);
+
+  // Customizations for Structured Multi-Factor Interaction Grid Table
+  const [gridRowFactor, setGridRowFactor] = useState('');
+  const [gridColFactor1, setGridColFactor1] = useState('');
+  const [gridColFactor2, setGridColFactor2] = useState('');
+  const [gridCellDisplay, setGridCellDisplay] = useState('mean_letter');
+
+  useEffect(() => {
+    const factors = getAvailableFactors();
+    if (factors.length >= 2) {
+      if (!gridColFactor1 || !factors.includes(gridColFactor1)) {
+        setGridColFactor1(factors[0]);
+      }
+      if (!gridColFactor2 || !factors.includes(gridColFactor2)) {
+        setGridColFactor2(factors.length >= 3 ? factors[1] : '');
+      }
+      if (!gridRowFactor || !factors.includes(gridRowFactor)) {
+        setGridRowFactor(factors[factors.length - 1]);
+      }
+    }
+  }, [results, testType, selectedFactors, indVar1, indVar2]);
+
+  const buildCrossTabulatedData = () => {
+    if (!results || !results.descriptives) return null;
+    const factors = getAvailableFactors();
+    if (factors.length < 2) return null;
+
+    const rFactor = (gridRowFactor && factors.includes(gridRowFactor)) ? gridRowFactor : factors[factors.length - 1];
+    const c1Factor = (gridColFactor1 && factors.includes(gridColFactor1) && gridColFactor1 !== rFactor) ? gridColFactor1 : (factors.find(f => f !== rFactor) || factors[0]);
+    const c2Factor = (gridColFactor2 && factors.includes(gridColFactor2) && gridColFactor2 !== rFactor && gridColFactor2 !== c1Factor) ? gridColFactor2 : '';
+
+    const rIdx = factors.indexOf(rFactor);
+    const c1Idx = factors.indexOf(c1Factor);
+    const c2Idx = c2Factor ? factors.indexOf(c2Factor) : -1;
+
+    if (rIdx === -1 || c1Idx === -1) return null;
+
+    const rSet = new Set();
+    const c1Set = new Set();
+    const c2Set = new Set();
+
+    Object.keys(results.descriptives).forEach(cellName => {
+      const parts = cellName.split(' / ').map(p => p.trim());
+      if (parts[rIdx] !== undefined) rSet.add(parts[rIdx]);
+      if (parts[c1Idx] !== undefined) c1Set.add(parts[c1Idx]);
+      if (c2Idx !== -1 && parts[c2Idx] !== undefined) c2Set.add(parts[c2Idx]);
+    });
+
+    const rowLevels = Array.from(rSet).sort((a, b) => a.localeCompare(b, undefined, {numeric: true, sensitivity: 'base'}));
+    const col1Levels = Array.from(c1Set).sort((a, b) => a.localeCompare(b, undefined, {numeric: true, sensitivity: 'base'}));
+    const col2Levels = c2Factor ? Array.from(c2Set).sort((a, b) => a.localeCompare(b, undefined, {numeric: true, sensitivity: 'base'})) : [];
+
+    const cellMap = {};
+    Object.entries(results.descriptives).forEach(([cellName, info]) => {
+      const parts = cellName.split(' / ').map(p => p.trim());
+      const key = [
+        parts[rIdx] || '',
+        parts[c1Idx] || '',
+        c2Idx !== -1 ? (parts[c2Idx] || '') : ''
+      ].join('|||');
+      cellMap[key] = {
+        cellName,
+        info,
+        letter: results.posthoc_letters?.[cellName] || ''
+      };
+    });
+
+    return {
+      rFactor,
+      c1Factor,
+      c2Factor,
+      rowLevels,
+      col1Levels,
+      col2Levels,
+      cellMap
+    };
+  };
+
+  const formatGridCellValue = (item) => {
+    if (!item || !item.info) return '-';
+    const meanStr = item.info.mean.toFixed(3);
+    const seStr = item.info.se !== undefined ? item.info.se.toFixed(3) : '';
+    const letter = item.letter || '';
+
+    switch (gridCellDisplay) {
+      case 'mean_only':
+        return meanStr;
+      case 'mean_se':
+        return seStr ? `${meanStr} ± ${seStr}` : meanStr;
+      case 'mean_se_letter':
+        return seStr ? `${meanStr} ± ${seStr} ${letter}`.trim() : `${meanStr} ${letter}`.trim();
+      case 'mean_letter':
+      default:
+        return letter ? `${meanStr} ${letter}` : meanStr;
+    }
+  };
+
+  const handleCopyGridTable = () => {
+    const data = buildCrossTabulatedData();
+    if (!data) return;
+    const { rFactor, c1Factor, c2Factor, rowLevels, col1Levels, col2Levels, cellMap } = data;
+    const hasSubHeader = c2Factor && col2Levels.length > 0;
+
+    let html = `<table border="1" style="border-collapse: collapse; text-align: center; font-family: Arial, sans-serif; font-size: 11pt;">`;
+    html += `<thead><tr style="background-color: #f1f5f9;">`;
+    html += `<th ${hasSubHeader ? 'rowspan="2"' : ''} style="border: 1px solid #94a3b8; padding: 8px; text-align: left; background-color: #e2e8f0;">${rFactor}</th>`;
+    col1Levels.forEach(c1 => {
+      html += `<th ${hasSubHeader ? `colspan="${col2Levels.length}"` : ''} style="border: 1px solid #94a3b8; padding: 8px; background-color: #e2e8f0;">${c1}</th>`;
+    });
+    html += `</tr>`;
+
+    if (hasSubHeader) {
+      html += `<tr style="background-color: #f8fafc;">`;
+      col1Levels.forEach(c1 => {
+        col2Levels.forEach(c2 => {
+          html += `<th style="border: 1px solid #94a3b8; padding: 6px; background-color: #f1f5f9;">${c2}</th>`;
+        });
+      });
+      html += `</tr>`;
+    }
+    html += `</thead><tbody>`;
+
+    rowLevels.forEach(rVal => {
+      html += `<tr><td style="border: 1px solid #94a3b8; padding: 8px; text-align: left; font-weight: bold; background-color: #f8fafc;">${rVal}</td>`;
+      col1Levels.forEach(c1Val => {
+        if (hasSubHeader) {
+          col2Levels.forEach(c2Val => {
+            const key = [rVal, c1Val, c2Val].join('|||');
+            const item = cellMap[key];
+            html += `<td style="border: 1px solid #94a3b8; padding: 8px;">${formatGridCellValue(item)}</td>`;
+          });
+        } else {
+          const key = [rVal, c1Val, ''].join('|||');
+          const item = cellMap[key];
+          html += `<td style="border: 1px solid #94a3b8; padding: 8px;">${formatGridCellValue(item)}</td>`;
+        }
+      });
+      html += `</tr>`;
+    });
+    html += `</tbody></table>`;
+
+    try {
+      const type = 'text/html';
+      const blob = new Blob([html], { type });
+      const dataObj = [new ClipboardItem({ [type]: blob, 'text/plain': new Blob([html], { type: 'text/plain' }) })];
+      navigator.clipboard.write(dataObj).then(() => {
+        alert("Structured factor grid table copied to clipboard! You can paste it directly into MS Word or Excel.");
+      }).catch(() => {
+        navigator.clipboard.writeText(html);
+        alert("Table HTML copied to clipboard!");
+      });
+    } catch (e) {
+      navigator.clipboard.writeText(html);
+      alert("Table HTML copied to clipboard!");
+    }
+  };
+
+  const renderStructuredGridTableCard = () => {
+    const data = buildCrossTabulatedData();
+    if (!data) return null;
+    const factors = getAvailableFactors();
+    const { rFactor, c1Factor, c2Factor, rowLevels, col1Levels, col2Levels, cellMap } = data;
+    const hasSubHeader = c2Factor && col2Levels.length > 0;
+
+    return (
+      <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-xs space-y-4 animate-fade-in">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-slate-100 pb-3">
+          <div>
+            <h5 className="font-display text-xs font-bold text-slate-800 flex items-center space-x-1.5">
+              <Table className="h-4 w-4 text-brand-orange" />
+              <span>Multi-Factor Structured Interaction Grid Table</span>
+            </h5>
+            <p className="font-sans text-[10px] text-slate-400 mt-0.5">
+              Cross-tabulated mean comparison grid nested across treatment factors (Word/Excel exportable format).
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={handleCopyGridTable}
+            className="inline-flex items-center space-x-1.5 rounded-xl bg-slate-800 hover:bg-slate-900 text-white font-sans text-xs font-semibold px-3 py-1.5 transition-colors cursor-pointer shrink-0 self-start md:self-auto shadow-xs"
+          >
+            <Copy className="h-3.5 w-3.5" />
+            <span>Copy Table for Word/Excel</span>
+          </button>
+        </div>
+
+        {/* Controls Panel */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 bg-slate-50/60 p-3 rounded-xl border border-slate-100">
+          {/* Row Factor */}
+          <div className="space-y-1">
+            <label className="font-sans text-[9px] font-bold text-slate-400 uppercase">Row Factor (Vertical)</label>
+            <select
+              value={gridRowFactor || rFactor}
+              onChange={(e) => setGridRowFactor(e.target.value)}
+              className="w-full rounded-lg border border-slate-200 bg-white py-1 px-2.5 font-sans text-xs outline-hidden focus:border-brand-indigo focus:ring-2 focus:ring-brand-indigo/10 transition-all cursor-pointer"
+            >
+              {factors.map(f => (
+                <option key={f} value={f}>{f}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Col Factor 1 */}
+          <div className="space-y-1">
+            <label className="font-sans text-[9px] font-bold text-slate-400 uppercase">Column Factor 1 (Primary)</label>
+            <select
+              value={gridColFactor1 || c1Factor}
+              onChange={(e) => setGridColFactor1(e.target.value)}
+              className="w-full rounded-lg border border-slate-200 bg-white py-1 px-2.5 font-sans text-xs outline-hidden focus:border-brand-indigo focus:ring-2 focus:ring-brand-indigo/10 transition-all cursor-pointer"
+            >
+              {factors.filter(f => f !== (gridRowFactor || rFactor)).map(f => (
+                <option key={f} value={f}>{f}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Col Factor 2 */}
+          <div className="space-y-1">
+            <label className="font-sans text-[9px] font-bold text-slate-400 uppercase">Column Factor 2 (Sub-header)</label>
+            <select
+              value={gridColFactor2}
+              onChange={(e) => setGridColFactor2(e.target.value)}
+              className="w-full rounded-lg border border-slate-200 bg-white py-1 px-2.5 font-sans text-xs outline-hidden focus:border-brand-indigo focus:ring-2 focus:ring-brand-indigo/10 transition-all cursor-pointer"
+            >
+              <option value="">-- None (Single Header) --</option>
+              {factors.filter(f => f !== (gridRowFactor || rFactor) && f !== (gridColFactor1 || c1Factor)).map(f => (
+                <option key={f} value={f}>{f}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Display Value */}
+          <div className="space-y-1">
+            <label className="font-sans text-[9px] font-bold text-slate-400 uppercase">Cell Content Format</label>
+            <select
+              value={gridCellDisplay}
+              onChange={(e) => setGridCellDisplay(e.target.value)}
+              className="w-full rounded-lg border border-slate-200 bg-white py-1 px-2.5 font-sans text-xs outline-hidden focus:border-brand-indigo focus:ring-2 focus:ring-brand-indigo/10 transition-all cursor-pointer"
+            >
+              <option value="mean_letter">Mean + Group Letter (e.g. 15.20 a)</option>
+              <option value="mean_only">Mean Only (e.g. 15.20)</option>
+              <option value="mean_se">Mean ± S.E. (e.g. 15.20 ± 0.32)</option>
+              <option value="mean_se_letter">Mean ± S.E. + Letter (e.g. 15.20 ± 0.32 a)</option>
+            </select>
+          </div>
+        </div>
+
+        {/* Table Render */}
+        <div className="overflow-x-auto rounded-xl border border-slate-300 bg-white shadow-xs">
+          <table className="w-full border-collapse font-sans text-xs text-center border border-slate-300">
+            <thead>
+              {/* Header Row 1 */}
+              <tr className="bg-slate-100 text-slate-800 font-bold border-b border-slate-300">
+                <th
+                  rowSpan={hasSubHeader ? 2 : 1}
+                  className="border border-slate-300 p-2.5 text-left font-bold bg-slate-100 min-w-[140px]"
+                >
+                  {rFactor}
+                </th>
+                {col1Levels.map(c1 => (
+                  <th
+                    key={c1}
+                    colSpan={hasSubHeader ? col2Levels.length : 1}
+                    className="border border-slate-300 p-2.5 text-center font-bold bg-slate-100"
+                  >
+                    {c1}
+                  </th>
+                ))}
+              </tr>
+
+              {/* Header Row 2 */}
+              {hasSubHeader && (
+                <tr className="bg-slate-50 text-slate-700 font-semibold border-b border-slate-300">
+                  {col1Levels.map(c1 => (
+                    col2Levels.map(c2 => (
+                      <th key={`${c1}_${c2}`} className="border border-slate-300 p-2 text-center font-semibold bg-slate-50">
+                        {c2}
+                      </th>
+                    ))
+                  ))}
+                </tr>
+              )}
+            </thead>
+            <tbody>
+              {rowLevels.map(rVal => (
+                <tr key={rVal} className="border-b border-slate-200 hover:bg-slate-50/50 transition-colors">
+                  <td className="border border-slate-300 p-2.5 text-left font-semibold text-slate-800 bg-slate-50/30">
+                    {rVal}
+                  </td>
+                  {col1Levels.map(c1Val => (
+                    hasSubHeader ? (
+                      col2Levels.map(c2Val => {
+                        const key = [rVal, c1Val, c2Val].join('|||');
+                        const item = cellMap[key];
+                        return (
+                          <td key={key} className="border border-slate-300 p-2.5 text-center font-mono text-slate-700">
+                            {formatGridCellValue(item)}
+                          </td>
+                        );
+                      })
+                    ) : (
+                      (() => {
+                        const key = [rVal, c1Val, ''].join('|||');
+                        const item = cellMap[key];
+                        return (
+                          <td key={key} className="border border-slate-300 p-2.5 text-center font-mono text-slate-700">
+                            {formatGridCellValue(item)}
+                          </td>
+                        );
+                      })()
+                    )
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    );
+  };
 
   const getAvailableFactors = () => {
     if (['crd_multifactor', 'rbd_multifactor'].includes(testType)) {
@@ -2872,6 +3192,9 @@ const AnovaModal = ({ isOpen, onClose }) => {
                 </div>
               )}
 
+              {/* Structured Multi-Factor Interaction Grid Table */}
+              {renderStructuredGridTableCard()}
+
               {/* TABLES OF MEAN, STANDARD ERRORS AND C.D. */}
               <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-xs animate-fade-in">
                 <h5 className="font-display text-xs font-bold text-slate-700 mb-3">TABLES OF MEAN, STANDARD ERRORS AND C.D.</h5>
@@ -3170,6 +3493,9 @@ const AnovaModal = ({ isOpen, onClose }) => {
                   </div>
                 ))
               )}
+
+              {/* Structured Multi-Factor Interaction Grid Table */}
+              {renderStructuredGridTableCard()}
 
               {/* Graph Customization Settings */}
               <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-xs space-y-3">

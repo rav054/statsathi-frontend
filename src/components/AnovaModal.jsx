@@ -3829,254 +3829,196 @@ const AnovaModal = ({ isOpen, onClose }) => {
 
             {/* Body */}
             <div className="flex-1 overflow-y-auto p-6 space-y-6">
-              {/* Grouping Letters Table(s) */}
-              {!(postHocSplitFactor && getAvailableFactors().includes(postHocSplitFactor)) ? (
-                // Single table
-                <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-xs">
-                  <h5 className="font-display text-xs font-bold text-slate-700 mb-3">Significance Grouping Table</h5>
-                  <div className="overflow-x-auto">
-                    <table className="w-full border-collapse font-sans text-xs text-left">
-                      <thead>
-                        <tr className="border-b border-slate-100 text-slate-400 font-bold">
-                          <th className="py-2 pr-4">Treatment</th>
-                          <th className="py-2 text-right">Mean</th>
-                          <th className="py-2 text-right">S.E.</th>
-                          <th className="py-2 text-right">Significance Group</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {Object.entries(results.descriptives || {})
-                          .sort((a, b) => a[0].localeCompare(b[0], undefined, {numeric: true, sensitivity: 'base'}))
-                          .map(([cellName, info]) => (
-                            <tr key={cellName} className="border-b border-slate-50 text-slate-700">
-                              <td className="py-2.5 font-semibold">{cellName}</td>
-                              <td className="py-2.5 text-right font-mono">{info.mean.toFixed(3)}</td>
-                              <td className="py-2.5 text-right font-mono">{info.se !== undefined ? info.se.toFixed(3) : '-'}</td>
-                              <td className="py-2.5 text-right font-bold text-brand-indigo">{results.posthoc_letters?.[cellName] || '-'}</td>
-                            </tr>
-                          ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              ) : (
-                // Multiple split tables
-                getSplitLevels().map((level, lIdx) => (
-                  <div key={level} className="rounded-2xl border border-slate-100 bg-white p-4 shadow-xs">
-                    <h5 className="font-display text-xs font-bold text-slate-700 mb-3 flex items-center justify-between">
-                      <span>Significance Grouping Table ({postHocSplitFactor}: {level})</span>
-                      <span className="text-[10px] text-slate-400 font-normal">Level {lIdx + 1} of {getSplitLevels().length}</span>
-                    </h5>
+              {/* For Multi-Factor / Two-Way ANOVA: Render Multi-Factor Interaction Grid Table & Grouped Post-Hoc Plot */}
+              {renderStructuredGridTableCard(true)}
+
+              {/* For One-Way ANOVA: Render Single-Factor Table & Standard Bar Chart */}
+              {getAvailableFactors().length < 2 && (
+                <>
+                  <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-xs">
+                    <h5 className="font-display text-xs font-bold text-slate-700 mb-3">Significance Grouping Table</h5>
                     <div className="overflow-x-auto">
                       <table className="w-full border-collapse font-sans text-xs text-left">
                         <thead>
                           <tr className="border-b border-slate-100 text-slate-400 font-bold">
-                            <th className="py-2 pr-4">Treatment (Other Factors)</th>
+                            <th className="py-2 pr-4">Treatment</th>
                             <th className="py-2 text-right">Mean</th>
                             <th className="py-2 text-right">S.E.</th>
                             <th className="py-2 text-right">Significance Group</th>
                           </tr>
                         </thead>
                         <tbody>
-                          {getFilteredDataForLevel(level).map((item) => (
-                            <tr key={item.originalName} className="border-b border-slate-50 text-slate-700">
-                              <td className="py-2.5 font-semibold">{item.displayName}</td>
-                              <td className="py-2.5 text-right font-mono">{item.info.mean.toFixed(3)}</td>
-                              <td className="py-2.5 text-right font-mono">{item.info.se !== undefined ? item.info.se.toFixed(3) : '-'}</td>
-                              <td className="py-2.5 text-right font-bold text-brand-indigo">{results.posthoc_letters?.[item.originalName] || '-'}</td>
-                            </tr>
-                          ))}
+                          {Object.entries(results.descriptives || {})
+                            .sort((a, b) => a[0].localeCompare(b[0], undefined, {numeric: true, sensitivity: 'base'}))
+                            .map(([cellName, info]) => (
+                              <tr key={cellName} className="border-b border-slate-50 text-slate-700">
+                                <td className="py-2.5 font-semibold">{cellName}</td>
+                                <td className="py-2.5 text-right font-mono">{info.mean.toFixed(3)}</td>
+                                <td className="py-2.5 text-right font-mono">{info.se !== undefined ? info.se.toFixed(3) : '-'}</td>
+                                <td className="py-2.5 text-right font-bold text-brand-indigo">{results.posthoc_letters?.[cellName] || '-'}</td>
+                              </tr>
+                            ))}
                         </tbody>
                       </table>
                     </div>
                   </div>
-                ))
-              )}
 
-              {/* Structured Multi-Factor Interaction Grid Table */}
-              {renderStructuredGridTableCard(true)}
-
-              {/* Graph Customization Settings */}
-              <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-xs space-y-3">
-                <h5 className="font-display text-xs font-bold text-slate-700">Customize Graph Settings</h5>
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                  {/* Font Size */}
-                  <div className="space-y-1">
-                    <label className="font-sans text-[9px] font-bold text-slate-400 uppercase">Font Size (px)</label>
-                    <input
-                      type="number"
-                      min="6"
-                      max="24"
-                      value={postHocFontSize}
-                      onChange={(e) => setPostHocFontSize(parseInt(e.target.value) || 10)}
-                      className="w-full rounded-xl border border-slate-200 bg-white py-1.5 px-3 font-sans text-xs outline-hidden focus:border-brand-indigo focus:ring-4 focus:ring-brand-indigo/10 transition-all"
-                    />
-                  </div>
-                  {/* Font Color */}
-                  <div className="space-y-1">
-                    <label className="font-sans text-[9px] font-bold text-slate-400 uppercase">Font Color</label>
-                    <div className="flex space-x-2">
-                      <input
-                        type="color"
-                        value={postHocFontColor.startsWith('#') && postHocFontColor.length === 7 ? postHocFontColor : '#334155'}
-                        onChange={(e) => setPostHocFontColor(e.target.value)}
-                        className="h-8 w-10 border border-slate-200 rounded-lg cursor-pointer shrink-0"
-                      />
-                      <input
-                        type="text"
-                        placeholder="#334155"
-                        value={postHocFontColor}
-                        onChange={(e) => setPostHocFontColor(e.target.value)}
-                        className="w-full rounded-xl border border-slate-200 bg-white py-1.5 px-3 font-mono text-xs outline-hidden focus:border-brand-indigo focus:ring-4 focus:ring-brand-indigo/10 transition-all"
-                      />
-                    </div>
-                  </div>
-                  {/* Color Scheme (Palette) */}
-                  <div className="space-y-1">
-                    <label className="font-sans text-[9px] font-bold text-slate-400 uppercase">Color Scheme</label>
-                    <select
-                      value={palette}
-                      onChange={(e) => setPalette(e.target.value)}
-                      className="w-full rounded-xl border border-slate-200 bg-white py-1.5 px-3 font-sans text-xs outline-hidden focus:border-brand-indigo focus:ring-4 focus:ring-brand-indigo/10 transition-all"
-                    >
-                      <option value="Oranges">Agricultural Orange</option>
-                      <option value="Blues">Ocean Blue</option>
-                      <option value="Greens">Forest Green</option>
-                      <option value="coolwarm">Divergent Coolwarm</option>
-                      <option value="Purples">Deep Purple</option>
-                      <option value="magma">Magma Pink-Black</option>
-                      <option value="sunset">Sunset Glow</option>
-                      <option value="crest">Crest Teal</option>
-                    </select>
-                  </div>
-                  {/* Bar Color */}
-                  <div className="space-y-1">
-                    <label className="font-sans text-[9px] font-bold text-slate-400 uppercase">Bar Color</label>
-                    <div className="flex space-x-2">
-                      <input
-                        type="color"
-                        value={postHocBarColor.startsWith('#') && postHocBarColor.length === 7 ? postHocBarColor : '#EA580C'}
-                        onChange={(e) => setPostHocBarColor(e.target.value)}
-                        className="h-8 w-10 border border-slate-200 rounded-lg cursor-pointer shrink-0"
-                      />
-                      <input
-                        type="text"
-                        placeholder="Default theme color"
-                        value={postHocBarColor}
-                        onChange={(e) => setPostHocBarColor(e.target.value)}
-                        className="w-full rounded-xl border border-slate-200 bg-white py-1.5 px-3 font-mono text-xs outline-hidden focus:border-brand-indigo focus:ring-4 focus:ring-brand-indigo/10 transition-all"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 pt-1">
-                  {/* Split Chart By Factor */}
-                  <div className="space-y-1">
-                    <label className="font-sans text-[9px] font-bold text-slate-400 uppercase">Split Charts by Factor</label>
-                    <select
-                      value={postHocSplitFactor}
-                      onChange={(e) => setPostHocSplitFactor(e.target.value)}
-                      disabled={getAvailableFactors().length === 0}
-                      className="w-full rounded-xl border border-slate-200 bg-white py-1.5 px-3 font-sans text-xs outline-hidden focus:border-brand-indigo focus:ring-4 focus:ring-brand-indigo/10 transition-all disabled:bg-slate-50 disabled:text-slate-400 cursor-pointer"
-                    >
-                      <option value="">-- Show All Combinations --</option>
-                      {getAvailableFactors().map(f => (
-                        <option key={f} value={f}>{f}</option>
-                      ))}
-                    </select>
-                  </div>
-                  {/* Chart Title */}
-                  <div className="space-y-1">
-                    <label className="font-sans text-[9px] font-bold text-slate-400 uppercase">Chart Title</label>
-                    <input
-                      type="text"
-                      placeholder="e.g. Mean Separation Plot"
-                      value={postHocChartTitle}
-                      onChange={(e) => setPostHocChartTitle(e.target.value)}
-                      className="w-full rounded-xl border border-slate-200 bg-white py-1.5 px-3 font-sans text-xs outline-hidden focus:border-brand-indigo focus:ring-4 focus:ring-brand-indigo/10 transition-all"
-                    />
-                  </div>
-                  {/* X-Axis Label */}
-                  <div className="space-y-1">
-                    <label className="font-sans text-[9px] font-bold text-slate-400 uppercase">X-Axis Label</label>
-                    <input
-                      type="text"
-                      placeholder="e.g. Treatments"
-                      value={postHocXLabel}
-                      onChange={(e) => setPostHocXLabel(e.target.value)}
-                      className="w-full rounded-xl border border-slate-200 bg-white py-1.5 px-3 font-sans text-xs outline-hidden focus:border-brand-indigo focus:ring-4 focus:ring-brand-indigo/10 transition-all"
-                    />
-                  </div>
-                  {/* Y-Axis Label */}
-                  <div className="space-y-1">
-                    <label className="font-sans text-[9px] font-bold text-slate-400 uppercase">Y-Axis Label</label>
-                    <input
-                      type="text"
-                      placeholder="e.g. Yield"
-                      value={postHocYLabel}
-                      onChange={(e) => setPostHocYLabel(e.target.value)}
-                      className="w-full rounded-xl border border-slate-200 bg-white py-1.5 px-3 font-sans text-xs outline-hidden focus:border-brand-indigo focus:ring-4 focus:ring-brand-indigo/10 transition-all"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Plotly Chart(s) */}
-              <div className="rounded-2xl border border-slate-100 bg-slate-50/50 p-4 flex flex-col space-y-4">
-                <div className="w-full flex items-center justify-between border-b border-slate-200/50 pb-3">
-                  <h5 className="font-display text-xs font-bold text-slate-700">Mean Separation Chart (with Error Bars & Groupings)</h5>
-                  <div className="flex items-center space-x-3">
-                    <div className="flex items-center space-x-1">
-                      <span className="font-sans text-[9px] font-bold text-slate-400 uppercase">DPI:</span>
-                      {[150, 300, 600].map(dpiVal => (
-                        <button
-                          key={dpiVal}
-                          onClick={() => setDownloadDpi(dpiVal)}
-                          className={`px-1.5 py-0.5 font-sans text-[8px] font-bold rounded-md cursor-pointer transition-colors ${
-                            downloadDpi === dpiVal ? 'bg-brand-indigo text-white shadow-xs' : 'bg-white border border-slate-200 text-slate-500 hover:bg-slate-50'
-                          }`}
-                        >
-                          {dpiVal}
-                        </button>
-                      ))}
-                    </div>
-                    <div className="h-4 w-px bg-slate-200" />
-                    <button
-                      onClick={() => handleDownloadPostHocChart('png')}
-                      className="inline-flex items-center space-x-1 rounded-lg border border-slate-200 bg-white px-2 py-1 font-sans text-[10px] font-semibold text-slate-600 hover:bg-slate-50 hover:text-slate-800 transition-colors cursor-pointer"
-                      title="Download Chart as PNG"
-                    >
-                      <Download className="h-3 w-3" />
-                      <span>PNG</span>
-                    </button>
-                    <button
-                      onClick={() => handleDownloadPostHocChart('svg')}
-                      className="inline-flex items-center space-x-1 rounded-lg border border-slate-200 bg-white px-2 py-1 font-sans text-[10px] font-semibold text-slate-600 hover:bg-slate-50 hover:text-slate-800 transition-colors cursor-pointer"
-                      title="Download Chart as SVG"
-                    >
-                      <Download className="h-3 w-3" />
-                      <span>SVG</span>
-                    </button>
-                  </div>
-                </div>
-
-                {!(postHocSplitFactor && getAvailableFactors().includes(postHocSplitFactor)) ? (
-                  // Single Chart
-                  <div className="w-full bg-white rounded-xl p-2 border border-slate-100 shadow-xs flex justify-center">
-                    <div ref={chartRef} className="w-full max-w-full" />
-                  </div>
-                ) : (
-                  // Split Charts
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-fade-in">
-                    {getSplitLevels().map((level, idx) => (
-                      <div key={level} className="w-full bg-white rounded-xl p-4 border border-slate-100 shadow-xs flex flex-col items-center">
-                        <div id={`plotly-posthoc-${idx}`} className="w-full max-w-full" />
+                  {/* Graph Customization Settings */}
+                  <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-xs space-y-3">
+                    <h5 className="font-display text-xs font-bold text-slate-700">Customize Graph Settings</h5>
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                      {/* Font Size */}
+                      <div className="space-y-1">
+                        <label className="font-sans text-[9px] font-bold text-slate-400 uppercase">Font Size (px)</label>
+                        <input
+                          type="number"
+                          min="6"
+                          max="24"
+                          value={postHocFontSize}
+                          onChange={(e) => setPostHocFontSize(parseInt(e.target.value) || 10)}
+                          className="w-full rounded-xl border border-slate-200 bg-white py-1.5 px-3 font-sans text-xs outline-hidden focus:border-brand-indigo focus:ring-4 focus:ring-brand-indigo/10 transition-all"
+                        />
                       </div>
-                    ))}
+                      {/* Font Color */}
+                      <div className="space-y-1">
+                        <label className="font-sans text-[9px] font-bold text-slate-400 uppercase">Font Color</label>
+                        <div className="flex space-x-2">
+                          <input
+                            type="color"
+                            value={postHocFontColor.startsWith('#') && postHocFontColor.length === 7 ? postHocFontColor : '#334155'}
+                            onChange={(e) => setPostHocFontColor(e.target.value)}
+                            className="h-8 w-10 border border-slate-200 rounded-lg cursor-pointer shrink-0"
+                          />
+                          <input
+                            type="text"
+                            placeholder="#334155"
+                            value={postHocFontColor}
+                            onChange={(e) => setPostHocFontColor(e.target.value)}
+                            className="w-full rounded-xl border border-slate-200 bg-white py-1.5 px-3 font-mono text-xs outline-hidden focus:border-brand-indigo focus:ring-4 focus:ring-brand-indigo/10 transition-all"
+                          />
+                        </div>
+                      </div>
+                      {/* Color Scheme */}
+                      <div className="space-y-1">
+                        <label className="font-sans text-[9px] font-bold text-slate-400 uppercase">Color Scheme</label>
+                        <select
+                          value={palette}
+                          onChange={(e) => setPalette(e.target.value)}
+                          className="w-full rounded-xl border border-slate-200 bg-white py-1.5 px-3 font-sans text-xs outline-hidden focus:border-brand-indigo focus:ring-4 focus:ring-brand-indigo/10 transition-all"
+                        >
+                          <option value="Oranges">Agricultural Orange</option>
+                          <option value="Blues">Ocean Blue</option>
+                          <option value="Greens">Forest Green</option>
+                          <option value="coolwarm">Divergent Coolwarm</option>
+                          <option value="Purples">Deep Purple</option>
+                          <option value="magma">Magma Pink-Black</option>
+                          <option value="sunset">Sunset Glow</option>
+                          <option value="crest">Crest Teal</option>
+                        </select>
+                      </div>
+                      {/* Bar Color */}
+                      <div className="space-y-1">
+                        <label className="font-sans text-[9px] font-bold text-slate-400 uppercase">Bar Color</label>
+                        <div className="flex space-x-2">
+                          <input
+                            type="color"
+                            value={postHocBarColor.startsWith('#') && postHocBarColor.length === 7 ? postHocBarColor : '#EA580C'}
+                            onChange={(e) => setPostHocBarColor(e.target.value)}
+                            className="h-8 w-10 border border-slate-200 rounded-lg cursor-pointer shrink-0"
+                          />
+                          <input
+                            type="text"
+                            placeholder="Default theme color"
+                            value={postHocBarColor}
+                            onChange={(e) => setPostHocBarColor(e.target.value)}
+                            className="w-full rounded-xl border border-slate-200 bg-white py-1.5 px-3 font-mono text-xs outline-hidden focus:border-brand-indigo focus:ring-4 focus:ring-brand-indigo/10 transition-all"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-1">
+                      {/* Chart Title */}
+                      <div className="space-y-1">
+                        <label className="font-sans text-[9px] font-bold text-slate-400 uppercase">Chart Title</label>
+                        <input
+                          type="text"
+                          placeholder="e.g. Mean Separation Plot"
+                          value={postHocChartTitle}
+                          onChange={(e) => setPostHocChartTitle(e.target.value)}
+                          className="w-full rounded-xl border border-slate-200 bg-white py-1.5 px-3 font-sans text-xs outline-hidden focus:border-brand-indigo focus:ring-4 focus:ring-brand-indigo/10 transition-all"
+                        />
+                      </div>
+                      {/* X-Axis Label */}
+                      <div className="space-y-1">
+                        <label className="font-sans text-[9px] font-bold text-slate-400 uppercase">X-Axis Label</label>
+                        <input
+                          type="text"
+                          placeholder="e.g. Treatments"
+                          value={postHocXLabel}
+                          onChange={(e) => setPostHocXLabel(e.target.value)}
+                          className="w-full rounded-xl border border-slate-200 bg-white py-1.5 px-3 font-sans text-xs outline-hidden focus:border-brand-indigo focus:ring-4 focus:ring-brand-indigo/10 transition-all"
+                        />
+                      </div>
+                      {/* Y-Axis Label */}
+                      <div className="space-y-1">
+                        <label className="font-sans text-[9px] font-bold text-slate-400 uppercase">Y-Axis Label</label>
+                        <input
+                          type="text"
+                          placeholder="e.g. Yield"
+                          value={postHocYLabel}
+                          onChange={(e) => setPostHocYLabel(e.target.value)}
+                          className="w-full rounded-xl border border-slate-200 bg-white py-1.5 px-3 font-sans text-xs outline-hidden focus:border-brand-indigo focus:ring-4 focus:ring-brand-indigo/10 transition-all"
+                        />
+                      </div>
+                    </div>
                   </div>
-                )}
-              </div>
+
+                  {/* Plotly Chart */}
+                  <div className="rounded-2xl border border-slate-100 bg-slate-50/50 p-4 flex flex-col space-y-4">
+                    <div className="w-full flex items-center justify-between border-b border-slate-200/50 pb-3">
+                      <h5 className="font-display text-xs font-bold text-slate-700">Mean Separation Chart (with Error Bars & Groupings)</h5>
+                      <div className="flex items-center space-x-3">
+                        <div className="flex items-center space-x-1">
+                          <span className="font-sans text-[9px] font-bold text-slate-400 uppercase">DPI:</span>
+                          {[150, 300, 600].map(dpiVal => (
+                            <button
+                              key={dpiVal}
+                              onClick={() => setDownloadDpi(dpiVal)}
+                              className={`px-1.5 py-0.5 font-sans text-[8px] font-bold rounded-md cursor-pointer transition-colors ${
+                                downloadDpi === dpiVal ? 'bg-brand-indigo text-white shadow-xs' : 'bg-white border border-slate-200 text-slate-500 hover:bg-slate-50'
+                              }`}
+                            >
+                              {dpiVal}
+                            </button>
+                          ))}
+                        </div>
+                        <div className="h-4 w-px bg-slate-200" />
+                        <button
+                          onClick={() => handleDownloadPostHocChart('png')}
+                          className="inline-flex items-center space-x-1 rounded-lg border border-slate-200 bg-white px-2 py-1 font-sans text-[10px] font-semibold text-slate-600 hover:bg-slate-50 hover:text-slate-800 transition-colors cursor-pointer"
+                          title="Download Chart as PNG"
+                        >
+                          <Download className="h-3 w-3" />
+                          <span>PNG</span>
+                        </button>
+                        <button
+                          onClick={() => handleDownloadPostHocChart('svg')}
+                          className="inline-flex items-center space-x-1 rounded-lg border border-slate-200 bg-white px-2 py-1 font-sans text-[10px] font-semibold text-slate-600 hover:bg-slate-50 hover:text-slate-800 transition-colors cursor-pointer"
+                          title="Download Chart as SVG"
+                        >
+                          <Download className="h-3 w-3" />
+                          <span>SVG</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="w-full bg-white rounded-xl p-2 border border-slate-100 shadow-xs flex justify-center">
+                      <div ref={chartRef} className="w-full max-w-full" />
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
 
             {/* Footer */}

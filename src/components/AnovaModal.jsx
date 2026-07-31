@@ -357,29 +357,75 @@ const AnovaModal = ({ isOpen, onClose }) => {
         ['#1E40AF', '#60A5FA', '#BFDBFE'],
         ['#6B21A8', '#C084FC', '#F3E8FF']
       ],
-      ocean_blue: [
-        ['#1E3A8A', '#3B82F6', '#93C5FD'],
-        ['#0F766E', '#14B8A6', '#99F6E4'],
-        ['#4338CA', '#818CF8', '#C7D2FE']
+      forest_field: [
+        ['#1E70B8', '#74B3E8', '#93C5FD'], // Blue family (like Image 1)
+        ['#E85D26', '#F6A483', '#FED7AA'], // Orange family (like Image 1)
+        ['#15803D', '#4ADE80', '#BBF7D0'], // Green family
+        ['#7E22CE', '#C084FC', '#F3E8FF']  // Purple family
+      ],
+      agri_green: [
+        ['#15803D', '#4ADE80', '#86EFAC'],
+        ['#166534', '#22C55E', '#BBF7D0'],
+        ['#047857', '#34D399', '#A7F3D0'],
+        ['#65A30D', '#A3E635', '#ECFCCB']
       ],
       sunset_orange: [
         ['#C2410C', '#F97316', '#FDBA74'],
         ['#B45309', '#F59E0B', '#FDE68A'],
-        ['#BE123C', '#FB7185', '#FECDD3']
+        ['#BE123C', '#FB7185', '#FECDD3'],
+        ['#D97706', '#FBBF24', '#FEF08A']
+      ],
+      ocean_blue: [
+        ['#1E3A8A', '#3B82F6', '#93C5FD'],
+        ['#0F766E', '#14B8A6', '#99F6E4'],
+        ['#4338CA', '#818CF8', '#C7D2FE'],
+        ['#0284C7', '#38BDF8', '#BAE6FD']
       ],
       deep_purple: [
         ['#6B21A8', '#A855F7', '#E9D5FF'],
         ['#0369A1', '#38BDF8', '#BAE6FD'],
-        ['#BE185D', '#F472B6', '#FBCFE8']
+        ['#BE185D', '#F472B6', '#FBCFE8'],
+        ['#4C1D95', '#8B5CF6', '#DDD6FE']
       ],
       coolwarm: [
         ['#1E3A8A', '#60A5FA', '#BFDBFE'],
         ['#B91C1C', '#F87171', '#FCA5A5'],
-        ['#047857', '#34D399', '#A7F3D0']
+        ['#047857', '#34D399', '#A7F3D0'],
+        ['#D97706', '#FBBF24', '#FEF08A']
       ],
       magma: [
         ['#311042', '#A83267', '#FBB672'],
-        ['#111827', '#4B5563', '#9CA3AF']
+        ['#111827', '#4B5563', '#9CA3AF'],
+        ['#6B1D5C', '#DC5059', '#FED7AA']
+      ],
+      viridis: [
+        ['#0284C7', '#38BDF8', '#BAE6FD'],
+        ['#16A34A', '#4ADE80', '#BBF7D0'],
+        ['#D97706', '#FBBF24', '#FEF08A'],
+        ['#7E22CE', '#C084FC', '#F3E8FF']
+      ],
+      crimson_gold: [
+        ['#BE123C', '#F43F5E', '#FECDD3'],
+        ['#D97706', '#FBBF24', '#FEF08A'],
+        ['#059669', '#34D399', '#A7F3D0'],
+        ['#2563EB', '#60A5FA', '#BFDBFE']
+      ],
+      autumn_harvest: [
+        ['#B45309', '#F59E0B', '#FDE68A'],
+        ['#EA580C', '#FB923C', '#FED7AA'],
+        ['#65A30D', '#A3E635', '#ECFCCB'],
+        ['#86198F', '#E879F9', '#FDE8FF']
+      ],
+      monochrome_grey: [
+        ['#1E293B', '#64748B', '#CBD5E1'],
+        ['#334155', '#94A3B8', '#E2E8F0'],
+        ['#0F172A', '#475569', '#94A3B8']
+      ],
+      neon_vibrant: [
+        ['#06B6D4', '#67E8F9', '#CFFAFE'],
+        ['#FF6B00', '#FF9E00', '#FFE600'],
+        ['#84CC16', '#BEF264', '#ECFCCB'],
+        ['#EC4899', '#F472B6', '#FCE7F3']
       ]
     };
 
@@ -755,13 +801,18 @@ const AnovaModal = ({ isOpen, onClose }) => {
                     onChange={(e) => setGridTheme(e.target.value)}
                     className="w-full rounded-xl border border-slate-200 bg-white py-1.5 px-3 font-sans text-xs outline-hidden focus:border-brand-indigo focus:ring-4 focus:ring-brand-indigo/10 transition-all cursor-pointer"
                   >
-                    <option value="forest_field">Forest Green</option>
+                    <option value="forest_field">Forest Green & Blue/Orange (Image 1)</option>
                     <option value="agri_green">Agriculture Green</option>
                     <option value="sunset_orange">Sunset Orange</option>
                     <option value="ocean_blue">Ocean Blue</option>
                     <option value="deep_purple">Deep Purple</option>
                     <option value="coolwarm">Divergent Coolwarm</option>
                     <option value="magma">Magma Dark</option>
+                    <option value="viridis">Viridis Scientific</option>
+                    <option value="crimson_gold">Crimson & Gold</option>
+                    <option value="autumn_harvest">Autumn Harvest</option>
+                    <option value="monochrome_grey">Publication Greyscale (Journal)</option>
+                    <option value="neon_vibrant">Modern Cyber Vibrant</option>
                     <option value="custom">Custom Color of Choice</option>
                   </select>
                 </div>

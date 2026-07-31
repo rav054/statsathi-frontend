@@ -160,11 +160,20 @@ const AnovaModal = ({ isOpen, onClose }) => {
   const [postHocSplitFactor, setPostHocSplitFactor] = useState('');
   const [downloadDpi, setDownloadDpi] = useState(300);
 
-  // Customizations for Structured Multi-Factor Interaction Grid Table
+  // Customizations for Structured Multi-Factor Interaction Grid Table & Chart
   const [gridRowFactor, setGridRowFactor] = useState('');
   const [gridColFactor1, setGridColFactor1] = useState('');
   const [gridColFactor2, setGridColFactor2] = useState('');
   const [gridCellDisplay, setGridCellDisplay] = useState('mean_letter');
+  const [showGridChart, setShowGridChart] = useState(true);
+  const [gridChartType, setGridChartType] = useState('bar');
+  const [gridTheme, setGridTheme] = useState('agri_green');
+  const [gridCustomColor, setGridCustomColor] = useState('');
+  const [gridFontSize, setGridFontSize] = useState(10);
+  const [gridFontColor, setGridFontColor] = useState('#334155');
+  const [gridChartTitle, setGridChartTitle] = useState('');
+  const [gridXLabel, setGridXLabel] = useState('');
+  const [gridYLabel, setGridYLabel] = useState('');
 
   useEffect(() => {
     const factors = getAvailableFactors();
@@ -316,12 +325,157 @@ const AnovaModal = ({ isOpen, onClose }) => {
     }
   };
 
-  const renderStructuredGridTableCard = () => {
+  const handleDownloadGridChart = (format, elementId) => {
+    const el = document.getElementById(elementId);
+    if (!el) return;
+    const scale = downloadDpi / 96;
+    const filename = `StatSathi_MultiFactor_Grid_Plot_${depVar}_${downloadDpi}dpi`;
+    Plotly.downloadImage(el, {
+      format: format,
+      width: 800,
+      height: 500,
+      scale: scale,
+      filename: filename
+    });
+  };
+
+  useEffect(() => {
+    let active = true;
+    const data = buildCrossTabulatedData();
+    if (!data || !showGridChart) return;
+
+    const mainEl = document.getElementById('plotly-grid-main');
+    const posthocEl = document.getElementById('plotly-grid-posthoc');
+
+    if (!mainEl && !posthocEl) return;
+
+    const { rFactor, c1Factor, c2Factor, rowLevels, col1Levels, col2Levels, cellMap } = data;
+    const hasSubHeader = c2Factor && col2Levels.length > 0;
+
+    const seriesList = [];
+    if (hasSubHeader) {
+      col1Levels.forEach(c1 => {
+        col2Levels.forEach(c2 => {
+          seriesList.push({ name: `${c1} / ${c2}`, c1, c2 });
+        });
+      });
+    } else {
+      col1Levels.forEach(c1 => {
+        seriesList.push({ name: c1, c1, c2: '' });
+      });
+    }
+
+    const themePalettes = {
+      agri_green: ['#15803D', '#16A34A', '#22C55E', '#4ADE80', '#86EFAC', '#BBF7D0'],
+      sunset_orange: ['#C2410C', '#EA580C', '#F97316', '#FB923C', '#FDBA74', '#FED7AA'],
+      ocean_blue: ['#1E40AF', '#2563EB', '#3B82F6', '#60A5FA', '#93C5FD', '#BFDBFE'],
+      forest_field: ['#064E3B', '#047857', '#10B981', '#D97706', '#F59E0B', '#FBBF24'],
+      deep_purple: ['#6B21A8', '#9333EA', '#A855F7', '#C084FC', '#E9D5FF', '#F3E8FF'],
+      coolwarm: ['#1E3A8A', '#3B82F6', '#60A5FA', '#F87171', '#EF4444', '#991B1B'],
+      magma: ['#311042', '#6B1D5C', '#A83267', '#DC5059', '#F88049', '#FBB672']
+    };
+
+    const colors = (gridTheme === 'custom' && gridCustomColor) ? [gridCustomColor, '#2563EB', '#16A34A', '#EA580C', '#9333EA', '#0D9488'] : (themePalettes[gridTheme] || themePalettes.agri_green);
+
+    const traces = seriesList.map((s, idx) => {
+      const sColor = colors[idx % colors.length];
+      const yData = rowLevels.map(rVal => {
+        const key = [rVal, s.c1, s.c2].join('|||');
+        return cellMap[key]?.info?.mean ?? 0;
+      });
+      const seData = rowLevels.map(rVal => {
+        const key = [rVal, s.c1, s.c2].join('|||');
+        return cellMap[key]?.info?.se ?? 0;
+      });
+      const textData = rowLevels.map(rVal => {
+        const key = [rVal, s.c1, s.c2].join('|||');
+        return formatGridCellValue(cellMap[key]);
+      });
+
+      return {
+        x: rowLevels,
+        y: yData,
+        name: s.name,
+        type: gridChartType === 'line' ? 'scatter' : 'bar',
+        mode: gridChartType === 'line' ? 'lines+markers' : undefined,
+        marker: {
+          color: sColor,
+          size: gridChartType === 'line' ? 8 : undefined
+        },
+        line: gridChartType === 'line' ? { color: sColor, width: 2.5 } : undefined,
+        error_y: {
+          type: 'data',
+          array: seData,
+          visible: true,
+          color: '#64748B',
+          thickness: 1.5,
+          width: 4
+        },
+        text: textData,
+        textposition: 'outside',
+        cliponaxis: false
+      };
+    });
+
+    const dynamicMarginL = Math.max(60, gridFontSize * 4);
+    const dynamicMarginB = Math.max(70, gridFontSize * 5);
+    const dynamicMarginT = Math.max(60, gridFontSize * 3 + 10);
+    const dynamicMarginR = Math.max(30, gridFontSize * 2);
+
+    const layout = {
+      autosize: true,
+      height: Math.max(340, 300 + gridFontSize * 4),
+      width: 680,
+      margin: { l: dynamicMarginL, r: dynamicMarginR, t: dynamicMarginT, b: dynamicMarginB },
+      font: { family: 'Inter, sans-serif', size: gridFontSize, color: gridFontColor },
+      title: {
+        text: gridChartTitle ? gridChartTitle : `${rFactor} × ${c1Factor}${c2Factor ? ' × ' + c2Factor : ''} Interaction Plot`,
+        font: { size: gridFontSize + 2, family: 'Inter', weight: 'bold', color: gridFontColor }
+      },
+      barmode: 'group',
+      xaxis: {
+        title: { text: gridXLabel || rFactor, font: { size: gridFontSize + 1, family: 'Inter', weight: 'bold', color: gridFontColor } },
+        tickfont: { color: gridFontColor, size: gridFontSize },
+        automargin: true
+      },
+      yaxis: {
+        title: { text: gridYLabel || depVar, font: { size: gridFontSize + 1, family: 'Inter', weight: 'bold', color: gridFontColor } },
+        tickfont: { color: gridFontColor, size: gridFontSize },
+        automargin: true
+      },
+      legend: {
+        orientation: 'h',
+        y: -0.25,
+        x: 0.5,
+        xanchor: 'center',
+        font: { size: Math.max(9, gridFontSize - 1), color: gridFontColor }
+      },
+      paper_bgcolor: 'rgba(0,0,0,0)',
+      plot_bgcolor: 'rgba(0,0,0,0)'
+    };
+
+    const config = { responsive: true, displayModeBar: false };
+
+    setTimeout(() => {
+      if (!active) return;
+      if (mainEl) Plotly.newPlot(mainEl, traces, layout, config);
+      if (posthocEl) Plotly.newPlot(posthocEl, traces, layout, config);
+    }, 100);
+
+    return () => {
+      active = false;
+      if (mainEl) Plotly.purge(mainEl);
+      if (posthocEl) Plotly.purge(posthocEl);
+    };
+  }, [results, testType, selectedFactors, indVar1, indVar2, gridRowFactor, gridColFactor1, gridColFactor2, gridCellDisplay, showGridChart, gridChartType, gridTheme, gridCustomColor, gridFontSize, gridFontColor, gridChartTitle, gridXLabel, gridYLabel, postHocModalOpen]);
+
+  const renderStructuredGridTableCard = (isModal = false) => {
     const data = buildCrossTabulatedData();
     if (!data) return null;
     const factors = getAvailableFactors();
     const { rFactor, c1Factor, c2Factor, rowLevels, col1Levels, col2Levels, cellMap } = data;
     const hasSubHeader = c2Factor && col2Levels.length > 0;
+    const elementId = isModal ? 'plotly-grid-posthoc' : 'plotly-grid-main';
 
     return (
       <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-xs space-y-4 animate-fade-in">
@@ -329,20 +483,29 @@ const AnovaModal = ({ isOpen, onClose }) => {
           <div>
             <h5 className="font-display text-xs font-bold text-slate-800 flex items-center space-x-1.5">
               <Table className="h-4 w-4 text-brand-orange" />
-              <span>Multi-Factor Structured Interaction Grid Table</span>
+              <span>Multi-Factor Structured Interaction Grid Table & Chart</span>
             </h5>
             <p className="font-sans text-[10px] text-slate-400 mt-0.5">
-              Cross-tabulated mean comparison grid nested across treatment factors (Word/Excel exportable format).
+              Cross-tabulated mean comparison grid & multi-series interaction graph (Word/Excel exportable format).
             </p>
           </div>
-          <button
-            type="button"
-            onClick={handleCopyGridTable}
-            className="inline-flex items-center space-x-1.5 rounded-xl bg-slate-800 hover:bg-slate-900 text-white font-sans text-xs font-semibold px-3 py-1.5 transition-colors cursor-pointer shrink-0 self-start md:self-auto shadow-xs"
-          >
-            <Copy className="h-3.5 w-3.5" />
-            <span>Copy Table for Word/Excel</span>
-          </button>
+          <div className="flex items-center space-x-2 shrink-0">
+            <button
+              type="button"
+              onClick={() => setShowGridChart(!showGridChart)}
+              className="inline-flex items-center space-x-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-sans text-xs font-semibold px-3 py-1.5 transition-colors cursor-pointer shadow-xs"
+            >
+              <span>{showGridChart ? 'Hide Interaction Plot' : 'Show Interaction Plot'}</span>
+            </button>
+            <button
+              type="button"
+              onClick={handleCopyGridTable}
+              className="inline-flex items-center space-x-1.5 rounded-xl bg-slate-800 hover:bg-slate-900 text-white font-sans text-xs font-semibold px-3 py-1.5 transition-colors cursor-pointer shadow-xs"
+            >
+              <Copy className="h-3.5 w-3.5" />
+              <span>Copy Table for Word/Excel</span>
+            </button>
+          </div>
         </div>
 
         {/* Controls Panel */}
@@ -476,6 +639,157 @@ const AnovaModal = ({ isOpen, onClose }) => {
             </tbody>
           </table>
         </div>
+
+        {/* Interaction Plot & Chart Customization Panel */}
+        {showGridChart && (
+          <div className="space-y-4 pt-2 border-t border-slate-100 animate-fade-in">
+            {/* Chart Customization Controls */}
+            <div className="rounded-xl border border-slate-100 bg-slate-50/60 p-3 space-y-3">
+              <h6 className="font-display text-[11px] font-bold text-slate-700 uppercase tracking-wider">
+                Graph Customization & Color Themes
+              </h6>
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
+                {/* Chart Type */}
+                <div className="space-y-1">
+                  <label className="font-sans text-[9px] font-bold text-slate-400 uppercase">Chart Type</label>
+                  <select
+                    value={gridChartType}
+                    onChange={(e) => setGridChartType(e.target.value)}
+                    className="w-full rounded-lg border border-slate-200 bg-white py-1 px-2.5 font-sans text-xs outline-hidden focus:border-brand-indigo focus:ring-2 focus:ring-brand-indigo/10 cursor-pointer"
+                  >
+                    <option value="bar">Grouped Bar Chart</option>
+                    <option value="line">Grouped Line Plot</option>
+                  </select>
+                </div>
+
+                {/* Color Theme */}
+                <div className="space-y-1">
+                  <label className="font-sans text-[9px] font-bold text-slate-400 uppercase">Color Theme</label>
+                  <select
+                    value={gridTheme}
+                    onChange={(e) => setGridTheme(e.target.value)}
+                    className="w-full rounded-lg border border-slate-200 bg-white py-1 px-2.5 font-sans text-xs outline-hidden focus:border-brand-indigo focus:ring-2 focus:ring-brand-indigo/10 cursor-pointer"
+                  >
+                    <option value="agri_green">Agriculture Green</option>
+                    <option value="sunset_orange">Sunset Orange</option>
+                    <option value="ocean_blue">Ocean Blue</option>
+                    <option value="forest_field">Forest & Field</option>
+                    <option value="deep_purple">Deep Purple</option>
+                    <option value="coolwarm">Divergent Coolwarm</option>
+                    <option value="magma">Magma Dark</option>
+                    <option value="custom">Custom Color of Choice</option>
+                  </select>
+                </div>
+
+                {/* Custom Color Input */}
+                <div className="space-y-1">
+                  <label className="font-sans text-[9px] font-bold text-slate-400 uppercase">Primary Color of Choice</label>
+                  <div className="flex space-x-2">
+                    <input
+                      type="color"
+                      value={gridCustomColor.startsWith('#') && gridCustomColor.length === 7 ? gridCustomColor : '#16A34A'}
+                      onChange={(e) => {
+                        setGridCustomColor(e.target.value);
+                        setGridTheme('custom');
+                      }}
+                      className="h-7 w-9 border border-slate-200 rounded cursor-pointer shrink-0"
+                    />
+                    <input
+                      type="text"
+                      placeholder="#16A34A"
+                      value={gridCustomColor}
+                      onChange={(e) => {
+                        setGridCustomColor(e.target.value);
+                        if (e.target.value) setGridTheme('custom');
+                      }}
+                      className="w-full rounded-lg border border-slate-200 bg-white py-1 px-2.5 font-mono text-xs outline-hidden focus:border-brand-indigo focus:ring-2 focus:ring-brand-indigo/10"
+                    />
+                  </div>
+                </div>
+
+                {/* Font Size */}
+                <div className="space-y-1">
+                  <label className="font-sans text-[9px] font-bold text-slate-400 uppercase">Font Size (px)</label>
+                  <input
+                    type="number"
+                    min="6"
+                    max="24"
+                    value={gridFontSize}
+                    onChange={(e) => setGridFontSize(parseInt(e.target.value) || 10)}
+                    className="w-full rounded-lg border border-slate-200 bg-white py-1 px-2.5 font-sans text-xs outline-hidden focus:border-brand-indigo focus:ring-2 focus:ring-brand-indigo/10"
+                  />
+                </div>
+              </div>
+
+              {/* Labels & Titles Row */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
+                {/* Chart Title */}
+                <div className="space-y-1">
+                  <label className="font-sans text-[9px] font-bold text-slate-400 uppercase">Chart Title</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Treatment Interaction Plot"
+                    value={gridChartTitle}
+                    onChange={(e) => setGridChartTitle(e.target.value)}
+                    className="w-full rounded-lg border border-slate-200 bg-white py-1 px-2.5 font-sans text-xs outline-hidden focus:border-brand-indigo focus:ring-2 focus:ring-brand-indigo/10"
+                  />
+                </div>
+
+                {/* X-Axis Label */}
+                <div className="space-y-1">
+                  <label className="font-sans text-[9px] font-bold text-slate-400 uppercase">X-Axis Label</label>
+                  <input
+                    type="text"
+                    placeholder={rFactor}
+                    value={gridXLabel}
+                    onChange={(e) => setGridXLabel(e.target.value)}
+                    className="w-full rounded-lg border border-slate-200 bg-white py-1 px-2.5 font-sans text-xs outline-hidden focus:border-brand-indigo focus:ring-2 focus:ring-brand-indigo/10"
+                  />
+                </div>
+
+                {/* Y-Axis Label */}
+                <div className="space-y-1">
+                  <label className="font-sans text-[9px] font-bold text-slate-400 uppercase">Y-Axis Label</label>
+                  <input
+                    type="text"
+                    placeholder={depVar || 'Response Mean'}
+                    value={gridYLabel}
+                    onChange={(e) => setGridYLabel(e.target.value)}
+                    className="w-full rounded-lg border border-slate-200 bg-white py-1 px-2.5 font-sans text-xs outline-hidden focus:border-brand-indigo focus:ring-2 focus:ring-brand-indigo/10"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Plot Container */}
+            <div className="w-full bg-white rounded-xl p-3 border border-slate-100 shadow-xs flex flex-col items-center">
+              <div className="w-full flex items-center justify-between border-b border-slate-100 pb-2 mb-2">
+                <span className="font-sans text-[11px] font-semibold text-slate-600">
+                  {rFactor} × {c1Factor}{c2Factor ? ' × ' + c2Factor : ''} Interaction Graph
+                </span>
+                <div className="flex items-center space-x-2">
+                  <button
+                    type="button"
+                    onClick={() => handleDownloadGridChart('png', elementId)}
+                    className="inline-flex items-center space-x-1 rounded-lg border border-slate-200 bg-white px-2 py-1 font-sans text-[10px] font-semibold text-slate-600 hover:bg-slate-50 transition-colors cursor-pointer"
+                  >
+                    <Download className="h-3 w-3" />
+                    <span>PNG</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleDownloadGridChart('svg', elementId)}
+                    className="inline-flex items-center space-x-1 rounded-lg border border-slate-200 bg-white px-2 py-1 font-sans text-[10px] font-semibold text-slate-600 hover:bg-slate-50 transition-colors cursor-pointer"
+                  >
+                    <Download className="h-3 w-3" />
+                    <span>SVG</span>
+                  </button>
+                </div>
+              </div>
+              <div id={elementId} className="w-full max-w-full min-h-[340px]" />
+            </div>
+          </div>
+        )}
       </div>
     );
   };
@@ -3193,7 +3507,7 @@ const AnovaModal = ({ isOpen, onClose }) => {
               )}
 
               {/* Structured Multi-Factor Interaction Grid Table */}
-              {renderStructuredGridTableCard()}
+              {renderStructuredGridTableCard(false)}
 
               {/* TABLES OF MEAN, STANDARD ERRORS AND C.D. */}
               <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-xs animate-fade-in">
@@ -3495,7 +3809,7 @@ const AnovaModal = ({ isOpen, onClose }) => {
               )}
 
               {/* Structured Multi-Factor Interaction Grid Table */}
-              {renderStructuredGridTableCard()}
+              {renderStructuredGridTableCard(true)}
 
               {/* Graph Customization Settings */}
               <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-xs space-y-3">

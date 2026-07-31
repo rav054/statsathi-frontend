@@ -339,6 +339,55 @@ const AnovaModal = ({ isOpen, onClose }) => {
     });
   };
 
+  const getSeriesColor = (c1Idx, c2Idx, totalC1, totalC2, theme) => {
+    if (theme === 'custom' && gridCustomColor) {
+      return gridCustomColor;
+    }
+
+    const colorFamilies = {
+      forest_field: [
+        ['#1E70B8', '#74B3E8', '#93C5FD'], // Blue family (like Image 1)
+        ['#E85D26', '#F6A483', '#FED7AA'], // Orange family (like Image 1)
+        ['#15803D', '#4ADE80', '#BBF7D0'], // Green family
+        ['#7E22CE', '#C084FC', '#F3E8FF']  // Purple family
+      ],
+      agri_green: [
+        ['#15803D', '#4ADE80', '#86EFAC'],
+        ['#C2410C', '#FB923C', '#FED7AA'],
+        ['#1E40AF', '#60A5FA', '#BFDBFE'],
+        ['#6B21A8', '#C084FC', '#F3E8FF']
+      ],
+      ocean_blue: [
+        ['#1E3A8A', '#3B82F6', '#93C5FD'],
+        ['#0F766E', '#14B8A6', '#99F6E4'],
+        ['#4338CA', '#818CF8', '#C7D2FE']
+      ],
+      sunset_orange: [
+        ['#C2410C', '#F97316', '#FDBA74'],
+        ['#B45309', '#F59E0B', '#FDE68A'],
+        ['#BE123C', '#FB7185', '#FECDD3']
+      ],
+      deep_purple: [
+        ['#6B21A8', '#A855F7', '#E9D5FF'],
+        ['#0369A1', '#38BDF8', '#BAE6FD'],
+        ['#BE185D', '#F472B6', '#FBCFE8']
+      ],
+      coolwarm: [
+        ['#1E3A8A', '#60A5FA', '#BFDBFE'],
+        ['#B91C1C', '#F87171', '#FCA5A5'],
+        ['#047857', '#34D399', '#A7F3D0']
+      ],
+      magma: [
+        ['#311042', '#A83267', '#FBB672'],
+        ['#111827', '#4B5563', '#9CA3AF']
+      ]
+    };
+
+    const familyList = colorFamilies[theme] || colorFamilies.forest_field;
+    const family = familyList[c1Idx % familyList.length];
+    return family[c2Idx % family.length] || family[0];
+  };
+
   useEffect(() => {
     let active = true;
     const data = buildCrossTabulatedData();
@@ -354,42 +403,35 @@ const AnovaModal = ({ isOpen, onClose }) => {
 
     const seriesList = [];
     if (hasSubHeader) {
-      col1Levels.forEach(c1 => {
-        col2Levels.forEach(c2 => {
-          seriesList.push({ name: `${c1} / ${c2}`, c1, c2 });
+      col1Levels.forEach((c1, c1Idx) => {
+        col2Levels.forEach((c2, c2Idx) => {
+          const sColor = getSeriesColor(c1Idx, c2Idx, col1Levels.length, col2Levels.length, gridTheme);
+          seriesList.push({ name: `${c1}, ${c2}`, c1, c2, color: sColor });
         });
       });
     } else {
-      col1Levels.forEach(c1 => {
-        seriesList.push({ name: c1, c1, c2: '' });
+      col1Levels.forEach((c1, c1Idx) => {
+        const sColor = getSeriesColor(c1Idx, 0, col1Levels.length, 1, gridTheme);
+        seriesList.push({ name: c1, c1, c2: '', color: sColor });
       });
     }
 
-    const themePalettes = {
-      agri_green: ['#15803D', '#16A34A', '#22C55E', '#4ADE80', '#86EFAC', '#BBF7D0'],
-      sunset_orange: ['#C2410C', '#EA580C', '#F97316', '#FB923C', '#FDBA74', '#FED7AA'],
-      ocean_blue: ['#1E40AF', '#2563EB', '#3B82F6', '#60A5FA', '#93C5FD', '#BFDBFE'],
-      forest_field: ['#064E3B', '#047857', '#10B981', '#D97706', '#F59E0B', '#FBBF24'],
-      deep_purple: ['#6B21A8', '#9333EA', '#A855F7', '#C084FC', '#E9D5FF', '#F3E8FF'],
-      coolwarm: ['#1E3A8A', '#3B82F6', '#60A5FA', '#F87171', '#EF4444', '#991B1B'],
-      magma: ['#311042', '#6B1D5C', '#A83267', '#DC5059', '#F88049', '#FBB672']
-    };
+    const traces = seriesList.map((s) => {
+      const sColor = (gridTheme === 'custom' && gridCustomColor) ? gridCustomColor : s.color;
 
-    const colors = (gridTheme === 'custom' && gridCustomColor) ? [gridCustomColor, '#2563EB', '#16A34A', '#EA580C', '#9333EA', '#0D9488'] : (themePalettes[gridTheme] || themePalettes.agri_green);
-
-    const traces = seriesList.map((s, idx) => {
-      const sColor = colors[idx % colors.length];
       const yData = rowLevels.map(rVal => {
         const key = [rVal, s.c1, s.c2].join('|||');
         return cellMap[key]?.info?.mean ?? 0;
       });
+
       const seData = rowLevels.map(rVal => {
         const key = [rVal, s.c1, s.c2].join('|||');
         return cellMap[key]?.info?.se ?? 0;
       });
-      const textData = rowLevels.map(rVal => {
+
+      const textLetters = rowLevels.map(rVal => {
         const key = [rVal, s.c1, s.c2].join('|||');
-        return formatGridCellValue(cellMap[key]);
+        return cellMap[key]?.letter || '';
       });
 
       return {
@@ -400,58 +442,81 @@ const AnovaModal = ({ isOpen, onClose }) => {
         mode: gridChartType === 'line' ? 'lines+markers' : undefined,
         marker: {
           color: sColor,
-          size: gridChartType === 'line' ? 8 : undefined
+          size: gridChartType === 'line' ? 8 : undefined,
+          line: { color: '#000000', width: 0.5 }
         },
         line: gridChartType === 'line' ? { color: sColor, width: 2.5 } : undefined,
         error_y: {
           type: 'data',
           array: seData,
           visible: true,
-          color: '#64748B',
+          color: '#000000',
           thickness: 1.5,
           width: 4
         },
-        text: textData,
+        text: textLetters,
         textposition: 'outside',
+        textfont: {
+          family: 'Arial, sans-serif',
+          size: Math.max(9, gridFontSize),
+          color: '#000000',
+          weight: 'bold'
+        },
         cliponaxis: false
       };
     });
 
-    const dynamicMarginL = Math.max(60, gridFontSize * 4);
+    const dynamicMarginL = Math.max(70, gridFontSize * 4.5);
     const dynamicMarginB = Math.max(70, gridFontSize * 5);
-    const dynamicMarginT = Math.max(60, gridFontSize * 3 + 10);
-    const dynamicMarginR = Math.max(30, gridFontSize * 2);
+    const dynamicMarginT = Math.max(70, gridFontSize * 4);
+    const dynamicMarginR = Math.max(40, gridFontSize * 2);
 
     const layout = {
       autosize: true,
-      height: Math.max(340, 300 + gridFontSize * 4),
-      width: 680,
+      height: Math.max(380, 340 + gridFontSize * 4),
+      width: 720,
       margin: { l: dynamicMarginL, r: dynamicMarginR, t: dynamicMarginT, b: dynamicMarginB },
-      font: { family: 'Inter, sans-serif', size: gridFontSize, color: gridFontColor },
+      font: { family: 'Arial, sans-serif', size: gridFontSize, color: gridFontColor },
       title: {
-        text: gridChartTitle ? gridChartTitle : `${rFactor} × ${c1Factor}${c2Factor ? ' × ' + c2Factor : ''} Interaction Plot`,
-        font: { size: gridFontSize + 2, family: 'Inter', weight: 'bold', color: gridFontColor }
+        text: gridChartTitle ? gridChartTitle : `${depVar || 'Response'} — ${c1Factor}${c2Factor ? ' vs ' + c2Factor : ''}`,
+        font: { size: gridFontSize + 4, family: 'Arial, sans-serif', weight: 'bold', color: gridFontColor }
       },
       barmode: 'group',
       xaxis: {
-        title: { text: gridXLabel || rFactor, font: { size: gridFontSize + 1, family: 'Inter', weight: 'bold', color: gridFontColor } },
-        tickfont: { color: gridFontColor, size: gridFontSize },
+        title: {
+          text: gridXLabel || rFactor,
+          font: { size: gridFontSize + 2, family: 'Arial, sans-serif', weight: 'bold', color: gridFontColor }
+        },
+        tickfont: { color: gridFontColor, size: gridFontSize + 1, family: 'Arial, sans-serif', weight: 'bold' },
+        showline: true,
+        linecolor: '#000000',
+        linewidth: 1.5,
+        showgrid: false,
+        zeroline: false,
         automargin: true
       },
       yaxis: {
-        title: { text: gridYLabel || depVar, font: { size: gridFontSize + 1, family: 'Inter', weight: 'bold', color: gridFontColor } },
-        tickfont: { color: gridFontColor, size: gridFontSize },
+        title: {
+          text: gridYLabel || (depVar ? `${depVar}` : 'Response Mean'),
+          font: { size: gridFontSize + 2, family: 'Arial, sans-serif', weight: 'bold', color: gridFontColor }
+        },
+        tickfont: { color: gridFontColor, size: gridFontSize + 1, family: 'Arial, sans-serif', weight: 'bold' },
+        showline: true,
+        linecolor: '#000000',
+        linewidth: 1.5,
+        showgrid: false,
+        zeroline: false,
         automargin: true
       },
       legend: {
         orientation: 'h',
-        y: -0.25,
-        x: 0.5,
-        xanchor: 'center',
-        font: { size: Math.max(9, gridFontSize - 1), color: gridFontColor }
+        y: 1.14,
+        x: 0.98,
+        xanchor: 'right',
+        font: { size: Math.max(9, gridFontSize), color: gridFontColor, family: 'Arial, sans-serif', weight: 'bold' }
       },
-      paper_bgcolor: 'rgba(0,0,0,0)',
-      plot_bgcolor: 'rgba(0,0,0,0)'
+      paper_bgcolor: '#ffffff',
+      plot_bgcolor: '#ffffff'
     };
 
     const config = { responsive: true, displayModeBar: false };

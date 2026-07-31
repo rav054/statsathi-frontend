@@ -643,37 +643,57 @@ const AnovaModal = ({ isOpen, onClose }) => {
         {/* Interaction Plot & Chart Customization Panel */}
         {showGridChart && (
           <div className="space-y-4 pt-2 border-t border-slate-100 animate-fade-in">
-            {/* Chart Customization Controls */}
-            <div className="rounded-xl border border-slate-100 bg-slate-50/60 p-3 space-y-3">
-              <h6 className="font-display text-[11px] font-bold text-slate-700 uppercase tracking-wider">
-                Graph Customization & Color Themes
-              </h6>
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
-                {/* Chart Type */}
+            {/* Chart Customization Controls (Matching Image 1) */}
+            <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-xs space-y-4">
+              <h5 className="font-display text-xs font-bold text-slate-700">Customize Graph Settings</h5>
+              
+              {/* Row 1 */}
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                {/* Font Size */}
                 <div className="space-y-1">
-                  <label className="font-sans text-[9px] font-bold text-slate-400 uppercase">Chart Type</label>
-                  <select
-                    value={gridChartType}
-                    onChange={(e) => setGridChartType(e.target.value)}
-                    className="w-full rounded-lg border border-slate-200 bg-white py-1 px-2.5 font-sans text-xs outline-hidden focus:border-brand-indigo focus:ring-2 focus:ring-brand-indigo/10 cursor-pointer"
-                  >
-                    <option value="bar">Grouped Bar Chart</option>
-                    <option value="line">Grouped Line Plot</option>
-                  </select>
+                  <label className="font-sans text-[9px] font-bold text-slate-400 uppercase">FONT SIZE (PX)</label>
+                  <input
+                    type="number"
+                    min="6"
+                    max="24"
+                    value={gridFontSize}
+                    onChange={(e) => setGridFontSize(parseInt(e.target.value) || 10)}
+                    className="w-full rounded-xl border border-slate-200 bg-white py-1.5 px-3 font-sans text-xs outline-hidden focus:border-brand-indigo focus:ring-4 focus:ring-brand-indigo/10 transition-all"
+                  />
                 </div>
 
-                {/* Color Theme */}
+                {/* Font Color */}
                 <div className="space-y-1">
-                  <label className="font-sans text-[9px] font-bold text-slate-400 uppercase">Color Theme</label>
+                  <label className="font-sans text-[9px] font-bold text-slate-400 uppercase">FONT COLOR</label>
+                  <div className="flex space-x-2">
+                    <input
+                      type="color"
+                      value={gridFontColor.startsWith('#') && gridFontColor.length === 7 ? gridFontColor : '#334155'}
+                      onChange={(e) => setGridFontColor(e.target.value)}
+                      className="h-8 w-10 border border-slate-200 rounded-lg cursor-pointer shrink-0"
+                    />
+                    <input
+                      type="text"
+                      placeholder="#334155"
+                      value={gridFontColor}
+                      onChange={(e) => setGridFontColor(e.target.value)}
+                      className="w-full rounded-xl border border-slate-200 bg-white py-1.5 px-3 font-mono text-xs outline-hidden focus:border-brand-indigo focus:ring-4 focus:ring-brand-indigo/10 transition-all"
+                    />
+                  </div>
+                </div>
+
+                {/* Color Scheme */}
+                <div className="space-y-1">
+                  <label className="font-sans text-[9px] font-bold text-slate-400 uppercase">COLOR SCHEME</label>
                   <select
                     value={gridTheme}
                     onChange={(e) => setGridTheme(e.target.value)}
-                    className="w-full rounded-lg border border-slate-200 bg-white py-1 px-2.5 font-sans text-xs outline-hidden focus:border-brand-indigo focus:ring-2 focus:ring-brand-indigo/10 cursor-pointer"
+                    className="w-full rounded-xl border border-slate-200 bg-white py-1.5 px-3 font-sans text-xs outline-hidden focus:border-brand-indigo focus:ring-4 focus:ring-brand-indigo/10 transition-all cursor-pointer"
                   >
+                    <option value="forest_field">Forest Green</option>
                     <option value="agri_green">Agriculture Green</option>
                     <option value="sunset_orange">Sunset Orange</option>
                     <option value="ocean_blue">Ocean Blue</option>
-                    <option value="forest_field">Forest & Field</option>
                     <option value="deep_purple">Deep Purple</option>
                     <option value="coolwarm">Divergent Coolwarm</option>
                     <option value="magma">Magma Dark</option>
@@ -681,81 +701,81 @@ const AnovaModal = ({ isOpen, onClose }) => {
                   </select>
                 </div>
 
-                {/* Custom Color Input */}
+                {/* Bar Color */}
                 <div className="space-y-1">
-                  <label className="font-sans text-[9px] font-bold text-slate-400 uppercase">Primary Color of Choice</label>
+                  <label className="font-sans text-[9px] font-bold text-slate-400 uppercase">BAR COLOR</label>
                   <div className="flex space-x-2">
                     <input
                       type="color"
-                      value={gridCustomColor.startsWith('#') && gridCustomColor.length === 7 ? gridCustomColor : '#16A34A'}
+                      value={gridCustomColor.startsWith('#') && gridCustomColor.length === 7 ? gridCustomColor : '#EA580C'}
                       onChange={(e) => {
                         setGridCustomColor(e.target.value);
                         setGridTheme('custom');
                       }}
-                      className="h-7 w-9 border border-slate-200 rounded cursor-pointer shrink-0"
+                      className="h-8 w-10 border border-slate-200 rounded-lg cursor-pointer shrink-0"
                     />
                     <input
                       type="text"
-                      placeholder="#16A34A"
+                      placeholder="Default theme color"
                       value={gridCustomColor}
                       onChange={(e) => {
                         setGridCustomColor(e.target.value);
                         if (e.target.value) setGridTheme('custom');
                       }}
-                      className="w-full rounded-lg border border-slate-200 bg-white py-1 px-2.5 font-mono text-xs outline-hidden focus:border-brand-indigo focus:ring-2 focus:ring-brand-indigo/10"
+                      className="w-full rounded-xl border border-slate-200 bg-white py-1.5 px-3 font-mono text-xs outline-hidden focus:border-brand-indigo focus:ring-4 focus:ring-brand-indigo/10 transition-all"
                     />
                   </div>
                 </div>
-
-                {/* Font Size */}
-                <div className="space-y-1">
-                  <label className="font-sans text-[9px] font-bold text-slate-400 uppercase">Font Size (px)</label>
-                  <input
-                    type="number"
-                    min="6"
-                    max="24"
-                    value={gridFontSize}
-                    onChange={(e) => setGridFontSize(parseInt(e.target.value) || 10)}
-                    className="w-full rounded-lg border border-slate-200 bg-white py-1 px-2.5 font-sans text-xs outline-hidden focus:border-brand-indigo focus:ring-2 focus:ring-brand-indigo/10"
-                  />
-                </div>
               </div>
 
-              {/* Labels & Titles Row */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
+              {/* Row 2 */}
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4 pt-1">
+                {/* Chart Type */}
+                <div className="space-y-1">
+                  <label className="font-sans text-[9px] font-bold text-slate-400 uppercase">CHART TYPE</label>
+                  <select
+                    value={gridChartType}
+                    onChange={(e) => setGridChartType(e.target.value)}
+                    className="w-full rounded-xl border border-slate-200 bg-white py-1.5 px-3 font-sans text-xs outline-hidden focus:border-brand-indigo focus:ring-4 focus:ring-brand-indigo/10 transition-all cursor-pointer"
+                  >
+                    <option value="bar">Grouped Bar Chart</option>
+                    <option value="line">Grouped Line Plot</option>
+                  </select>
+                </div>
+
                 {/* Chart Title */}
                 <div className="space-y-1">
-                  <label className="font-sans text-[9px] font-bold text-slate-400 uppercase">Chart Title</label>
+                  <label className="font-sans text-[9px] font-bold text-slate-400 uppercase">CHART TITLE</label>
                   <input
                     type="text"
-                    placeholder="e.g. Treatment Interaction Plot"
+                    placeholder="e.g. Mean Separation Plot"
                     value={gridChartTitle}
                     onChange={(e) => setGridChartTitle(e.target.value)}
-                    className="w-full rounded-lg border border-slate-200 bg-white py-1 px-2.5 font-sans text-xs outline-hidden focus:border-brand-indigo focus:ring-2 focus:ring-brand-indigo/10"
+                    className="w-full rounded-xl border border-slate-200 bg-white py-1.5 px-3 font-sans text-xs outline-hidden focus:border-brand-indigo focus:ring-4 focus:ring-brand-indigo/10 transition-all"
                   />
                 </div>
 
                 {/* X-Axis Label */}
                 <div className="space-y-1">
-                  <label className="font-sans text-[9px] font-bold text-slate-400 uppercase">X-Axis Label</label>
+                  <label className="font-sans text-[9px] font-bold text-slate-400 uppercase">X-AXIS LABEL</label>
                   <input
                     type="text"
-                    placeholder={rFactor}
+                    placeholder={rFactor || "Treatment Groups"}
                     value={gridXLabel}
                     onChange={(e) => setGridXLabel(e.target.value)}
-                    className="w-full rounded-lg border border-slate-200 bg-white py-1 px-2.5 font-sans text-xs outline-hidden focus:border-brand-indigo focus:ring-2 focus:ring-brand-indigo/10"
+                    className="w-full rounded-xl border border-slate-200 bg-white py-1.5 px-3 font-sans text-xs outline-hidden focus:border-brand-indigo focus:ring-4 focus:ring-brand-indigo/10 transition-all"
                   />
                 </div>
 
                 {/* Y-Axis Label */}
                 <div className="space-y-1">
-                  <label className="font-sans text-[9px] font-bold text-slate-400 uppercase">Y-Axis Label</label>
+                  <label className="font-sans text-[9px] font-bold text-slate-400 uppercase">Y-AXIS LABEL</label>
                   <input
                     type="text"
-                    placeholder={depVar || 'Response Mean'}
+                    placeholder={depVar || "Response Mean"}
                     value={gridYLabel}
                     onChange={(e) => setGridYLabel(e.target.value)}
-                    className="w-full rounded-lg border border-slate-200 bg-white py-1 px-2.5 font-sans text-xs outline-hidden focus:border-brand-indigo focus:ring-2 focus:ring-brand-indigo/10"
+                    className="w-full rounded-xl border border-slate-200 bg-white py-1.5 px-3 font-sans text-xs outline-hidden focus:border-brand-indigo focus:ring-4 focus:ring-brand-indigo/10 transition-all"
                   />
                 </div>
               </div>

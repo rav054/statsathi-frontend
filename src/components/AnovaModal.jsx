@@ -462,16 +462,7 @@ const AnovaModal = ({ isOpen, onClose }) => {
       });
     }
 
-    let maxY = 0;
-    Object.values(cellMap).forEach(item => {
-      const mean = item?.info?.mean ?? 0;
-      const se = item?.info?.se ?? 0;
-      if (mean + se > maxY) maxY = mean + se;
-    });
-    if (maxY <= 0) maxY = 1;
-
-    const traces = [];
-    seriesList.forEach((s) => {
+    const traces = seriesList.map((s) => {
       const sColor = (gridTheme === 'custom' && gridCustomColor) ? gridCustomColor : s.color;
 
       const yData = rowLevels.map(rVal => {
@@ -486,22 +477,16 @@ const AnovaModal = ({ isOpen, onClose }) => {
 
       const textLetters = rowLevels.map(rVal => {
         const key = [rVal, s.c1, s.c2].join('|||');
-        return cellMap[key]?.letter || '';
+        const letter = cellMap[key]?.letter || '';
+        return letter ? `<br><b>${letter}</b>` : '';
       });
 
-      const textYData = rowLevels.map((rVal, idx) => {
-        const mean = yData[idx];
-        const se = seData[idx];
-        return mean + se + (maxY * 0.035);
-      });
-
-      // 1. Primary Bar / Scatter Trace (with Error Bars, no text attached to bar to avoid error bar collision)
-      traces.push({
+      return {
         x: rowLevels,
         y: yData,
         name: s.name,
         type: gridChartType === 'line' ? 'scatter' : 'bar',
-        mode: gridChartType === 'line' ? 'lines+markers' : undefined,
+        mode: gridChartType === 'line' ? 'lines+markers+text' : undefined,
         marker: {
           color: sColor,
           size: gridChartType === 'line' ? 8 : undefined,
@@ -516,27 +501,15 @@ const AnovaModal = ({ isOpen, onClose }) => {
           thickness: 1.5,
           width: 4
         },
-        cliponaxis: false
-      });
-
-      // 2. Pair Scatter Text Trace (Positioned cleanly 3.5% above the error bar whisker)
-      traces.push({
-        x: rowLevels,
-        y: textYData,
         text: textLetters,
-        type: 'scatter',
-        mode: 'text',
-        textposition: 'top center',
+        textposition: 'outside',
         textfont: {
           family: 'Arial, sans-serif',
           size: Math.max(9, gridFontSize),
-          color: '#000000',
-          weight: 'bold'
+          color: '#000000'
         },
-        showlegend: false,
-        hoverinfo: 'none',
         cliponaxis: false
-      });
+      };
     });
 
     const dynamicMarginL = Math.max(70, gridFontSize * 4.5);

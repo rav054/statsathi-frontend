@@ -462,7 +462,16 @@ const AnovaModal = ({ isOpen, onClose }) => {
       });
     }
 
-    const traces = seriesList.map((s) => {
+    let maxY = 0;
+    Object.values(cellMap).forEach(item => {
+      const mean = item?.info?.mean ?? 0;
+      const se = item?.info?.se ?? 0;
+      if (mean + se > maxY) maxY = mean + se;
+    });
+    if (maxY <= 0) maxY = 1;
+
+    const traces = [];
+    seriesList.forEach((s) => {
       const sColor = (gridTheme === 'custom' && gridCustomColor) ? gridCustomColor : s.color;
 
       const yData = rowLevels.map(rVal => {
@@ -480,7 +489,14 @@ const AnovaModal = ({ isOpen, onClose }) => {
         return cellMap[key]?.letter || '';
       });
 
-      return {
+      const textYData = rowLevels.map((rVal, idx) => {
+        const mean = yData[idx];
+        const se = seData[idx];
+        return mean + se + (maxY * 0.035);
+      });
+
+      // 1. Primary Bar / Scatter Trace (with Error Bars, no text attached to bar to avoid error bar collision)
+      traces.push({
         x: rowLevels,
         y: yData,
         name: s.name,
@@ -500,32 +516,47 @@ const AnovaModal = ({ isOpen, onClose }) => {
           thickness: 1.5,
           width: 4
         },
+        cliponaxis: false
+      });
+
+      // 2. Pair Scatter Text Trace (Positioned cleanly 3.5% above the error bar whisker)
+      traces.push({
+        x: rowLevels,
+        y: textYData,
         text: textLetters,
-        textposition: 'outside',
+        type: 'scatter',
+        mode: 'text',
+        textposition: 'top center',
         textfont: {
           family: 'Arial, sans-serif',
           size: Math.max(9, gridFontSize),
           color: '#000000',
           weight: 'bold'
         },
+        showlegend: false,
+        hoverinfo: 'none',
         cliponaxis: false
-      };
+      });
     });
 
     const dynamicMarginL = Math.max(70, gridFontSize * 4.5);
     const dynamicMarginB = Math.max(70, gridFontSize * 5);
-    const dynamicMarginT = Math.max(70, gridFontSize * 4);
+    const dynamicMarginT = Math.max(110, gridFontSize * 6 + 30);
     const dynamicMarginR = Math.max(40, gridFontSize * 2);
 
     const layout = {
       autosize: true,
-      height: Math.max(380, 340 + gridFontSize * 4),
-      width: 720,
+      height: Math.max(420, 360 + gridFontSize * 4),
+      width: 740,
       margin: { l: dynamicMarginL, r: dynamicMarginR, t: dynamicMarginT, b: dynamicMarginB },
       font: { family: 'Arial, sans-serif', size: gridFontSize, color: gridFontColor },
       title: {
         text: gridChartTitle ? gridChartTitle : `${depVar || 'Response'} — ${c1Factor}${c2Factor ? ' vs ' + c2Factor : ''}`,
-        font: { size: gridFontSize + 4, family: 'Arial, sans-serif', weight: 'bold', color: gridFontColor }
+        font: { size: gridFontSize + 4, family: 'Arial, sans-serif', weight: 'bold', color: gridFontColor },
+        y: 0.98,
+        x: 0.5,
+        xanchor: 'center',
+        yanchor: 'top'
       },
       barmode: 'group',
       xaxis: {
@@ -556,9 +587,10 @@ const AnovaModal = ({ isOpen, onClose }) => {
       },
       legend: {
         orientation: 'h',
-        y: 1.14,
-        x: 0.98,
-        xanchor: 'right',
+        y: 1.07,
+        yanchor: 'bottom',
+        x: 0.5,
+        xanchor: 'center',
         font: { size: Math.max(9, gridFontSize), color: gridFontColor, family: 'Arial, sans-serif', weight: 'bold' }
       },
       paper_bgcolor: '#ffffff',

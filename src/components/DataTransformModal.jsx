@@ -59,36 +59,63 @@ const DataTransformModal = ({ isOpen, onClose, file: propFile, onSaveTransformed
     }
   }, [isOpen, activeFile]);
 
+  // Robust CSV parser supporting quotes, commas, and line breaks
+  const parseCsvText = (text) => {
+    const lines = text.split(/\r\n|\n/).filter(l => l.trim() !== '');
+    if (lines.length === 0) return { headers: [], rows: [] };
+
+    const parseCsvLine = (line) => {
+      const pattern = /(?:^|,)(?:"([^"]*(?:""[^"]*)*)"|([^",]*))/g;
+      const fields = [];
+      let match;
+      while ((match = pattern.exec(line)) !== null) {
+        let val = match[1] !== undefined ? match[1].replace(/""/g, '"') : match[2];
+        fields.push(val ? val.trim() : '');
+      }
+      return fields;
+    };
+
+    const rawHeaders = parseCsvLine(lines[0]);
+    const headers = rawHeaders.filter((h, idx) => h !== '' || idx < rawHeaders.length - 1);
+
+    const rows = [];
+    for (let i = 1; i < Math.min(lines.length, 200); i++) {
+      const fields = parseCsvLine(lines[i]);
+      if (fields.length === 0 || (fields.length === 1 && fields[0] === '')) continue;
+      const rowObj = {};
+      headers.forEach((h, idx) => {
+        if (h) rowObj[h] = fields[idx] !== undefined ? fields[idx] : '';
+      });
+      rows.push(rowObj);
+    }
+
+    return { headers, rows };
+  };
+
   // Helper to check if a value is numeric (handles stringified numbers like "4500.1", 4500.1, "-12.5")
   const isNumericValue = (val) => {
     if (val === null || val === undefined) return false;
     const str = String(val).trim();
     if (str === '') return false;
-    return !isNaN(str) && !isNaN(parseFloat(str)) && isFinite(str);
+    // Reject Sample ID strings like "S_ID1", "S_ID2", "Sample_A", "ID_001"
+    if (/^[a-zA-Z_]/i.test(str)) return false;
+    return !isNaN(str) && !isNaN(parseFloat(str)) && isFinite(parseFloat(str));
   };
 
-  // Parse CSV text locally to detect numeric columns (including stringified numbers)
+  // Detect numeric columns from parsed CSV text
   const parseLocalCsvNumericColumns = (csvText) => {
-    const lines = csvText.split(/\r\n|\n/).filter(line => line.trim() !== '');
-    if (lines.length === 0) return [];
-    
-    const headers = lines[0].split(',').map(h => h.trim().replace(/^["']|["']$/g, ''));
-    const rows = lines.slice(1, 100).map(line => {
-      const values = line.split(',').map(v => v.trim().replace(/^["']|["']$/g, ''));
-      const rowObj = {};
-      headers.forEach((h, idx) => {
-        rowObj[h] = values[idx];
-      });
-      return rowObj;
-    });
+    const { headers, rows } = parseCsvText(csvText);
+    if (headers.length === 0 || rows.length === 0) return [];
 
     return headers.filter(header => {
       const sampleVals = rows
         .map(r => r[header])
         .filter(v => v !== null && v !== undefined && String(v).trim() !== '');
+
       if (sampleVals.length === 0) return false;
+
       const numCount = sampleVals.filter(isNumericValue).length;
-      return (numCount / sampleVals.length) >= 0.7;
+      return (numCount / sampleVals.length) >= 0.6;
     });
   };
 
@@ -97,8 +124,22 @@ const DataTransformModal = ({ isOpen, onClose, file: propFile, onSaveTransformed
       setLoading(true);
       setError(null);
 
+      // Read file text client-side first for immediate & robust numeric column detection
+      if (fileToParse && fileToParse.name && fileToParse.name.endsWith('.csv')) {
+        const text = await fileToParse.text();
+        const numCols = parseLocalCsvNumericColumns(text);
+        if (numCols.length > 0) {
+          setNumericCols(numCols);
+          setAllCols(numCols);
+          setSelectedCols([numCols[0]]);
+          return;
+        }
+      }
+
+      // If file is Excel (.xlsx/.xls), parse via API or fallback
       const formData = new FormData();
       formData.append('file', fileToParse);
+      formData.append('columns_str', 'dummy');
 
       const res = await fetch(`${API_URL}/analyze/descriptive`, {
         method: 'POST',
@@ -117,18 +158,6 @@ const DataTransformModal = ({ isOpen, onClose, file: propFile, onSaveTransformed
           if (numCols.length > 0) {
             setSelectedCols([numCols[0]]);
           }
-          return;
-        }
-      }
-
-      // Client-side fallback if API returns no columns: parse CSV and handle stringified numbers
-      if (fileToParse && fileToParse.name && fileToParse.name.endsWith('.csv')) {
-        const text = await fileToParse.text();
-        const numCols = parseLocalCsvNumericColumns(text);
-        if (numCols.length > 0) {
-          setNumericCols(numCols);
-          setAllCols(numCols);
-          setSelectedCols([numCols[0]]);
           return;
         }
       }

@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useAuth, API_URL } from '../context/AuthContext';
 import {
   X, RefreshCw, CheckCircle2, AlertCircle, Sparkles, Sliders,
-  Check, ArrowRight, Table, Info, Zap, ChevronRight
+  Check, ArrowRight, Table, Info, Zap, ChevronRight, Upload
 } from 'lucide-react';
 
 const TRANSFORM_METHODS = [
@@ -42,7 +42,7 @@ const DataTransformModal = ({ isOpen, onClose, file: propFile, onSaveTransformed
   const [error, setError] = useState(null);
   const [suggestedMethod, setSuggestedMethod] = useState(null);
   const [successMsg, setSuccessMsg] = useState(null);
-  const localFileInputRef = React.useRef(null);
+  const localFileInputRef = useRef(null);
 
   // Sync propFile
   useEffect(() => {
@@ -242,6 +242,33 @@ const DataTransformModal = ({ isOpen, onClose, file: propFile, onSaveTransformed
             </div>
           )}
 
+          {!activeFile && (
+            <div className="rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50/50 p-8 text-center space-y-3 animate-fade-in">
+              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-indigo-50 text-brand-indigo">
+                <Upload className="h-6 w-6" />
+              </div>
+              <h4 className="font-display text-sm font-bold text-slate-800">No Dataset File Loaded</h4>
+              <p className="text-xs text-slate-400 max-w-sm mx-auto">
+                Upload a CSV or Excel dataset to select numeric variables and apply variance stabilization or feature scaling.
+              </p>
+              <button
+                type="button"
+                onClick={() => localFileInputRef.current?.click()}
+                className="inline-flex items-center space-x-2 rounded-xl bg-brand-indigo px-4 py-2 text-xs font-bold text-white shadow-xs hover:bg-indigo-700 transition-colors cursor-pointer"
+              >
+                <Upload className="h-4 w-4" />
+                <span>Upload Dataset File</span>
+              </button>
+              <input
+                type="file"
+                ref={localFileInputRef}
+                onChange={handleLocalFileChange}
+                accept=".csv, .xlsx, .xls"
+                className="hidden"
+              />
+            </div>
+          )}
+
           {/* Step 1: Select Column(s) */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
@@ -258,7 +285,7 @@ const DataTransformModal = ({ isOpen, onClose, file: propFile, onSaveTransformed
               </button>
             </div>
 
-            {loadingCols ? (
+            {loading ? (
               <div className="flex items-center space-x-2 text-xs text-slate-400 py-3">
                 <RefreshCw className="h-4 w-4 animate-spin text-brand-indigo" />
                 <span>Loading numeric columns...</span>

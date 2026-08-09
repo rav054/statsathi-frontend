@@ -59,9 +59,44 @@ const DataTransformModal = ({ isOpen, onClose, file: propFile, onSaveTransformed
     }
   }, [isOpen, activeFile]);
 
+  // Helper to check if a value is numeric (handles stringified numbers like "4500.1", 4500.1, "-12.5")
+  const isNumericValue = (val) => {
+    if (val === null || val === undefined) return false;
+    const str = String(val).trim();
+    if (str === '') return false;
+    return !isNaN(str) && !isNaN(parseFloat(str)) && isFinite(str);
+  };
+
+  // Parse CSV text locally to detect numeric columns (including stringified numbers)
+  const parseLocalCsvNumericColumns = (csvText) => {
+    const lines = csvText.split(/\r\n|\n/).filter(line => line.trim() !== '');
+    if (lines.length === 0) return [];
+    
+    const headers = lines[0].split(',').map(h => h.trim().replace(/^["']|["']$/g, ''));
+    const rows = lines.slice(1, 100).map(line => {
+      const values = line.split(',').map(v => v.trim().replace(/^["']|["']$/g, ''));
+      const rowObj = {};
+      headers.forEach((h, idx) => {
+        rowObj[h] = values[idx];
+      });
+      return rowObj;
+    });
+
+    return headers.filter(header => {
+      const sampleVals = rows
+        .map(r => r[header])
+        .filter(v => v !== null && v !== undefined && String(v).trim() !== '');
+      if (sampleVals.length === 0) return false;
+      const numCount = sampleVals.filter(isNumericValue).length;
+      return (numCount / sampleVals.length) >= 0.7;
+    });
+  };
+
   const fetchColumns = async (fileToParse) => {
     try {
       setLoading(true);
+      setError(null);
+
       const formData = new FormData();
       formData.append('file', fileToParse);
 
@@ -73,21 +108,48 @@ const DataTransformModal = ({ isOpen, onClose, file: propFile, onSaveTransformed
         body: formData
       });
 
-      if (!res.ok) {
-        throw new Error('Failed to parse dataset columns');
-      }
-
-      const data = await res.json();
-      if (data.results) {
-        const numCols = Object.keys(data.results);
-        setNumericCols(numCols);
-        setAllCols(numCols);
-        if (numCols.length > 0) {
-          setSelectedCols([numCols[0]]);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.results && Object.keys(data.results).length > 0) {
+          const numCols = Object.keys(data.results);
+          setNumericCols(numCols);
+          setAllCols(numCols);
+          if (numCols.length > 0) {
+            setSelectedCols([numCols[0]]);
+          }
+          return;
         }
       }
+
+      // Client-side fallback if API returns no columns: parse CSV and handle stringified numbers
+      if (fileToParse && fileToParse.name && fileToParse.name.endsWith('.csv')) {
+        const text = await fileToParse.text();
+        const numCols = parseLocalCsvNumericColumns(text);
+        if (numCols.length > 0) {
+          setNumericCols(numCols);
+          setAllCols(numCols);
+          setSelectedCols([numCols[0]]);
+          return;
+        }
+      }
+
+      setError('No numeric columns detected in the selected dataset file.');
     } catch (err) {
       console.error(err);
+      if (fileToParse && fileToParse.name && fileToParse.name.endsWith('.csv')) {
+        try {
+          const text = await fileToParse.text();
+          const numCols = parseLocalCsvNumericColumns(text);
+          if (numCols.length > 0) {
+            setNumericCols(numCols);
+            setAllCols(numCols);
+            setSelectedCols([numCols[0]]);
+            return;
+          }
+        } catch (localErr) {
+          console.error(localErr);
+        }
+      }
       setError('Upload or select a valid numeric dataset file.');
     } finally {
       setLoading(false);

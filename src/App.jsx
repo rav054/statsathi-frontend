@@ -7,6 +7,7 @@ import Dashboard from './components/Dashboard';
 import Projects from './components/Projects';
 import LearningHub from './components/LearningHub';
 import Auth from './components/Auth';
+import SemDemoApp from './components/SemDemoApp';
 
 const MainLayout = ({ activeTab, setActiveTab, authView, setAuthView }) => {
   const { user } = useAuth();
@@ -33,6 +34,7 @@ const MainLayout = ({ activeTab, setActiveTab, authView, setAuthView }) => {
               {activeTab === 'dashboard' && <Dashboard onAuthClick={() => setAuthView(true)} />}
               {activeTab === 'projects' && <Projects onAuthClick={() => setAuthView(true)} />}
               {activeTab === 'learning' && <LearningHub />}
+              {activeTab === 'sem-demo' && <SemDemoApp />}
             </main>
           </div>
           {/* Bottom Footer */}

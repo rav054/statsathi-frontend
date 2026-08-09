@@ -1,11 +1,12 @@
 import React from 'react';
-import { LayoutDashboard, FolderKanban, BookOpen } from 'lucide-react';
+import { LayoutDashboard, FolderKanban, BookOpen, Network } from 'lucide-react';
 
 const Sidebar = ({ activeTab, setActiveTab }) => {
   const navItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'projects', label: 'My Projects', icon: FolderKanban },
     { id: 'learning', label: 'Learning Hub', icon: BookOpen },
+    { id: 'sem-demo', label: 'SEM Demo App', icon: Network },
   ];
 
   return (

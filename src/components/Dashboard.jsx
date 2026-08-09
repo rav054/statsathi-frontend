@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { useAuth, API_URL } from '../context/AuthContext';
-import { Calculator, BarChart3, Binary, Compass, Cpu, GitCompare, Info, Lock, Milestone, Upload, Grid, Layers, Network, TrendingUp, RefreshCw } from 'lucide-react';
+import { Calculator, BarChart3, Binary, Compass, Cpu, GitCompare, Info, Lock, Milestone, Upload, Grid, Layers, Network, TrendingUp, RefreshCw, Sliders } from 'lucide-react';
 import DatasetViewerModal from './DatasetViewerModal';
 import CorrelationModal from './CorrelationModal';
 import ParametricModal from './ParametricModal';
@@ -12,6 +12,7 @@ import LayoutGeneratorModal from './LayoutGeneratorModal';
 import DescriptiveModal from './DescriptiveModal';
 import ClusteringModal from './ClusteringModal';
 import RegressionModal from './RegressionModal';
+import DataTransformModal from './DataTransformModal';
 
 const Dashboard = ({ onAuthClick }) => {
   const { user } = useAuth();
@@ -25,6 +26,7 @@ const Dashboard = ({ onAuthClick }) => {
   const [layoutGeneratorOpen, setLayoutGeneratorOpen] = useState(false);
   const [clusteringOpen, setClusteringOpen] = useState(false);
   const [regressionOpen, setRegressionOpen] = useState(false);
+  const [transformOpen, setTransformOpen] = useState(false);
   const [comingSoonOpen, setComingSoonOpen] = useState(false);
   const [selectedModule, setSelectedModule] = useState('');
   const [authPromptOpen, setAuthPromptOpen] = useState(false);
@@ -190,6 +192,13 @@ const Dashboard = ({ onAuthClick }) => {
       buttonText: 'Run Regression',
       icon: TrendingUp,
     },
+    {
+      id: 'transform',
+      title: 'Data Transformation & Scaling',
+      description: 'Stabilize variance or scale features. Log10, Natural Log, Sqrt, Arcsine, Box-Cox, Yeo-Johnson, Z-Score, Min-Max.',
+      buttonText: 'Transform & Scale',
+      icon: Sliders,
+    },
   ];
 
   const handleAction = (moduleId) => {
@@ -218,6 +227,8 @@ const Dashboard = ({ onAuthClick }) => {
       setClusteringOpen(true);
     } else if (moduleId === 'regression') {
       setRegressionOpen(true);
+    } else if (moduleId === 'transform') {
+      setTransformOpen(true);
     } else {
       setSelectedModule(modules.find(m => m.id === moduleId)?.title || '');
       setComingSoonOpen(true);
@@ -460,10 +471,15 @@ const Dashboard = ({ onAuthClick }) => {
         onClose={() => setClusteringOpen(false)}
       />
 
-      {/* Regression Analysis Modal */}
-      <RegressionModal
-        isOpen={regressionOpen}
-        onClose={() => setRegressionOpen(false)}
+      {/* Data Transformation & Scaling Modal */}
+      <DataTransformModal
+        isOpen={transformOpen}
+        onClose={() => setTransformOpen(false)}
+        file={file}
+        onSaveTransformedData={(updatedFile) => {
+          handleSaveEditedData(updatedFile);
+          setViewerOpen(true);
+        }}
       />
 
       <DatasetViewerModal

@@ -28,6 +28,16 @@ const TRANSFORM_METHODS = [
       { id: 'zscore', label: 'Z-Score Standardization', suffix: '_ZScore', icon: 'z', desc: 'Rescales data to Mean = 0, Standard Deviation = 1.', recommendation: 'Ideal for PCA, Clustering, Regression & distance-based algorithms.' },
       { id: 'minmax', label: 'Min-Max Scaling [0, 1]', suffix: '_MinMax', icon: 'mm', desc: 'Scales feature values to a fixed range between 0 and 1.', recommendation: 'Ideal for Neural Networks & algorithms requiring bounded features.' },
     ]
+  },
+  {
+    category: 'Spectral & Chemometric Preprocessing (Advanced Tier)',
+    items: [
+      { id: 'snv', label: 'Standard Normal Variate (SNV)', suffix: '_SNV', icon: 'snv', desc: 'Row-wise spectrum normalization removing scatter and slope effects.', recommendation: 'Essential for NIR/FTIR spectroscopy to correct multiplicative light scattering.' },
+      { id: 'msc', label: 'Multiplicative Scatter Correction (MSC)', suffix: '_MSC', icon: 'msc', desc: 'Corrects scatter differences relative to mean reference spectrum.', recommendation: 'Standard in chemometrics for spectral baseline and scatter correction.' },
+      { id: 'sg_smooth', label: 'Savitzky-Golay (SG) Smoothing', suffix: '_SGSmooth', icon: 'sgs', desc: 'Polynomial smoothing filter reducing noise while preserving peak shapes.', recommendation: 'Best for smoothing noisy high-resolution spectral curves or time-series.' },
+      { id: 'sg_1der', label: 'SG First Derivative', suffix: '_SG1stDeriv', icon: 'sg1', desc: 'First-order derivative resolving overlapping peaks and baseline shifts.', recommendation: 'Removes constant baseline offsets and highlights spectral peak slopes.' },
+      { id: 'sg_2der', label: 'SG Second Derivative', suffix: '_SG2ndDeriv', icon: 'sg2', desc: 'Second-order derivative accentuating narrow absorption bands.', recommendation: 'Removes linear baseline drift and separates overlapping spectral bands.' },
+    ]
   }
 ];
 

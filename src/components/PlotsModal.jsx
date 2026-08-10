@@ -280,7 +280,7 @@ const PlotsModal = ({ isOpen, onClose }) => {
     }
 
     // Selected Y variables list
-    if (['multiline', 'pcabiplot'].includes(plotType)) {
+    if (selectedYVars.length > 0) {
       formData.append('y_vars_str', selectedYVars.join(','));
     }
 
@@ -361,7 +361,7 @@ const PlotsModal = ({ isOpen, onClose }) => {
       }
 
       // Selected Y vars
-      if (['multiline', 'pcabiplot'].includes(plotType)) {
+      if (selectedYVars.length > 0) {
         formData.append('y_vars_str', selectedYVars.join(','));
       }
 
@@ -582,12 +582,33 @@ const PlotsModal = ({ isOpen, onClose }) => {
                   </div>
                 )}
 
-                {/* Checklist variables for multiline and pcabiplot */}
-                {['multiline', 'pcabiplot'].includes(plotType) && (
+                {/* Checklist variables for multi-column plots */}
+                {['multiline', 'pcabiplot', 'boxplot', 'barplot', 'line'].includes(plotType) && (
                   <div className="col-span-1 md:col-span-2 space-y-2 animate-fade-in">
-                    <label className="font-sans text-xs font-bold text-slate-500">
-                      Select Numeric Columns ({selectedYVars.length} selected)
-                    </label>
+                    <div className="flex items-center justify-between">
+                      <label className="font-sans text-xs font-bold text-slate-500">
+                        {['multiline', 'pcabiplot'].includes(plotType)
+                          ? `Select Numeric Columns (${selectedYVars.length} selected)`
+                          : `Select Multiple Y Columns / Bands (${selectedYVars.length} selected, optional override for single Y)`}
+                      </label>
+                      <div className="flex items-center space-x-2">
+                        <button
+                          type="button"
+                          onClick={() => setSelectedYVars([...numericColumns])}
+                          className="text-[11px] font-bold text-brand-indigo hover:underline cursor-pointer"
+                        >
+                          Select All Numeric
+                        </button>
+                        <span className="text-slate-300">|</span>
+                        <button
+                          type="button"
+                          onClick={() => setSelectedYVars([])}
+                          className="text-[11px] font-bold text-slate-400 hover:text-slate-600 cursor-pointer"
+                        >
+                          Deselect All
+                        </button>
+                      </div>
+                    </div>
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 rounded-2xl border border-slate-100 bg-slate-50/50 p-4 max-h-[160px] overflow-y-auto">
                       {numericColumns.map(col => (
                         <label key={col} className="flex items-center space-x-2 rounded-lg bg-white p-2 border border-slate-200/50 hover:bg-slate-50 cursor-pointer shadow-xs">

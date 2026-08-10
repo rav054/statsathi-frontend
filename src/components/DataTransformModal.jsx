@@ -253,7 +253,8 @@ const DataTransformModal = ({ isOpen, onClose, file: propFile, onSaveTransformed
       // Create a updated File object from returned CSV
       if (data.csv_content && onSaveTransformedData) {
         const updatedBlob = new Blob([data.csv_content], { type: 'text/csv' });
-        const updatedFile = new File([updatedBlob], file.name, { type: 'text/csv' });
+        const fileNameToUse = activeFile?.name || propFile?.name || 'transformed_dataset.csv';
+        const updatedFile = new File([updatedBlob], fileNameToUse, { type: 'text/csv' });
         
         setTimeout(() => {
           onSaveTransformedData(updatedFile, data.records, data.transformed_columns);

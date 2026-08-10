@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { useAuth, API_URL } from '../context/AuthContext';
-import { Calculator, BarChart3, Binary, Compass, Cpu, GitCompare, Info, Lock, Milestone, Upload, Grid, Layers, Network, TrendingUp, RefreshCw, Sliders } from 'lucide-react';
+import { Calculator, BarChart3, Binary, Compass, Cpu, GitCompare, Info, Lock, Milestone, Upload, Grid, Layers, Network, TrendingUp, RefreshCw, Sliders, Trash2, Eye } from 'lucide-react';
 import DatasetViewerModal from './DatasetViewerModal';
 import CorrelationModal from './CorrelationModal';
 import ParametricModal from './ParametricModal';
@@ -316,7 +316,43 @@ const Dashboard = ({ onAuthClick }) => {
             </p>
           )}
         </div>
-      </div>
+      {/* Active Loaded Dataset Banner */}
+      {file && (
+        <div className="mb-6 rounded-2xl border border-slate-100 bg-slate-50/90 p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 shadow-xs animate-fade-in">
+          <div className="flex items-center space-x-3">
+            <div className="rounded-xl bg-indigo-50 p-2.5 text-brand-indigo">
+              <Upload className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="font-sans text-[10px] font-bold text-slate-400 uppercase tracking-wider">Loaded Active Dataset</p>
+              <p className="font-sans text-sm font-bold text-slate-800">{file.name}</p>
+            </div>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              onClick={() => setViewerOpen(true)}
+              className="inline-flex items-center space-x-1.5 rounded-xl border border-slate-200 bg-white px-3.5 py-2 font-sans text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors shadow-2xs cursor-pointer"
+            >
+              <Eye className="h-3.5 w-3.5 text-brand-orange" />
+              <span>View / Edit Data</span>
+            </button>
+            <button
+              onClick={handleGlobalUpload}
+              className="inline-flex items-center space-x-1.5 rounded-xl border border-slate-200 bg-white px-3.5 py-2 font-sans text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors shadow-2xs cursor-pointer"
+            >
+              <Upload className="h-3.5 w-3.5 text-brand-indigo" />
+              <span>Choose Other File</span>
+            </button>
+            <button
+              onClick={() => setFile(null)}
+              className="inline-flex items-center space-x-1.5 rounded-xl border border-red-200 bg-red-50/80 px-3.5 py-2 font-sans text-xs font-semibold text-red-600 hover:bg-red-100 transition-colors shadow-2xs cursor-pointer"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+              <span>Remove File</span>
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Modules CSS Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

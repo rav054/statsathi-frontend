@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useAuth, API_URL } from '../context/AuthContext';
-import { X, Upload, Check, AlertCircle, Download, RefreshCw, Eye, Sliders, Layout } from 'lucide-react';
+import { X, Upload, Check, AlertCircle, Download, RefreshCw, Eye, Sliders, Layout, Trash2 } from 'lucide-react';
 import DatasetViewerModal from './DatasetViewerModal';
 
 const PlotsModal = ({ isOpen, onClose }) => {
@@ -20,8 +20,12 @@ const PlotsModal = ({ isOpen, onClose }) => {
 
   // State for plot configurations
   const [plotType, setPlotType] = useState('boxplot');
+  const [xSelectionMode, setXSelectionMode] = useState('single');
+  const [ySelectionMode, setYSelectionMode] = useState('single');
   const [xVar, setXVar] = useState('');
   const [yVar, setYVar] = useState('');
+  const [selectedXVars, setSelectedXVars] = useState([]);
+  const [selectedYVars, setSelectedYVars] = useState([]);
   const [hueVar, setHueVar] = useState('');
   
   // Customization settings
@@ -59,9 +63,6 @@ const PlotsModal = ({ isOpen, onClose }) => {
   const [xInterval, setXInterval] = useState('');
   const [yInterval, setYInterval] = useState('');
 
-  // Selected Y variables for multiline and pcabiplot
-  const [selectedYVars, setSelectedYVars] = useState([]);
-
   // Download export settings
   const [downloadDpi, setDownloadDpi] = useState(300);
   
@@ -77,8 +78,12 @@ const PlotsModal = ({ isOpen, onClose }) => {
     setColumns([]);
     setNumericColumns([]);
     setPlotType('boxplot');
+    setXSelectionMode('single');
+    setYSelectionMode('single');
     setXVar('');
     setYVar('');
+    setSelectedXVars([]);
+    setSelectedYVars([]);
     setHueVar('');
     setTitle('');
     setXlabel('');
@@ -105,7 +110,6 @@ const PlotsModal = ({ isOpen, onClose }) => {
     setYlimMax('');
     setXInterval('');
     setYInterval('');
-    setSelectedYVars([]);
     setDownloadDpi(300);
     setPlotB64(null);
     setError(null);
@@ -279,7 +283,10 @@ const PlotsModal = ({ isOpen, onClose }) => {
       formData.append('errorbar_type', errorbarType);
     }
 
-    // Selected Y variables list
+    // Selected X and Y variables list
+    if (selectedXVars.length > 0) {
+      formData.append('x_vars_str', selectedXVars.join(','));
+    }
     if (selectedYVars.length > 0) {
       formData.append('y_vars_str', selectedYVars.join(','));
     }
@@ -360,7 +367,10 @@ const PlotsModal = ({ isOpen, onClose }) => {
         formData.append('errorbar_type', errorbarType);
       }
 
-      // Selected Y vars
+      // Selected X and Y vars
+      if (selectedXVars.length > 0) {
+        formData.append('x_vars_str', selectedXVars.join(','));
+      }
       if (selectedYVars.length > 0) {
         formData.append('y_vars_str', selectedYVars.join(','));
       }
@@ -497,28 +507,43 @@ const PlotsModal = ({ isOpen, onClose }) => {
           {file && !loadingCols && !plotB64 && !loadingAnalysis && (
             <form onSubmit={runAnalysis} className="space-y-6">
               {/* Dataset Banner */}
-              <div className="rounded-2xl border border-slate-100 bg-slate-50 p-4 flex justify-between items-center">
+              <div className="rounded-2xl border border-slate-100 bg-slate-50 p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
                 <div className="truncate">
                   <p className="font-sans text-xs font-bold text-slate-400 uppercase">Selected Dataset</p>
                   <p className="font-sans text-sm font-semibold text-slate-700 truncate">{file.name}</p>
                 </div>
-                <div className="flex space-x-2">
+                <div className="flex flex-wrap items-center gap-2">
                   <button
                     type="button"
                     onClick={() => setViewerOpen(true)}
-                    className="rounded-xl border border-slate-200 bg-white p-2 text-slate-500 hover:bg-slate-50 hover:text-slate-800 transition-colors text-xs font-semibold flex items-center space-x-1"
+                    className="rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-slate-600 hover:bg-slate-50 transition-colors text-xs font-semibold flex items-center space-x-1 cursor-pointer"
                   >
                     <Eye className="h-3.5 w-3.5 text-brand-orange" />
                     <span>View Data</span>
                   </button>
                   <button
                     type="button"
-                    onClick={handleReset}
-                    className="rounded-xl border border-slate-200 bg-white p-2 text-slate-500 hover:bg-slate-50 hover:text-slate-800 transition-colors text-xs font-semibold flex items-center space-x-1"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-slate-600 hover:bg-slate-50 transition-colors text-xs font-semibold flex items-center space-x-1 cursor-pointer"
                   >
-                    <RefreshCw className="h-3.5 w-3.5" />
-                    <span>Change File</span>
+                    <Upload className="h-3.5 w-3.5 text-brand-indigo" />
+                    <span>Choose Other File</span>
                   </button>
+                  <button
+                    type="button"
+                    onClick={handleReset}
+                    className="rounded-xl border border-red-200 bg-red-50/70 px-3 py-1.5 text-red-600 hover:bg-red-100 transition-colors text-xs font-semibold flex items-center space-x-1 cursor-pointer"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                    <span>Remove File</span>
+                  </button>
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    onChange={handleChange}
+                    accept=".csv, .xlsx, .xls"
+                    className="hidden"
+                  />
                 </div>
               </div>
 
@@ -547,87 +572,164 @@ const PlotsModal = ({ isOpen, onClose }) => {
 
                 {/* Variable X selection (Hidden for PCA Biplot) */}
                 {plotType !== 'pcabiplot' && (
-                  <div className="space-y-1.5">
-                    <label className="font-sans text-xs font-bold text-slate-500">
-                      {['histogram', 'qqplot', 'multiline'].includes(plotType) ? 'Variable (Numeric)' : plotType === 'pie' ? 'Categorical Variable' : 'X Axis Variable'}
-                    </label>
-                    <select
-                      value={xVar}
-                      onChange={(e) => setXVar(e.target.value)}
-                      className="w-full rounded-xl border border-slate-200 bg-white py-3 px-4 font-sans text-sm outline-hidden focus:border-brand-indigo focus:ring-4 focus:ring-brand-indigo/10 transition-all"
-                    >
-                      <option value="">-- Select Variable X --</option>
-                      {['histogram', 'qqplot', 'scatter', 'multiline'].includes(plotType) 
-                        ? numericColumns.map(c => <option key={c} value={c}>{c}</option>)
-                        : columns.map(c => <option key={c} value={c}>{c}</option>)
-                      }
-                    </select>
-                  </div>
-                )}
-
-                {/* Variable Y selection (boxplot, scatter, line, barplot, violin) */}
-                {['boxplot', 'scatter', 'line', 'barplot', 'violin'].includes(plotType) && (
-                  <div className="space-y-1.5 animate-fade-in">
-                    <label className="font-sans text-xs font-bold text-slate-500">
-                      {plotType === 'boxplot' ? 'Y Axis Variable (Numeric, Optional)' : 'Y Axis Variable (Numeric)'}
-                    </label>
-                    <select
-                      value={yVar}
-                      onChange={(e) => setYVar(e.target.value)}
-                      className="w-full rounded-xl border border-slate-200 bg-white py-3 px-4 font-sans text-sm outline-hidden focus:border-brand-indigo focus:ring-4 focus:ring-brand-indigo/10 transition-all"
-                    >
-                      <option value="">{plotType === 'boxplot' ? '-- Single Variable (No Grouping) --' : '-- Select Variable Y --'}</option>
-                      {numericColumns.map(c => <option key={c} value={c}>{c}</option>)}
-                    </select>
-                  </div>
-                )}
-
-                {/* Checklist variables for multi-column plots */}
-                {['multiline', 'pcabiplot', 'boxplot', 'barplot', 'line'].includes(plotType) && (
-                  <div className="col-span-1 md:col-span-2 space-y-2 animate-fade-in">
+                  <div className="space-y-2">
                     <div className="flex items-center justify-between">
                       <label className="font-sans text-xs font-bold text-slate-500">
-                        {['multiline', 'pcabiplot'].includes(plotType)
-                          ? `Select Numeric Columns (${selectedYVars.length} selected)`
-                          : `Select Multiple Y Columns / Bands (${selectedYVars.length} selected, optional override for single Y)`}
+                        {['histogram', 'qqplot', 'multiline'].includes(plotType) ? 'Variable X (Numeric)' : plotType === 'pie' ? 'Categorical Variable X' : 'X Axis Variable'}
                       </label>
-                      <div className="flex items-center space-x-2">
+                      <div className="flex items-center rounded-xl bg-slate-200/60 p-0.5 border border-slate-200">
                         <button
                           type="button"
-                          onClick={() => setSelectedYVars([...numericColumns])}
-                          className="text-[11px] font-bold text-brand-indigo hover:underline cursor-pointer"
+                          onClick={() => { setXSelectionMode('single'); setSelectedXVars([]); }}
+                          className={`px-2 py-0.5 text-[10px] font-bold rounded-lg transition-all cursor-pointer ${
+                            xSelectionMode === 'single' ? 'bg-white text-brand-indigo shadow-xs' : 'text-slate-500 hover:text-slate-800'
+                          }`}
                         >
-                          Select All Numeric
+                          Single Variable
                         </button>
-                        <span className="text-slate-300">|</span>
                         <button
                           type="button"
-                          onClick={() => setSelectedYVars([])}
-                          className="text-[11px] font-bold text-slate-400 hover:text-slate-600 cursor-pointer"
+                          onClick={() => setXSelectionMode('multiple')}
+                          className={`px-2 py-0.5 text-[10px] font-bold rounded-lg transition-all cursor-pointer ${
+                            xSelectionMode === 'multiple' ? 'bg-white text-brand-indigo shadow-xs' : 'text-slate-500 hover:text-slate-800'
+                          }`}
                         >
-                          Deselect All
+                          Multiple Variables
                         </button>
                       </div>
                     </div>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 rounded-2xl border border-slate-100 bg-slate-50/50 p-4 max-h-[160px] overflow-y-auto">
-                      {numericColumns.map(col => (
-                        <label key={col} className="flex items-center space-x-2 rounded-lg bg-white p-2 border border-slate-200/50 hover:bg-slate-50 cursor-pointer shadow-xs">
-                          <input
-                            type="checkbox"
-                            checked={selectedYVars.includes(col)}
-                            onChange={(e) => {
-                              if (e.target.checked) {
-                                setSelectedYVars([...selectedYVars, col]);
-                              } else {
-                                setSelectedYVars(selectedYVars.filter(v => v !== col));
-                              }
-                            }}
-                            className="h-4 w-4 rounded border-slate-300 text-brand-indigo focus:ring-brand-indigo"
-                          />
-                          <span className="font-sans text-xs text-slate-700 truncate">{col}</span>
-                        </label>
-                      ))}
+
+                    {xSelectionMode === 'single' ? (
+                      <select
+                        value={xVar}
+                        onChange={(e) => setXVar(e.target.value)}
+                        className="w-full rounded-xl border border-slate-200 bg-white py-3 px-4 font-sans text-sm outline-hidden focus:border-brand-indigo focus:ring-4 focus:ring-brand-indigo/10 transition-all"
+                      >
+                        <option value="">-- Select Variable X --</option>
+                        {['histogram', 'qqplot', 'scatter', 'multiline'].includes(plotType) 
+                          ? numericColumns.map(c => <option key={c} value={c}>{c}</option>)
+                          : columns.map(c => <option key={c} value={c}>{c}</option>)
+                        }
+                      </select>
+                    ) : (
+                      <div className="space-y-2 animate-fade-in">
+                        <div className="flex items-center justify-between text-[11px]">
+                          <span className="text-slate-400 font-semibold">{selectedXVars.length} X variables selected</span>
+                          <div className="flex items-center space-x-2">
+                            <button type="button" onClick={() => { setSelectedXVars([...numericColumns]); if (numericColumns.length > 0) setXVar(numericColumns[0]); }} className="font-bold text-brand-indigo hover:underline cursor-pointer">
+                              Select All
+                            </button>
+                            <span className="text-slate-300">|</span>
+                            <button type="button" onClick={() => setSelectedXVars([])} className="font-bold text-slate-400 hover:text-slate-600 cursor-pointer">
+                              Deselect All
+                            </button>
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 rounded-2xl border border-slate-100 bg-slate-50/50 p-3 max-h-[140px] overflow-y-auto">
+                          {numericColumns.map(col => (
+                            <label key={col} className="flex items-center space-x-2 rounded-lg bg-white p-2 border border-slate-200/50 hover:bg-slate-50 cursor-pointer shadow-xs">
+                              <input
+                                type="checkbox"
+                                checked={selectedXVars.includes(col)}
+                                onChange={(e) => {
+                                  if (e.target.checked) {
+                                    const updated = [...selectedXVars, col];
+                                    setSelectedXVars(updated);
+                                    if (!xVar) setXVar(updated[0]);
+                                  } else {
+                                    const updated = selectedXVars.filter(v => v !== col);
+                                    setSelectedXVars(updated);
+                                    if (xVar === col) setXVar(updated[0] || '');
+                                  }
+                                }}
+                                className="h-4 w-4 rounded border-slate-300 text-brand-indigo focus:ring-brand-indigo"
+                              />
+                              <span className="font-sans text-xs text-slate-700 truncate">{col}</span>
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Variable Y selection */}
+                {['boxplot', 'scatter', 'line', 'barplot', 'violin', 'multiline', 'pcabiplot'].includes(plotType) && (
+                  <div className="space-y-2 animate-fade-in">
+                    <div className="flex items-center justify-between">
+                      <label className="font-sans text-xs font-bold text-slate-500">
+                        {plotType === 'boxplot' ? 'Y Axis Variable(s)' : 'Y Axis Variable(s) (Numeric)'}
+                      </label>
+                      <div className="flex items-center rounded-xl bg-slate-200/60 p-0.5 border border-slate-200">
+                        <button
+                          type="button"
+                          onClick={() => { setYSelectionMode('single'); setSelectedYVars([]); }}
+                          className={`px-2 py-0.5 text-[10px] font-bold rounded-lg transition-all cursor-pointer ${
+                            ySelectionMode === 'single' ? 'bg-white text-brand-indigo shadow-xs' : 'text-slate-500 hover:text-slate-800'
+                          }`}
+                        >
+                          Single Variable
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setYSelectionMode('multiple')}
+                          className={`px-2 py-0.5 text-[10px] font-bold rounded-lg transition-all cursor-pointer ${
+                            ySelectionMode === 'multiple' ? 'bg-white text-brand-indigo shadow-xs' : 'text-slate-500 hover:text-slate-800'
+                          }`}
+                        >
+                          Multiple Variables
+                        </button>
+                      </div>
                     </div>
+
+                    {ySelectionMode === 'single' ? (
+                      <select
+                        value={yVar}
+                        onChange={(e) => setYVar(e.target.value)}
+                        className="w-full rounded-xl border border-slate-200 bg-white py-3 px-4 font-sans text-sm outline-hidden focus:border-brand-indigo focus:ring-4 focus:ring-brand-indigo/10 transition-all"
+                      >
+                        <option value="">{plotType === 'boxplot' ? '-- Single Variable (No Grouping) --' : '-- Select Variable Y --'}</option>
+                        {numericColumns.map(c => <option key={c} value={c}>{c}</option>)}
+                      </select>
+                    ) : (
+                      <div className="space-y-2 animate-fade-in">
+                        <div className="flex items-center justify-between text-[11px]">
+                          <span className="text-slate-400 font-semibold">{selectedYVars.length} Y variables selected</span>
+                          <div className="flex items-center space-x-2">
+                            <button type="button" onClick={() => { setSelectedYVars([...numericColumns]); if (numericColumns.length > 0) setYVar(numericColumns[0]); }} className="font-bold text-brand-indigo hover:underline cursor-pointer">
+                              Select All
+                            </button>
+                            <span className="text-slate-300">|</span>
+                            <button type="button" onClick={() => setSelectedYVars([])} className="font-bold text-slate-400 hover:text-slate-600 cursor-pointer">
+                              Deselect All
+                            </button>
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 rounded-2xl border border-slate-100 bg-slate-50/50 p-3 max-h-[140px] overflow-y-auto">
+                          {numericColumns.map(col => (
+                            <label key={col} className="flex items-center space-x-2 rounded-lg bg-white p-2 border border-slate-200/50 hover:bg-slate-50 cursor-pointer shadow-xs">
+                              <input
+                                type="checkbox"
+                                checked={selectedYVars.includes(col)}
+                                onChange={(e) => {
+                                  if (e.target.checked) {
+                                    const updated = [...selectedYVars, col];
+                                    setSelectedYVars(updated);
+                                    if (!yVar) setYVar(updated[0]);
+                                  } else {
+                                    const updated = selectedYVars.filter(v => v !== col);
+                                    setSelectedYVars(updated);
+                                    if (yVar === col) setYVar(updated[0] || '');
+                                  }
+                                }}
+                                className="h-4 w-4 rounded border-slate-300 text-brand-indigo focus:ring-brand-indigo"
+                              />
+                              <span className="font-sans text-xs text-slate-700 truncate">{col}</span>
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
 

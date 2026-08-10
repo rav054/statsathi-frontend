@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useAuth, API_URL } from '../context/AuthContext';
 import {
   X, RefreshCw, CheckCircle2, AlertCircle, Sparkles, Sliders,
-  Check, ArrowRight, Table, Info, Zap, ChevronRight, Upload
+  Check, ArrowRight, Table, Info, Zap, ChevronRight, Upload, Trash2
 } from 'lucide-react';
 
 const TRANSFORM_METHODS = [
@@ -368,6 +368,39 @@ const DataTransformModal = ({ isOpen, onClose, file: propFile, onSaveTransformed
                 accept=".csv, .xlsx, .xls"
                 className="hidden"
               />
+            </div>
+          )}
+
+          {activeFile && (
+            <div className="rounded-2xl border border-slate-100 bg-slate-50 p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 animate-fade-in">
+              <div className="truncate">
+                <p className="font-sans text-[10px] font-bold text-slate-400 uppercase tracking-wider">Active Dataset File</p>
+                <p className="font-sans text-xs font-bold text-slate-700 truncate">{activeFile.name}</p>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => localFileInputRef.current?.click()}
+                  className="inline-flex items-center space-x-1.5 rounded-xl border border-slate-200 bg-white px-3 py-1.5 font-sans text-xs font-bold text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer"
+                >
+                  <Upload className="h-3.5 w-3.5 text-brand-indigo" />
+                  <span>Choose Other File</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveFile(null);
+                    setNumericCols([]);
+                    setSelectedCols([]);
+                    setSuccessMsg(null);
+                    setError(null);
+                  }}
+                  className="inline-flex items-center space-x-1.5 rounded-xl border border-red-200 bg-red-50/80 px-3 py-1.5 font-sans text-xs font-bold text-red-600 hover:bg-red-100 transition-colors cursor-pointer"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                  <span>Remove File</span>
+                </button>
+              </div>
             </div>
           )}
 

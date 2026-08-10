@@ -7,7 +7,7 @@ import Dashboard from './components/Dashboard';
 import Projects from './components/Projects';
 import LearningHub from './components/LearningHub';
 import Auth from './components/Auth';
-import SemModal from './components/SemModal';
+import SemDemoApp from './components/SemDemoApp';
 
 const MainLayout = ({ activeTab, setActiveTab, authView, setAuthView }) => {
   const { user } = useAuth();
@@ -34,19 +34,7 @@ const MainLayout = ({ activeTab, setActiveTab, authView, setAuthView }) => {
               {activeTab === 'dashboard' && <Dashboard onAuthClick={() => setAuthView(true)} />}
               {activeTab === 'projects' && <Projects onAuthClick={() => setAuthView(true)} />}
               {activeTab === 'learning' && <LearningHub />}
-              {activeTab === 'sem' && (
-                <div className="flex-1 p-8 animate-fade-in">
-                  <div className="mb-6">
-                    <h1 className="font-display text-2xl font-extrabold text-slate-800 tracking-tight">
-                      Structural Equation Modeling (SEM)
-                    </h1>
-                    <p className="font-sans text-sm text-slate-500 mt-1">
-                      Construct latent constructs, path diagrams, mediation analysis, and model fitting.
-                    </p>
-                  </div>
-                  <SemModal isOpen={true} onClose={() => setActiveTab('dashboard')} isEmbedded={true} />
-                </div>
-              )}
+              {activeTab === 'sem-demo' && <SemDemoApp />}
             </main>
           </div>
           {/* Bottom Footer */}

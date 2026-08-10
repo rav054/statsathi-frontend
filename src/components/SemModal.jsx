@@ -3,7 +3,7 @@ import { useAuth, API_URL } from '../context/AuthContext';
 import { X, Upload, Check, AlertCircle, Download, RefreshCw, Eye, Info, Layers, Play, Plus, Trash2, HelpCircle } from 'lucide-react';
 import DatasetViewerModal from './DatasetViewerModal';
 
-const SemModal = ({ isOpen, onClose, file: propFile, isEmbedded = false }) => {
+const SemModal = ({ isOpen, onClose }) => {
   const { token, user } = useAuth();
 
   // Wizard state
@@ -12,12 +12,6 @@ const SemModal = ({ isOpen, onClose, file: propFile, isEmbedded = false }) => {
 
   // Dataset states
   const [file, setFile] = useState(null);
-
-  useEffect(() => {
-    if (propFile && isOpen && (!file || file.name !== propFile.name)) {
-      processFile(propFile);
-    }
-  }, [propFile, isOpen]);
 
 
 
@@ -611,9 +605,9 @@ const SemModal = ({ isOpen, onClose, file: propFile, isEmbedded = false }) => {
     return { x1, y1, x2, y2, mx: (x1 + x2) / 2, my: (y1 + y2) / 2 };
   };
 
-  const content = (
-    <>
-      <div className={`flex w-full flex-col rounded-3xl border border-slate-100 bg-white shadow-2xl overflow-hidden ${isEmbedded ? 'h-[82vh]' : 'h-[88vh] max-w-5xl'}`}>
+  return (
+    <div className="fixed inset-0 z-40 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-xs animate-fade-in">
+      <div className="flex h-[88vh] w-full max-w-5xl flex-col rounded-3xl border border-slate-100 bg-white shadow-2xl overflow-hidden">
         
         {/* Header */}
         <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4 bg-slate-50/50">
@@ -1311,22 +1305,13 @@ const SemModal = ({ isOpen, onClose, file: propFile, isEmbedded = false }) => {
           </div>
         </div>
       </div>
+
       <DatasetViewerModal
         isOpen={viewerOpen}
         onClose={() => setViewerOpen(false)}
         file={file}
         onSave={handleSaveEditedData}
       />
-    </>
-  );
-
-  if (isEmbedded) {
-    return content;
-  }
-
-  return (
-    <div className="fixed inset-0 z-40 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-xs animate-fade-in">
-      {content}
     </div>
   );
 };

@@ -6,7 +6,7 @@ const Sidebar = ({ activeTab, setActiveTab }) => {
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'projects', label: 'My Projects', icon: FolderKanban },
     { id: 'learning', label: 'Learning Hub', icon: BookOpen },
-    { id: 'sem', label: 'SEM Analysis', icon: Network },
+    { id: 'sem-demo', label: 'SEM Demo App', icon: Network },
   ];
 
   return (

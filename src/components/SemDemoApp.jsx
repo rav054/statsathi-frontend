@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { X } from 'lucide-react';
+import { X, Network } from 'lucide-react';
 import { API_URL } from '../context/AuthContext';
 
 const API_BASE_URL = API_URL;
@@ -823,16 +823,7 @@ export default function SemDemoApp({ isOpen, onClose, initialFile = null }) {
   }, [fitResult, showPValues, curvePaths, customPositions, currentTheme]);
 
   const mainContent = (
-    <div style={{ fontFamily: 'Inter, system-ui, sans-serif', maxWidth: '1200px', margin: '0 auto', padding: '24px' }}>
-      {/* Header */}
-      <div style={{ marginBottom: '28px', borderBottom: '1px solid #E5E7EB', paddingBottom: '16px' }}>
-        <h1 style={{ fontSize: '28px', fontWeight: '700', color: '#111827', margin: '0 0 8px 0' }}>
-          Structural Equation Modeling (SEM) Workspace
-        </h1>
-        <p style={{ color: '#4B5563', margin: 0, fontSize: '15px' }}>
-          Model fitting and path estimation using semopy with customizable publication diagrams.
-        </p>
-      </div>
+    <div style={{ fontFamily: 'Inter, system-ui, sans-serif', width: '100%' }}>
 
       {/* STEP 1: Data Input & Variable Selection */}
       <div style={{ background: '#FFFFFF', borderRadius: '12px', border: '1px solid #E5E7EB', boxShadow: '0 1px 3px rgba(0,0,0,0.05)', padding: '24px', marginBottom: '28px' }}>
@@ -1654,21 +1645,36 @@ export default function SemDemoApp({ isOpen, onClose, initialFile = null }) {
     </div>
   );
 
-  if (isOpen) {
-    return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-xs animate-fade-in overflow-y-auto">
-        <div className="relative w-full max-w-6xl max-h-[92vh] flex flex-col rounded-3xl border border-slate-100 bg-white p-6 shadow-2xl overflow-y-auto">
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-xs animate-fade-in overflow-y-auto">
+      <div className="relative w-full max-w-6xl max-h-[92vh] flex flex-col rounded-3xl border border-slate-100 bg-white p-6 shadow-2xl overflow-y-auto">
+        {/* StatSathi Modal Header */}
+        <div className="flex items-center justify-between border-b border-slate-100 pb-4 mb-4">
+          <div className="flex items-center space-x-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-indigo-50 text-brand-indigo">
+              <Network className="h-5 w-5" />
+            </div>
+            <div>
+              <h2 className="font-display text-xl font-bold text-slate-800">
+                Structural Equation Modeling (SEM)
+              </h2>
+              <p className="font-sans text-xs font-medium text-slate-400">
+                Fit structural path models, latent constructs, mediation models, fit indices (CFI, RMSEA, SRMR), and publication diagrams.
+              </p>
+            </div>
+          </div>
           <button
             onClick={onClose}
-            className="absolute top-5 right-5 z-10 flex h-9 w-9 items-center justify-center rounded-full bg-slate-100 text-slate-500 hover:bg-slate-200 hover:text-slate-800 transition-colors cursor-pointer"
+            className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-100 text-slate-500 hover:bg-slate-200 hover:text-slate-800 transition-colors cursor-pointer"
           >
             <X className="h-5 w-5" />
           </button>
-          {mainContent}
         </div>
-      </div>
-    );
-  }
 
-  return mainContent;
+        {mainContent}
+      </div>
+    </div>
+  );
 }

@@ -234,6 +234,10 @@ export default function SemDemoApp({ isOpen, onClose, initialFile = null }) {
     const num = parseFloat(value);
 
     switch (index) {
+      case 'DoF':
+      case 'DF':
+      case 'df':
+        return { threshold: 'Model Degrees of Freedom', pass: true, label: 'Calculated' };
       case 'CFI':
         return {
           threshold: '> 0.90',
@@ -848,7 +852,7 @@ export default function SemDemoApp({ isOpen, onClose, initialFile = null }) {
                 cursor: 'pointer',
               }}
             >
-              Load Sample Dataset
+              Load Example Dataset
             </button>
 
             <label
@@ -920,7 +924,7 @@ export default function SemDemoApp({ isOpen, onClose, initialFile = null }) {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
             {columns.length === 0 ? (
               <div style={{ padding: '24px', textAlign: 'center', background: '#F9FAFB', borderRadius: '8px', border: '1px dashed #D1D5DB', color: '#6B7280' }}>
-                Select a CSV file or click <strong>"Load Sample Dataset"</strong> to populate variables.
+                Select a CSV file or click <strong>"Load Example Dataset"</strong> to populate variables.
               </div>
             ) : (
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
@@ -1178,14 +1182,25 @@ export default function SemDemoApp({ isOpen, onClose, initialFile = null }) {
                 </tr>
               </thead>
               <tbody>
-                {['CFI', 'RMSEA', 'SRMR', 'AIC', 'BIC'].map((idxKey) => {
-                  const val = fitResult.fit_indices ? fitResult.fit_indices[idxKey] : null;
-                  const evalRes = getFitEvaluation(idxKey, val);
+                {['DoF', 'CFI', 'RMSEA', 'SRMR', 'AIC', 'BIC'].map((idxKey) => {
+                  const rawVal = fitResult.fit_indices
+                    ? (fitResult.fit_indices[idxKey] !== undefined && fitResult.fit_indices[idxKey] !== null
+                        ? fitResult.fit_indices[idxKey]
+                        : (fitResult.fit_indices[idxKey.toLowerCase()] !== undefined
+                            ? fitResult.fit_indices[idxKey.toLowerCase()]
+                            : (idxKey === 'DoF' ? fitResult.fit_indices['df'] : null)))
+                    : null;
+                  const valDisplay = (idxKey === 'DoF' || idxKey === 'df') && rawVal !== null && rawVal !== undefined
+                    ? (Number.isInteger(rawVal) ? rawVal : parseFloat(rawVal).toFixed(0))
+                    : rawVal;
+                  const evalRes = getFitEvaluation(idxKey, rawVal);
                   return (
                     <tr key={idxKey} style={{ borderBottom: '1px solid #F3F4F6' }}>
-                      <td style={{ padding: '10px 14px', fontWeight: '600', color: '#1F2937' }}>{idxKey}</td>
+                      <td style={{ padding: '10px 14px', fontWeight: '600', color: '#1F2937' }}>
+                        {idxKey === 'DoF' ? 'Degrees of Freedom (DoF)' : idxKey}
+                      </td>
                       <td style={{ padding: '10px 14px', fontFamily: 'monospace', fontSize: '14px' }}>
-                        {val !== null && val !== undefined ? val : 'N/A'}
+                        {valDisplay !== null && valDisplay !== undefined ? valDisplay : 'N/A'}
                       </td>
                       <td style={{ padding: '10px 14px', color: '#6B7280' }}>{evalRes.threshold}</td>
                       <td style={{ padding: '10px 14px' }}>

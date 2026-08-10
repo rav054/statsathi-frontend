@@ -13,6 +13,7 @@ import DescriptiveModal from './DescriptiveModal';
 import ClusteringModal from './ClusteringModal';
 import RegressionModal from './RegressionModal';
 import DataTransformModal from './DataTransformModal';
+import SemModal from './SemModal';
 
 const Dashboard = ({ onAuthClick }) => {
   const { user } = useAuth();
@@ -27,6 +28,7 @@ const Dashboard = ({ onAuthClick }) => {
   const [clusteringOpen, setClusteringOpen] = useState(false);
   const [regressionOpen, setRegressionOpen] = useState(false);
   const [transformOpen, setTransformOpen] = useState(false);
+  const [semOpen, setSemOpen] = useState(false);
   const [comingSoonOpen, setComingSoonOpen] = useState(false);
   const [selectedModule, setSelectedModule] = useState('');
   const [authPromptOpen, setAuthPromptOpen] = useState(false);
@@ -199,6 +201,13 @@ const Dashboard = ({ onAuthClick }) => {
       buttonText: 'Transform & Scale',
       icon: Sliders,
     },
+    {
+      id: 'sem',
+      title: 'Structural Equation Modeling (SEM)',
+      description: 'Visually construct latent constructs, path diagrams, mediation analysis, CFA, and SEM fitting (PLS & CB-SEM).',
+      buttonText: 'Run SEM Model',
+      icon: Network,
+    },
   ];
 
   const handleAction = (moduleId) => {
@@ -229,6 +238,8 @@ const Dashboard = ({ onAuthClick }) => {
       setRegressionOpen(true);
     } else if (moduleId === 'transform') {
       setTransformOpen(true);
+    } else if (moduleId === 'sem') {
+      setSemOpen(true);
     } else {
       setSelectedModule(modules.find(m => m.id === moduleId)?.title || '');
       setComingSoonOpen(true);
@@ -518,6 +529,13 @@ const Dashboard = ({ onAuthClick }) => {
           handleSaveEditedData(updatedFile);
           setViewerOpen(true);
         }}
+      />
+
+      {/* Structural Equation Modeling (SEM) Modal */}
+      <SemModal
+        isOpen={semOpen}
+        onClose={() => setSemOpen(false)}
+        file={file}
       />
 
       <DatasetViewerModal

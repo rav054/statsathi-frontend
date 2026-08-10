@@ -1,11 +1,21 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { X } from 'lucide-react';
+import { API_URL } from '../context/AuthContext';
 
-const API_BASE_URL = 'http://127.0.0.1:8000';
+const API_BASE_URL = API_URL;
 
-export default function SemDemoApp() {
+export default function SemDemoApp({ isOpen, onClose, initialFile = null }) {
   const [file, setFile] = useState(null);
   const [fileName, setFileName] = useState('');
   const [columns, setColumns] = useState([]);
+
+  useEffect(() => {
+    if (initialFile && (!file || file !== initialFile)) {
+      setFile(initialFile);
+      setFileName(initialFile.name);
+      parseCSVHeaders(initialFile);
+    }
+  }, [initialFile]);
   
   // Builder Mode: 'interactive' or 'syntax'
   const [builderMode, setBuilderMode] = useState('interactive');
@@ -810,9 +820,7 @@ export default function SemDemoApp() {
       paths: computedPaths,
       bounds: { width: canvasWidth, height: canvasHeight },
     };
-  }, [fitResult, showPValues, curvePaths, customPositions, currentTheme]);
-
-  return (
+  const mainContent = (
     <div style={{ fontFamily: 'Inter, system-ui, sans-serif', maxWidth: '1200px', margin: '0 auto', padding: '24px' }}>
       {/* Header */}
       <div style={{ marginBottom: '28px', borderBottom: '1px solid #E5E7EB', paddingBottom: '16px' }}>
@@ -1640,8 +1648,25 @@ export default function SemDemoApp() {
             )}
           </div>
 
-        </div>
-      )}
     </div>
   );
+
+  if (isOpen !== undefined) {
+    if (!isOpen) return null;
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-xs animate-fade-in overflow-y-auto">
+        <div className="relative w-full max-w-6xl max-h-[92vh] flex flex-col rounded-3xl border border-slate-100 bg-white p-6 shadow-2xl overflow-y-auto">
+          <button
+            onClick={onClose}
+            className="absolute top-5 right-5 z-10 flex h-9 w-9 items-center justify-center rounded-full bg-slate-100 text-slate-500 hover:bg-slate-200 hover:text-slate-800 transition-colors cursor-pointer"
+          >
+            <X className="h-5 w-5" />
+          </button>
+          {mainContent}
+        </div>
+      </div>
+    );
+  }
+
+  return mainContent;
 }

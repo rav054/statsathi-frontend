@@ -13,6 +13,7 @@ import DescriptiveModal from './DescriptiveModal';
 import ClusteringModal from './ClusteringModal';
 import RegressionModal from './RegressionModal';
 import DataTransformModal from './DataTransformModal';
+import SemDemoApp from './SemDemoApp';
 
 const Dashboard = ({ onAuthClick }) => {
   const { user } = useAuth();
@@ -27,6 +28,7 @@ const Dashboard = ({ onAuthClick }) => {
   const [clusteringOpen, setClusteringOpen] = useState(false);
   const [regressionOpen, setRegressionOpen] = useState(false);
   const [transformOpen, setTransformOpen] = useState(false);
+  const [semOpen, setSemOpen] = useState(false);
   const [comingSoonOpen, setComingSoonOpen] = useState(false);
   const [selectedModule, setSelectedModule] = useState('');
   const [authPromptOpen, setAuthPromptOpen] = useState(false);
@@ -193,6 +195,13 @@ const Dashboard = ({ onAuthClick }) => {
       icon: TrendingUp,
     },
     {
+      id: 'sem',
+      title: 'Structural Equation Modeling (SEM)',
+      description: 'Fit structural path models, latent constructs, mediation models, fit indices (CFI, RMSEA, SRMR), and publication diagrams.',
+      buttonText: 'Run SEM Analysis',
+      icon: Network,
+    },
+    {
       id: 'transform',
       title: 'Data Transformation & Scaling',
       description: 'Stabilize variance or scale features. Log10, Natural Log, Sqrt, Arcsine, Box-Cox, Yeo-Johnson, Z-Score, Min-Max.',
@@ -227,6 +236,8 @@ const Dashboard = ({ onAuthClick }) => {
       setClusteringOpen(true);
     } else if (moduleId === 'regression') {
       setRegressionOpen(true);
+    } else if (moduleId === 'sem') {
+      setSemOpen(true);
     } else if (moduleId === 'transform') {
       setTransformOpen(true);
     } else {
@@ -518,6 +529,13 @@ const Dashboard = ({ onAuthClick }) => {
           handleSaveEditedData(updatedFile);
           setViewerOpen(true);
         }}
+      />
+
+      {/* Structural Equation Modeling (SEM) Modal */}
+      <SemDemoApp
+        isOpen={semOpen}
+        onClose={() => setSemOpen(false)}
+        initialFile={file}
       />
 
       <DatasetViewerModal

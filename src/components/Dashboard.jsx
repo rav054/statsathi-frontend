@@ -316,6 +316,8 @@ const Dashboard = ({ onAuthClick }) => {
             </p>
           )}
         </div>
+      </div>
+
       {/* Active Loaded Dataset Banner */}
       {file && (
         <div className="mb-6 rounded-2xl border border-slate-100 bg-slate-50/90 p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 shadow-xs animate-fade-in">

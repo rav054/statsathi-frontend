@@ -820,6 +820,8 @@ export default function SemDemoApp({ isOpen, onClose, initialFile = null }) {
       paths: computedPaths,
       bounds: { width: canvasWidth, height: canvasHeight },
     };
+  }, [fitResult, showPValues, curvePaths, customPositions, currentTheme]);
+
   const mainContent = (
     <div style={{ fontFamily: 'Inter, system-ui, sans-serif', maxWidth: '1200px', margin: '0 auto', padding: '24px' }}>
       {/* Header */}
@@ -1647,12 +1649,12 @@ export default function SemDemoApp({ isOpen, onClose, initialFile = null }) {
               </div>
             )}
           </div>
-
+        </div>
+      )}
     </div>
   );
 
-  if (isOpen !== undefined) {
-    if (!isOpen) return null;
+  if (isOpen) {
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-xs animate-fade-in overflow-y-auto">
         <div className="relative w-full max-w-6xl max-h-[92vh] flex flex-col rounded-3xl border border-slate-100 bg-white p-6 shadow-2xl overflow-y-auto">

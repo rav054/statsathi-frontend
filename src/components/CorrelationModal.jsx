@@ -18,17 +18,28 @@ const CorrelationModal = ({ isOpen, onClose }) => {
   const [dragActive, setDragActive] = useState(false);
   const [zoomLevel, setZoomLevel] = useState(1);
   const [viewerOpen, setViewerOpen] = useState(false);
-  const [palette, setPalette] = useState('coolwarm');
+  const [palette, setPalette] = useState('YlOrRd');
+  const [plotType, setPlotType] = useState('full');
   const [downloadDpi, setDownloadDpi] = useState(300);
   const fileInputRef = useRef(null);
 
   const colormaps = [
+    { value: 'YlOrRd', label: 'Classic Thermal (Yellow-Orange-Red)' },
+    { value: 'YlGnBu', label: 'Classic Aquatic (Yellow-Green-Blue)' },
     { value: 'coolwarm', label: 'Divergent (Red-Blue)' },
-    { value: 'viridis', label: 'Sequential (Yellow-Green-Blue)' },
-    { value: 'magma', label: 'Sequential (Purple-Orange-Pink)' },
+    { value: 'RdBu_r', label: 'Classic Red-White-Blue' },
+    { value: 'inferno', label: 'Inferno Thermal Flame' },
+    { value: 'plasma', label: 'Plasma Thermal' },
+    { value: 'viridis', label: 'Viridis Sequential' },
+    { value: 'magma', label: 'Magma Purple-Pink' },
     { value: 'Spectral', label: 'Spectral Rainbow' },
-    { value: 'RdYlBu', label: 'Divergent (Red-Yellow-Blue)' },
     { value: 'vlag', label: 'Divergent (Blue-Red)' }
+  ];
+
+  const plotTypes = [
+    { value: 'full', label: 'Full Matrix (Square)' },
+    { value: 'lower', label: 'Half Plot (Lower Triangle)' },
+    { value: 'upper', label: 'Half Plot (Upper Triangle)' }
   ];
 
 
@@ -94,6 +105,7 @@ const CorrelationModal = ({ isOpen, onClose }) => {
     const formData = new FormData();
     formData.append('file', file);
     formData.append('palette', palette);
+    formData.append('plot_type', plotType);
     formData.append('dpi', downloadDpi.toString());
 
     try {
@@ -123,7 +135,7 @@ const CorrelationModal = ({ isOpen, onClose }) => {
     if (file && imageUrl) {
       handleUpload();
     }
-  }, [palette, downloadDpi]);
+  }, [palette, plotType, downloadDpi]);
 
   if (!isOpen) return null;
 
@@ -409,17 +421,32 @@ const CorrelationModal = ({ isOpen, onClose }) => {
           )}
 
           {file && !loading && (
-            <div className="mb-4 rounded-2xl border border-slate-100 bg-white p-4 shadow-xs max-w-xs mx-auto flex items-center justify-between">
-              <span className="font-sans text-xs font-bold text-slate-500">Heatmap Colormap:</span>
-              <select
-                value={palette}
-                onChange={(e) => setPalette(e.target.value)}
-                className="rounded-lg border border-slate-200 bg-white py-1.5 px-3 font-sans text-xs focus:border-brand-indigo focus:ring-2 focus:ring-brand-indigo/10 outline-hidden transition-all"
-              >
-                {colormaps.map(cmap => (
-                  <option key={cmap.value} value={cmap.value}>{cmap.label}</option>
-                ))}
-              </select>
+            <div className="mb-4 flex flex-wrap items-center justify-center gap-4 rounded-2xl border border-slate-100 bg-white p-4 shadow-xs">
+              <div className="flex items-center space-x-2">
+                <span className="font-sans text-xs font-bold text-slate-500">Plot Type:</span>
+                <select
+                  value={plotType}
+                  onChange={(e) => setPlotType(e.target.value)}
+                  className="rounded-lg border border-slate-200 bg-white py-1.5 px-3 font-sans text-xs focus:border-brand-indigo focus:ring-2 focus:ring-brand-indigo/10 outline-hidden transition-all"
+                >
+                  {plotTypes.map(pt => (
+                    <option key={pt.value} value={pt.value}>{pt.label}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="flex items-center space-x-2">
+                <span className="font-sans text-xs font-bold text-slate-500">Color Theme:</span>
+                <select
+                  value={palette}
+                  onChange={(e) => setPalette(e.target.value)}
+                  className="rounded-lg border border-slate-200 bg-white py-1.5 px-3 font-sans text-xs focus:border-brand-indigo focus:ring-2 focus:ring-brand-indigo/10 outline-hidden transition-all"
+                >
+                  {colormaps.map(cmap => (
+                    <option key={cmap.value} value={cmap.value}>{cmap.label}</option>
+                  ))}
+                </select>
+              </div>
             </div>
           )}
 

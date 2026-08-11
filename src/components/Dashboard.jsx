@@ -125,11 +125,32 @@ const Dashboard = ({ onAuthClick }) => {
 
   const modules = [
     {
+      id: 'layout',
+      title: 'Field Layout Generator',
+      description: 'Design crop field experiment grids (CRD, RBD, LSD, Split-plot, Sub-sub plot) with bunds and channels.',
+      buttonText: 'Generate Field Layout',
+      icon: Grid,
+    },
+    {
+      id: 'transform',
+      title: 'Data Transformation & Scaling',
+      description: 'Stabilize variance or scale features. Log10, Natural Log, Sqrt, Arcsine, Box-Cox, Yeo-Johnson, Z-Score, Min-Max.',
+      buttonText: 'Transform & Scale',
+      icon: Sliders,
+    },
+    {
       id: 'descriptive',
       title: 'Descriptive Statistics',
       description: 'Explore core summary statistics, coefficient of variation, shape, outliers, missing values, and data distribution.',
       buttonText: 'Run Descriptive Stats',
       icon: Calculator,
+    },
+    {
+      id: 'plots',
+      title: 'Plots (Visualization)',
+      description: 'Generate publication-ready charts. Box Plots, Histograms, QQ-Plots, PCA Biplots.',
+      buttonText: 'Generate Plots',
+      icon: BarChart3,
     },
     {
       id: 'correlation',
@@ -160,25 +181,18 @@ const Dashboard = ({ onAuthClick }) => {
       icon: Milestone,
     },
     {
+      id: 'regression',
+      title: 'Regression Analysis',
+      description: 'Perform Simple Linear Regression, Multiple Linear Regression, or Partial Least Squares Regression (PLSR) on your datasets.',
+      buttonText: 'Run Regression',
+      icon: TrendingUp,
+    },
+    {
       id: 'pca',
       title: 'PCA Analysis',
       description: 'Principal Component Analysis. Obtain eigenvalues, eigenvectors, load matrices, scores, and biplots.',
       buttonText: 'Run PCA Analysis',
       icon: Layers,
-    },
-    {
-      id: 'plots',
-      title: 'Plots (Visualization)',
-      description: 'Generate publication-ready charts. Box Plots, Histograms, QQ-Plots, PCA Biplots.',
-      buttonText: 'Generate Plots',
-      icon: BarChart3,
-    },
-    {
-      id: 'layout',
-      title: 'Field Layout Generator',
-      description: 'Design crop field experiment grids (CRD, RBD, LSD, Split-plot, Sub-sub plot) with bunds and channels.',
-      buttonText: 'Generate Field Layout',
-      icon: Grid,
     },
     {
       id: 'clustering',
@@ -188,25 +202,11 @@ const Dashboard = ({ onAuthClick }) => {
       icon: Compass,
     },
     {
-      id: 'regression',
-      title: 'Regression Analysis',
-      description: 'Perform Simple Linear Regression, Multiple Linear Regression, or Partial Least Squares Regression (PLSR) on your datasets.',
-      buttonText: 'Run Regression',
-      icon: TrendingUp,
-    },
-    {
       id: 'sem',
       title: 'Structural Equation Modeling (SEM)',
       description: 'Fit structural path models, latent constructs, mediation models, fit indices (CFI, RMSEA, SRMR), and publication diagrams.',
       buttonText: 'Run SEM Analysis',
       icon: Network,
-    },
-    {
-      id: 'transform',
-      title: 'Data Transformation & Scaling',
-      description: 'Stabilize variance or scale features. Log10, Natural Log, Sqrt, Arcsine, Box-Cox, Yeo-Johnson, Z-Score, Min-Max.',
-      buttonText: 'Transform & Scale',
-      icon: Sliders,
     },
   ];
 

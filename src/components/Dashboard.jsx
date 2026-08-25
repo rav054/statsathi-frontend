@@ -520,6 +520,12 @@ const Dashboard = ({ onAuthClick }) => {
         onClose={() => setClusteringOpen(false)}
       />
 
+      {/* Regression Analysis Modal */}
+      <RegressionModal
+        isOpen={regressionOpen}
+        onClose={() => setRegressionOpen(false)}
+      />
+
       {/* Data Transformation & Scaling Modal */}
       <DataTransformModal
         isOpen={transformOpen}

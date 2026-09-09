@@ -543,6 +543,7 @@ const ClusteringModal = ({ isOpen, onClose }) => {
       const htmlContent = `
         <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
         <head>
+          <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
           <title>${title}</title>
           <!--[if gte mso 9]>
           <xml>

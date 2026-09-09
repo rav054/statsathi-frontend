@@ -276,7 +276,8 @@ const Dashboard = ({ onAuthClick }) => {
       <div className="flex flex-col justify-between items-start md:flex-row md:items-center border-b border-slate-200/50 dark:border-slate-800 pb-6 mb-8 gap-4">
         <div>
           <h1 className="font-display text-2xl font-extrabold text-slate-800 dark:text-slate-100 tracking-tight">
-            Welcome to Stat Sathi.
+            Welcome to <span className="text-black dark:text-white">Stat</span>{' '}
+            <span className="text-brand-indigo dark:text-indigo-400">Sathi</span>.
           </h1>
           <p className="font-sans text-sm text-slate-500 dark:text-slate-400 mt-1">
             Select a statistical module below to begin your analysis.

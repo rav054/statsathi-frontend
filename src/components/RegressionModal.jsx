@@ -410,6 +410,7 @@ const RegressionModal = ({ isOpen, onClose }) => {
     let html = `
       <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
       <head>
+        <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
         <title>Regression Analysis Report</title>
         <style>
           body { font-family: Arial, sans-serif; font-size: 11pt; line-height: 1.6; color: #1e293b; margin: 1in; }
@@ -565,7 +566,7 @@ const RegressionModal = ({ isOpen, onClose }) => {
       })
       .replace(/<\/table>/gi, '</table></center>');
 
-    const blob = new Blob([centeredHtml], { type: 'application/msword' });
+    const blob = new Blob(['\ufeff' + centeredHtml], { type: 'application/msword;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;

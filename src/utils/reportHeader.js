@@ -15,63 +15,62 @@ export const getWordReportHeader = ({
   extraMeta = []
 }) => {
   return `
-    <div style="margin-bottom: 24px; border-bottom: 2px solid #4F46E5; padding-bottom: 14px;">
-      <table width="100%" style="border-collapse: collapse; border: none; width: 100%;">
-        <tr>
-          <td style="border: none; vertical-align: middle; padding: 0; width: 55%;">
-            <img src="${STATSATHI_WORD_LOGO_BASE64}" width="220" height="63" style="width: 220px; height: auto; display: block; border: none;" alt="StatSathi Logo" />
-          </td>
-          <td style="border: none; text-align: right; vertical-align: middle; padding: 0; width: 45%;">
-            <div style="font-family: Arial, sans-serif; font-size: 10pt; font-weight: bold; color: #4F46E5; margin-bottom: 3px;">
-              StatSathi Research Suite
-            </div>
-            <div style="font-family: Arial, sans-serif; font-size: 8.5pt; color: #64748B;">
-              Your Research Analytics Companion
-            </div>
-            <div style="font-family: Arial, sans-serif; font-size: 7.5pt; color: #94A3B8; margin-top: 2px;">
-              Curated by Ravi, PhD Scholar ICAR-IISS
-            </div>
-          </td>
-        </tr>
-      </table>
+    <div align="center" style="text-align: center; margin-bottom: 22px; padding-bottom: 16px; border-bottom: 2px solid #4F46E5; clear: both;">
+      <!-- Centered Official Brand Logo -->
+      <div align="center" style="text-align: center; margin-bottom: 8px;">
+        <img src="${STATSATHI_WORD_LOGO_BASE64}" width="240" height="69" style="width: 240px; height: auto; margin: 0 auto 8px auto; text-align: center; border: none; display: inline-block;" alt="StatSathi Logo" />
+      </div>
+      <!-- Centered Brand Subtitle & Tagline -->
+      <div style="font-family: Arial, sans-serif; font-size: 11pt; font-weight: bold; color: #4F46E5; text-align: center; margin-bottom: 3px;">
+        StatSathi Research Suite
+      </div>
+      <div style="font-family: Arial, sans-serif; font-size: 9pt; color: #64748B; text-align: center; margin-bottom: 2px;">
+        Your Research Analytics Companion
+      </div>
+      <div style="font-family: Arial, sans-serif; font-size: 8pt; color: #94A3B8; text-align: center;">
+        Curated by Ravi, PhD Scholar ICAR-IISS
+      </div>
     </div>
+    <br clear="all" style="clear: both;" />
 
-    <h1 style="color: #4F46E5; font-size: 18pt; margin-top: 0; margin-bottom: 16px; font-family: Arial, sans-serif; border-bottom: none;">
+    <h1 align="center" style="color: #4F46E5; font-size: 18pt; text-align: center; margin-top: 10px; margin-bottom: 20px; font-family: Arial, sans-serif; border-bottom: none; clear: both;">
       ${title}
     </h1>
 
-    <div align="center">
-      <table align="center" style="border-collapse: collapse; width: 85%; margin-left: auto; margin-right: auto; margin-bottom: 24px; font-family: Arial, sans-serif; font-size: 9.5pt;">
+    <div align="center" style="text-align: center; margin-bottom: 24px; clear: both;">
+      <table align="center" style="border-collapse: collapse; width: 85%; margin-left: auto; margin-right: auto; margin-bottom: 10px; font-family: Arial, sans-serif; font-size: 9.5pt; mso-table-lspace: 0pt; mso-table-rspace: 0pt; mso-table-wrap: no;">
         ${testApplied ? `
         <tr>
-          <td style="font-weight: bold; background-color: #F8FAFC; width: 30%; border: 1px solid #CBD5E1; padding: 7px 10px; color: #1E293B;">Test Applied</td>
-          <td style="border: 1px solid #CBD5E1; padding: 7px 10px; color: #334155;">${testApplied}</td>
+          <td style="font-weight: bold; background-color: #F8FAFC; width: 30%; border: 1px solid #CBD5E1; padding: 7px 10px; color: #1E293B; text-align: left;">Test Applied</td>
+          <td style="border: 1px solid #CBD5E1; padding: 7px 10px; color: #334155; text-align: left;">${testApplied}</td>
         </tr>` : ''}
         ${fileName ? `
         <tr>
-          <td style="font-weight: bold; background-color: #F8FAFC; width: 30%; border: 1px solid #CBD5E1; padding: 7px 10px; color: #1E293B;">Dataset File</td>
-          <td style="border: 1px solid #CBD5E1; padding: 7px 10px; color: #334155;">${fileName}</td>
+          <td style="font-weight: bold; background-color: #F8FAFC; width: 30%; border: 1px solid #CBD5E1; padding: 7px 10px; color: #1E293B; text-align: left;">Dataset File</td>
+          <td style="border: 1px solid #CBD5E1; padding: 7px 10px; color: #334155; text-align: left;">${fileName}</td>
         </tr>` : ''}
         <tr>
-          <td style="font-weight: bold; background-color: #F8FAFC; width: 30%; border: 1px solid #CBD5E1; padding: 7px 10px; color: #1E293B;">Report Date</td>
-          <td style="border: 1px solid #CBD5E1; padding: 7px 10px; color: #334155;">${date}</td>
+          <td style="font-weight: bold; background-color: #F8FAFC; width: 30%; border: 1px solid #CBD5E1; padding: 7px 10px; color: #1E293B; text-align: left;">Report Date</td>
+          <td style="border: 1px solid #CBD5E1; padding: 7px 10px; color: #334155; text-align: left;">${date}</td>
         </tr>
         <tr>
-          <td style="font-weight: bold; background-color: #F8FAFC; width: 30%; border: 1px solid #CBD5E1; padding: 7px 10px; color: #1E293B;">Curator</td>
-          <td style="border: 1px solid #CBD5E1; padding: 7px 10px; color: #334155;">${curator}</td>
+          <td style="font-weight: bold; background-color: #F8FAFC; width: 30%; border: 1px solid #CBD5E1; padding: 7px 10px; color: #1E293B; text-align: left;">Curator</td>
+          <td style="border: 1px solid #CBD5E1; padding: 7px 10px; color: #334155; text-align: left;">${curator}</td>
         </tr>
         ${extraMeta.map(([label, val]) => `
         <tr>
-          <td style="font-weight: bold; background-color: #F8FAFC; width: 30%; border: 1px solid #CBD5E1; padding: 7px 10px; color: #1E293B;">${label}</td>
-          <td style="border: 1px solid #CBD5E1; padding: 7px 10px; color: #334155;">${val}</td>
+          <td style="font-weight: bold; background-color: #F8FAFC; width: 30%; border: 1px solid #CBD5E1; padding: 7px 10px; color: #1E293B; text-align: left;">${label}</td>
+          <td style="border: 1px solid #CBD5E1; padding: 7px 10px; color: #334155; text-align: left;">${val}</td>
         </tr>`).join('')}
       </table>
     </div>
+    <br clear="all" style="clear: both;" />
   `;
 };
 
 export const getWordReportFooter = () => `
-  <div style="margin-top: 40px; border-top: 1px solid #CBD5E1; padding-top: 10px; text-align: center; font-family: Arial, sans-serif; font-size: 8pt; color: #94A3B8;">
-    Generated automatically by StatSathi • Your Research Analytics Companion • Curated by Ravi, PhD Scholar ICAR-IISS
+  <br clear="all" style="clear: both;" />
+  <div align="center" style="margin-top: 40px; border-top: 1px solid #CBD5E1; padding-top: 12px; text-align: center; font-family: Arial, sans-serif; font-size: 8pt; color: #94A3B8; clear: both;">
+    Generated automatically by StatSathi &bull; Your Research Analytics Companion &bull; Curated by Ravi, PhD Scholar ICAR-IISS
   </div>
 `;

@@ -82,6 +82,7 @@ const Auth = ({ onSuccess }) => {
 
         <div className="p-8">
           <div className="mb-6 text-center">
+            <img src="/logo.svg" alt="StatSathi" className="h-10 mx-auto mb-4 object-contain" />
             <h2 className="font-display text-xl font-bold text-slate-800">
               {isLogin ? 'Welcome Back' : 'Create Academic Account'}
             </h2>

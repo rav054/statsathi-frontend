@@ -24,31 +24,16 @@ const Header = ({ onAuthClick }) => {
     <header className="sticky top-0 z-40 flex h-16 w-full items-center justify-between border-b border-slate-200 bg-white px-8 shadow-xs">
       {/* Left section: Logo and Tagline */}
       <div className="flex items-center space-x-5">
-        <div className="flex items-center space-x-2.5">
-          {/* Custom geometric logo icon matching the screenshot */}
-          <svg
-            width="28"
-            height="28"
-            viewBox="0 0 28 28"
-            fill="none"
-            className="h-7 w-7 shrink-0"
-          >
-            {/* Connection lines */}
-            <line x1="6.5" y1="15" x2="12.5" y2="19.5" stroke="#312e81" strokeWidth="2.5" strokeLinecap="round" />
-            <line x1="15.5" y1="18.5" x2="21.5" y2="9.5" stroke="#312e81" strokeWidth="2.5" strokeLinecap="round" />
-            
-            {/* Nodes */}
-            <circle cx="5" cy="14" r="3" fill="#ffffff" stroke="#312e81" strokeWidth="2.5" />
-            <circle cx="14" cy="20" r="3" fill="#ffffff" stroke="#312e81" strokeWidth="2.5" />
-            <circle cx="23" cy="8" r="3" fill="#ffffff" stroke="#312e81" strokeWidth="2.5" />
-          </svg>
-          <span className="font-display text-xl font-extrabold tracking-wide text-[#0B1530]">
-            STAT SATHI
-          </span>
+        <div className="flex items-center space-x-3 cursor-pointer select-none">
+          <img
+            src="/logo.svg"
+            alt="StatSathi Logo"
+            className="h-9 w-auto object-contain"
+          />
         </div>
         <div className="hidden h-5 w-px bg-slate-300 md:block"></div>
-        <span className="hidden font-sans text-xs font-medium text-slate-600 md:block">
-          Your Trustworthy Research Analytics Companion.
+        <span className="hidden font-sans text-xs font-medium text-slate-500 md:block">
+          Your Research Analytics Companion
         </span>
       </div>
 

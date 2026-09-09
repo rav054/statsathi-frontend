@@ -304,13 +304,13 @@ const LearningHub = () => {
 
 
   return (
-    <div className="flex-1 p-8 animate-fade-in">
+    <div className="flex-1 p-8 animate-fade-in transition-colors duration-200">
       {/* Header section */}
-      <div className="border-b border-slate-200/50 pb-6 mb-8">
-        <h1 className="font-display text-2xl font-extrabold text-slate-800 tracking-tight">
+      <div className="border-b border-slate-200/50 dark:border-slate-800 pb-6 mb-8">
+        <h1 className="font-display text-2xl font-extrabold text-slate-800 dark:text-slate-100 tracking-tight">
           Learning Hub
         </h1>
-        <p className="font-sans text-sm text-slate-500 mt-1">
+        <p className="font-sans text-sm text-slate-500 dark:text-slate-400 mt-1">
           Select an article below to expand and read full reference guides for academic research writing.
         </p>
       </div>
@@ -327,10 +327,10 @@ const LearningHub = () => {
                   setExpandedIdx(idx);
                 }
               }}
-              className={`rounded-3xl border bg-white p-6 shadow-md transition-all duration-300 ${
+              className={`rounded-3xl border bg-white dark:bg-slate-900 p-6 shadow-md transition-all duration-300 ${
                 isExpanded 
-                  ? 'border-brand-indigo/50 shadow-lg' 
-                  : 'border-slate-100 shadow-slate-100/50 hover:shadow-lg hover:border-slate-200 cursor-pointer transform hover:-translate-y-0.5'
+                  ? 'border-brand-indigo/50 dark:border-indigo-500/50 shadow-lg dark:shadow-none' 
+                  : 'border-slate-100 dark:border-slate-800 shadow-slate-100/50 dark:shadow-none hover:shadow-lg dark:hover:border-slate-700 cursor-pointer transform hover:-translate-y-0.5'
               }`}
             >
               {/* Header Top Bar */}
@@ -341,22 +341,22 @@ const LearningHub = () => {
                     setExpandedIdx(null);
                   }
                 }}
-                className="flex flex-col sm:flex-row sm:items-center sm:justify-between border-b border-slate-50 pb-4 mb-4 gap-2 cursor-pointer select-none"
+                className="flex flex-col sm:flex-row sm:items-center sm:justify-between border-b border-slate-50 dark:border-slate-800 pb-4 mb-4 gap-2 cursor-pointer select-none"
               >
                 <div className="flex items-center space-x-2">
-                  <GraduationCap className="h-5 w-5 text-brand-indigo" />
-                  <span className="font-sans text-xs font-bold text-brand-indigo uppercase tracking-wider">
+                  <GraduationCap className="h-5 w-5 text-brand-indigo dark:text-indigo-400" />
+                  <span className="font-sans text-xs font-bold text-brand-indigo dark:text-indigo-400 uppercase tracking-wider">
                     {guide.type}
                   </span>
                 </div>
                 <div className="flex items-center space-x-2">
-                  <span className="font-sans text-xs text-slate-400 font-semibold bg-slate-50 px-2.5 py-1 rounded-full">
+                  <span className="font-sans text-xs text-slate-400 dark:text-slate-300 font-semibold bg-slate-50 dark:bg-slate-800 px-2.5 py-1 rounded-full">
                     {guide.duration}
                   </span>
                   {isExpanded ? (
-                    <ChevronUp className="h-4.5 w-4.5 text-slate-400" />
+                    <ChevronUp className="h-4.5 w-4.5 text-slate-400 dark:text-slate-400" />
                   ) : (
-                    <ChevronDown className="h-4.5 w-4.5 text-slate-400" />
+                    <ChevronDown className="h-4.5 w-4.5 text-slate-400 dark:text-slate-400" />
                   )}
                 </div>
               </div>
@@ -369,12 +369,12 @@ const LearningHub = () => {
                     setExpandedIdx(null);
                   }
                 }}
-                className="font-display text-base font-bold text-slate-800 hover:text-brand-indigo transition-colors cursor-pointer flex items-center justify-between select-none"
+                className="font-display text-base font-bold text-slate-800 dark:text-slate-100 hover:text-brand-indigo dark:hover:text-indigo-400 transition-colors cursor-pointer flex items-center justify-between select-none"
               >
                 <span>{guide.title}</span>
               </h3>
               
-              <p className="font-sans text-xs text-slate-400 mt-2 leading-relaxed">
+              <p className="font-sans text-xs text-slate-400 dark:text-slate-400 mt-2 leading-relaxed">
                 {guide.description}
               </p>
 
@@ -387,7 +387,7 @@ const LearningHub = () => {
                       e.stopPropagation();
                       setExpandedIdx(idx);
                     }}
-                    className="inline-flex items-center space-x-2 rounded-2xl bg-indigo-50 hover:bg-brand-indigo hover:text-white border border-indigo-100/50 px-4 py-2 font-sans text-xs font-bold text-brand-indigo transition-all duration-200 cursor-pointer shadow-xs"
+                    className="inline-flex items-center space-x-2 rounded-2xl bg-indigo-50 dark:bg-indigo-950/60 hover:bg-brand-indigo hover:text-white dark:hover:bg-indigo-600 border border-indigo-100/50 dark:border-indigo-800/40 px-4 py-2 font-sans text-xs font-bold text-brand-indigo dark:text-indigo-300 transition-all duration-200 cursor-pointer shadow-xs"
                   >
                     <BookOpen className="h-4 w-4" />
                     <span>Expand & Read Article</span>
@@ -397,15 +397,15 @@ const LearningHub = () => {
 
               {/* Expanded Area */}
               {isExpanded && (
-                <div className="mt-6 space-y-6 border-t border-slate-100 pt-6 animate-fade-in">
+                <div className="mt-6 space-y-6 border-t border-slate-100 dark:border-slate-800 pt-6 animate-fade-in">
                   
                   {/* Key Takeaways */}
-                  <div className="rounded-2xl bg-indigo-50/30 p-4 border border-indigo-50/50">
-                    <h4 className="font-display text-xs font-bold text-slate-700 mb-2">Key Takeaways:</h4>
+                  <div className="rounded-2xl bg-indigo-50/30 dark:bg-indigo-950/30 p-4 border border-indigo-50/50 dark:border-indigo-900/40">
+                    <h4 className="font-display text-xs font-bold text-slate-700 dark:text-slate-200 mb-2">Key Takeaways:</h4>
                     <ul className="space-y-2">
                       {guide.points.map((pt, pIdx) => (
-                        <li key={pIdx} className="flex items-start space-x-2 font-sans text-xs text-slate-500 leading-normal">
-                          <CheckCircle2 className="h-4 w-4 shrink-0 text-brand-indigo mt-0.5" />
+                        <li key={pIdx} className="flex items-start space-x-2 font-sans text-xs text-slate-500 dark:text-slate-300 leading-normal">
+                          <CheckCircle2 className="h-4 w-4 shrink-0 text-brand-indigo dark:text-indigo-400 mt-0.5" />
                           <span>{pt}</span>
                         </li>
                       ))}
@@ -414,7 +414,7 @@ const LearningHub = () => {
 
                   {/* Article Text Content */}
                   <div 
-                    className="prose prose-slate max-w-none font-sans text-xs text-slate-600 leading-relaxed space-y-3 pt-2 border-t border-slate-100/50"
+                    className="prose prose-slate dark:prose-invert max-w-none font-sans text-xs text-slate-600 dark:text-slate-300 leading-relaxed space-y-3 pt-2 border-t border-slate-100/50 dark:border-slate-800"
                     dangerouslySetInnerHTML={{ __html: guide.article }}
                   />
 
@@ -426,7 +426,7 @@ const LearningHub = () => {
                         e.stopPropagation();
                         setExpandedIdx(null);
                       }}
-                      className="inline-flex items-center space-x-2 rounded-2xl bg-slate-100 hover:bg-slate-200 border border-slate-200/50 px-4 py-2 font-sans text-xs font-bold text-slate-600 transition-all duration-200 cursor-pointer"
+                      className="inline-flex items-center space-x-2 rounded-2xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200/50 dark:border-slate-700 px-4 py-2 font-sans text-xs font-bold text-slate-600 dark:text-slate-300 transition-all duration-200 cursor-pointer"
                     >
                       <span>Collapse Article</span>
                     </button>

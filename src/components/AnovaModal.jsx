@@ -3,6 +3,7 @@ import { useAuth, API_URL } from '../context/AuthContext';
 import { X, Upload, Check, AlertCircle, Download, RefreshCw, Info, HelpCircle, Eye, Table, Copy } from 'lucide-react';
 import DatasetViewerModal from './DatasetViewerModal';
 import Plotly from 'plotly.js-dist-min';
+import { getWordReportHeader, getWordReportFooter } from '../utils/reportHeader';
 
 const DATA_FORMAT_GUIDES = {
   oneway: {
@@ -1261,44 +1262,18 @@ const AnovaModal = ({ isOpen, onClose }) => {
           </style>
         </head>
         <body>
-          <h1>Post-Hoc Mean Separation Analysis Report (${currentMethodLabel})</h1>
-          
-          <div align="center">
-          <table align="center" class="meta-table" style="width: 75%;">
-            <tr>
-              <td class="meta-label">Dependent Variable</td>
-              <td>${depVar}</td>
-            </tr>
-            <tr>
-              <td class="meta-label">Factor A (Treatment Group)</td>
-              <td>${indVar1}</td>
-            </tr>
-            ${indVar2 ? `
-            <tr>
-              <td class="meta-label">Factor B</td>
-              <td>${indVar2}</td>
-            </tr>
-            ` : ''}
-            ${repVar ? `
-            <tr>
-              <td class="meta-label">Replication/Block Factor</td>
-              <td>${repVar}</td>
-            </tr>
-            ` : ''}
-            <tr>
-              <td class="meta-label">Experimental Layout</td>
-              <td>${layoutNames[testType] || testType}</td>
-            </tr>
-            <tr>
-              <td class="meta-label">Report Date</td>
-              <td>${new Date().toLocaleString()}</td>
-            </tr>
-            <tr>
-              <td class="meta-label">Curator</td>
-              <td>${user ? user.full_name : 'Guest Researcher'}</td>
-            </tr>
-          </table>
-          </div>
+          ${getWordReportHeader({
+            title: `Post-Hoc Mean Separation Analysis Report (${currentMethodLabel})`,
+            testApplied: layoutNames[testType] || testType,
+            fileName: file ? file.name : '',
+            curator: user ? user.full_name : 'Guest Researcher',
+            extraMeta: [
+              ['Dependent Variable', depVar],
+              ['Factor A (Treatment Group)', indVar1],
+              ...(indVar2 ? [['Factor B', indVar2]] : []),
+              ...(repVar ? [['Replication/Block Factor', repVar]] : [])
+            ]
+          })}
 
           <h2 style="color: #4F46E5; font-family: Arial, sans-serif; font-size: 14pt; margin-top: 20px;">Significance Grouping Table (CD at 5% level)</h2>
           <div align="center">
@@ -1362,9 +1337,7 @@ const AnovaModal = ({ isOpen, onClose }) => {
           </div>
           ` : ''}
 
-          <p style="margin-top: 40px; font-size: 9pt; color: #64748B; border-top: 1px solid #E2E8F0; padding-top: 10px; text-align: center;">
-            Stat Sathi &copy; 2026 - Your Trustworthy Research Analytics Companion - developed by Ravi, PhD Scholar in IISS Bhopal
-          </p>
+          ${getWordReportFooter()}
         </body>
         </html>
       `;
@@ -2347,48 +2320,18 @@ const AnovaModal = ({ isOpen, onClose }) => {
           </style>
         </head>
         <body>
-          <h1>Stat Sathi Design of Experiments (ANOVA) Report</h1>
-          
-          <div align="center">
-          <table align="center" class="meta-table" style="width: 75%;">
-            <tr>
-              <td class="meta-label">Test Applied</td>
-              <td>${results.anova_table?.method || 'ANOVA Analysis'}</td>
-            </tr>
-            <tr>
-              <td class="meta-label">Dataset File</td>
-              <td>${file ? file.name : 'N/A'}</td>
-            </tr>
-            <tr>
-              <td class="meta-label">Dependent Variable</td>
-              <td>${depVar}</td>
-            </tr>
-            <tr>
-              <td class="meta-label">Factor 1 (Treatment A)</td>
-              <td>${indVar1}</td>
-            </tr>
-            ${indVar2 ? `
-            <tr>
-              <td class="meta-label">Factor 2 (Factor B)</td>
-              <td>${indVar2}</td>
-            </tr>
-            ` : ''}
-            ${repVar ? `
-            <tr>
-              <td class="meta-label">Replication/Block Factor</td>
-              <td>${repVar}</td>
-            </tr>
-            ` : ''}
-            <tr>
-              <td class="meta-label">Report Date</td>
-              <td>${new Date().toLocaleString()}</td>
-            </tr>
-            <tr>
-              <td class="meta-label">Curator</td>
-              <td>${user ? user.full_name : 'Guest Researcher'}</td>
-            </tr>
-          </table>
-          </div>
+          ${getWordReportHeader({
+            title: 'Design of Experiments (ANOVA) Report',
+            testApplied: results.anova_table?.method || 'ANOVA Analysis',
+            fileName: file ? file.name : '',
+            curator: user ? user.full_name : 'Guest Researcher',
+            extraMeta: [
+              ['Dependent Variable', depVar],
+              ['Factor 1 (Treatment A)', indVar1],
+              ...(indVar2 ? [['Factor 2 (Factor B)', indVar2]] : []),
+              ...(repVar ? [['Replication/Block Factor', repVar]] : [])
+            ]
+          })}
 
           <h2 style="color: #4F46E5; font-family: Arial, sans-serif; font-size: 14pt; margin-top: 20px;">1. ANOVA Table</h2>
           ${anovaTableHTML}
@@ -2434,9 +2377,7 @@ const AnovaModal = ({ isOpen, onClose }) => {
 
           ${leveneRow}
 
-          <p style="margin-top: 40px; font-size: 9pt; color: #64748B; border-top: 1px solid #E2E8F0; padding-top: 10px; text-align: center;">
-            Stat Sathi &copy; 2026 - Your Trustworthy Research Analytics Companion - developed by Ravi, PhD Scholar in IISS Bhopal
-          </p>
+          ${getWordReportFooter()}
         </body>
         </html>
       `;

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { ThemeProvider } from './context/ThemeContext';
 import Header from './components/Header';
 import Sidebar from './components/Sidebar';
 import Footer from './components/Footer';
@@ -12,7 +13,7 @@ const MainLayout = ({ activeTab, setActiveTab, authView, setAuthView }) => {
   const { user } = useAuth();
 
   return (
-    <div className="flex min-h-screen flex-col bg-brand-slate">
+    <div className="flex min-h-screen flex-col bg-brand-slate dark:bg-slate-950 text-slate-800 dark:text-slate-100 transition-colors duration-200">
       {/* Top Header */}
       <Header onAuthClick={() => setAuthView(true)} />
 
@@ -29,7 +30,7 @@ const MainLayout = ({ activeTab, setActiveTab, authView, setAuthView }) => {
             <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} />
             
             {/* Core Dash Content Area */}
-            <main className="flex-1 flex flex-col bg-brand-slate">
+            <main className="flex-1 flex flex-col bg-brand-slate dark:bg-slate-950">
               {activeTab === 'dashboard' && <Dashboard onAuthClick={() => setAuthView(true)} />}
               {activeTab === 'projects' && <Projects onAuthClick={() => setAuthView(true)} />}
               {activeTab === 'learning' && <LearningHub />}
@@ -48,14 +49,16 @@ const App = () => {
   const [authView, setAuthView] = useState(false);
 
   return (
-    <AuthProvider>
-      <MainLayout
-        activeTab={activeTab}
-        setActiveTab={setActiveTab}
-        authView={authView}
-        setAuthView={setAuthView}
-      />
-    </AuthProvider>
+    <ThemeProvider>
+      <AuthProvider>
+        <MainLayout
+          activeTab={activeTab}
+          setActiveTab={setActiveTab}
+          authView={authView}
+          setAuthView={setAuthView}
+        />
+      </AuthProvider>
+    </ThemeProvider>
   );
 };
 

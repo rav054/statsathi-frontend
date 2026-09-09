@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useAuth, API_URL } from '../context/AuthContext';
 import { X, Upload, Check, AlertCircle, Download, RefreshCw, ZoomIn, ZoomOut, Eye } from 'lucide-react';
 import DatasetViewerModal from './DatasetViewerModal';
+import { getWordReportHeader, getWordReportFooter } from '../utils/reportHeader';
 
 const CorrelationModal = ({ isOpen, onClose }) => {
   const { token, user } = useAuth();
@@ -262,28 +263,12 @@ const CorrelationModal = ({ isOpen, onClose }) => {
           </style>
         </head>
         <body>
-          <h1>Stat Sathi Correlation Analysis Report</h1>
-          
-          <div align="center">
-          <table align="center" class="meta-table" style="width: 75%;">
-            <tr>
-              <td class="meta-label">Test Applied</td>
-              <td>Pearson Correlation Analysis (Heatmap Matrix)</td>
-            </tr>
-            <tr>
-              <td class="meta-label">Dataset File</td>
-              <td>${file.name}</td>
-            </tr>
-            <tr>
-              <td class="meta-label">Report Date</td>
-              <td>${new Date().toLocaleString()}</td>
-            </tr>
-            <tr>
-              <td class="meta-label">Curator</td>
-              <td>${user ? user.full_name : 'Guest Researcher'}</td>
-            </tr>
-          </table>
-          </div>
+          ${getWordReportHeader({
+            title: 'Correlation Analysis Report',
+            testApplied: 'Pearson Correlation Analysis (Heatmap Matrix)',
+            fileName: file ? file.name : '',
+            curator: user ? user.full_name : 'Guest Researcher'
+          })}
 
           <p>This report presents the correlation coefficients calculated between numeric columns in the uploaded dataset. Values range from -1.00 (perfect negative correlation) to +1.00 (perfect positive correlation), with 0.00 representing no linear relationship.</p>
 
@@ -298,9 +283,7 @@ const CorrelationModal = ({ isOpen, onClose }) => {
             <li><strong>-0.3 &lt; r &lt; 0.3:</strong> Weak or no linear correlation.</li>
           </ul>
           
-          <p style="margin-top: 40px; font-size: 9pt; color: #64748B; border-top: 1px solid #E2E8F0; padding-top: 10px; text-align: center;">
-            Stat Sathi &copy; 2026 - Your Trustworthy Research Analytics Companion - developed by Ravi, PhD Scholar in IISS Bhopal
-          </p>
+          ${getWordReportFooter()}
         </body>
         </html>
       `;

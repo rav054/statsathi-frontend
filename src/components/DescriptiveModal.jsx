@@ -3,6 +3,7 @@ import { useAuth, API_URL } from '../context/AuthContext';
 import { X, Upload, Check, AlertCircle, Download, RefreshCw, Eye, Info, Calculator } from 'lucide-react';
 import Plotly from 'plotly.js-dist-min';
 import DatasetViewerModal from './DatasetViewerModal';
+import { getWordReportHeader, getWordReportFooter } from '../utils/reportHeader';
 
 const CHART_THEMES = {
   indigo: {
@@ -676,38 +677,16 @@ const DescriptiveModal = ({ isOpen, onClose }) => {
           </style>
         </head>
         <body>
-          <h1>Descriptive Statistics Report</h1>
-          
-          <div align="center">
-          <table align="center" class="meta-table" style="width: 75%;">
-            <tr>
-              <td class="meta-label">Analysis Type</td>
-              <td>Descriptive Statistics Summary</td>
-            </tr>
-            <tr>
-              <td class="meta-label">Dataset File</td>
-              <td>${file.name}</td>
-            </tr>
-            ${results.group_var ? `
-            <tr>
-              <td class="meta-label">Grouping Factor</td>
-              <td>${results.group_var}</td>
-            </tr>
-            ` : ''}
-            <tr>
-              <td class="meta-label">Selected Variables</td>
-              <td>${variablesList.join(', ')}</td>
-            </tr>
-            <tr>
-              <td class="meta-label">Report Date</td>
-              <td>${new Date().toLocaleString()}</td>
-            </tr>
-            <tr>
-              <td class="meta-label">Curator</td>
-              <td>${user ? user.full_name : 'Guest Researcher'}</td>
-            </tr>
-          </table>
-          </div>
+          ${getWordReportHeader({
+            title: 'Descriptive Statistics Report',
+            testApplied: 'Descriptive Statistics Summary',
+            fileName: file ? file.name : '',
+            curator: user ? user.full_name : 'Guest Researcher',
+            extraMeta: [
+              ...(results.group_var ? [['Grouping Factor', results.group_var]] : []),
+              ['Selected Variables', variablesList.join(', ')]
+            ]
+          })}
 
           <h2 style="color: #4F46E5; font-family: Arial, sans-serif; font-size: 14pt; margin-top: 20px;">1. Overall Summary Statistics</h2>
           <div align="center">
@@ -767,9 +746,7 @@ const DescriptiveModal = ({ isOpen, onClose }) => {
           ${groupedTablesHtml}
           ` : ''}
 
-          <p style="margin-top: 40px; font-size: 9pt; color: #64748B; border-top: 1px solid #E2E8F0; padding-top: 10px; text-align: center;">
-            Stat Sathi &copy; 2026 - Your Trustworthy Research Analytics Companion - developed by Ravi, PhD Scholar in IISS Bhopal
-          </p>
+          ${getWordReportFooter()}
         </body>
         </html>
       `;

@@ -3,6 +3,7 @@ import { useAuth, API_URL } from '../context/AuthContext';
 import { X, Upload, Check, AlertCircle, Download, RefreshCw, Eye, Info, TrendingUp, ChevronRight } from 'lucide-react';
 import Plotly from 'plotly.js-dist-min';
 import DatasetViewerModal from './DatasetViewerModal';
+import { getWordReportHeader, getWordReportFooter } from '../utils/reportHeader';
 
 const RegressionModal = ({ isOpen, onClose }) => {
   const { token, user } = useAuth();
@@ -411,35 +412,28 @@ const RegressionModal = ({ isOpen, onClose }) => {
       <head>
         <title>Regression Analysis Report</title>
         <style>
-          body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; color: #1e293b; }
+          body { font-family: Arial, sans-serif; font-size: 11pt; line-height: 1.6; color: #1e293b; margin: 1in; }
           h2 { text-align: center; color: #4f46e5; font-size: 18pt; margin-bottom: 5px; }
           h3 { color: #0f172a; border-bottom: 1.5pt solid #4f46e5; padding-bottom: 3px; font-size: 14pt; margin-top: 25px; }
           table { width: 100%; border-collapse: collapse; margin: 15px auto; }
           th, td { border: 1px solid #cbd5e1; padding: 8px 10px; font-size: 10pt; text-align: center; }
           th { background-color: #4f46e5; color: #ffffff; font-weight: bold; }
           tr:nth-child(even) { background-color: #f8fafc; }
-          .summary-info { margin: 10px 0; font-size: 10pt; line-height: 1.5; }
-          .footer { text-align: center; font-size: 9pt; color: #64748b; margin-top: 30px; border-top: 1px solid #e2e8f0; padding-top: 10px; }
         </style>
       </head>
       <body>
-        <h2>STAT SATHI REGRESSION REPORT</h2>
-        <div style="text-align: center; font-size: 9pt; color: #64748b; margin-top: -5px;">
-          Your Trustworthy Research Analytics Companion
-        </div>
-        <br/>
-        
-        <div class="summary-info">
-          <strong>Date Generated:</strong> ${new Date().toLocaleString()}<br/>
-          <strong>Dataset File:</strong> ${file.name}<br/>
-          <strong>Regression Model Type:</strong> ${
-            results.regression_type === 'simple' ? 'Simple Linear Regression' :
-            results.regression_type === 'multiple' ? 'Multiple Linear Regression' :
-            'Partial Least Squares Regression (PLSR)'
-          }<br/>
-          <strong>Dependent Variable(s):</strong> ${depVars.join(', ')}<br/>
-          <strong>Independent Variable(s):</strong> ${indVars.join(', ')}<br/>
-        </div>
+        ${getWordReportHeader({
+          title: 'Regression Analysis Report',
+          testApplied: results.regression_type === 'simple' ? 'Simple Linear Regression' :
+                       results.regression_type === 'multiple' ? 'Multiple Linear Regression' :
+                       'Partial Least Squares Regression (PLSR)',
+          fileName: file ? file.name : '',
+          curator: user ? user.full_name : 'Guest Researcher',
+          extraMeta: [
+            ['Dependent Variable(s)', depVars.join(', ')],
+            ['Independent Variable(s)', indVars.join(', ')]
+          ]
+        })}
     `;
 
     if (results.regression_type !== 'plsr') {
@@ -551,10 +545,7 @@ const RegressionModal = ({ isOpen, onClose }) => {
     }
 
     html += `
-        <div class="footer">
-          Stat Sathi &copy; 2026 - Your Trustworthy Research Analytics Companion - developed by Ravi, PhD Scholar in IISS Bhopal<br/>
-          <em>Curated by ${user ? user.full_name : 'Guest Researcher'}</em>
-        </div>
+        ${getWordReportFooter()}
       </body>
       </html>
     `;

@@ -271,14 +271,14 @@ const Dashboard = ({ onAuthClick }) => {
   };
 
   return (
-    <div className="flex-1 p-8 animate-fade-in">
+    <div className="flex-1 p-8 animate-fade-in transition-colors duration-200">
       {/* Top Welcome / Upload Row */}
-      <div className="flex flex-col justify-between items-start md:flex-row md:items-center border-b border-slate-200/50 pb-6 mb-8 gap-4">
+      <div className="flex flex-col justify-between items-start md:flex-row md:items-center border-b border-slate-200/50 dark:border-slate-800 pb-6 mb-8 gap-4">
         <div>
-          <h1 className="font-display text-2xl font-extrabold text-slate-800 tracking-tight">
+          <h1 className="font-display text-2xl font-extrabold text-slate-800 dark:text-slate-100 tracking-tight">
             Welcome to Stat Sathi.
           </h1>
-          <p className="font-sans text-sm text-slate-500 mt-1">
+          <p className="font-sans text-sm text-slate-500 dark:text-slate-400 mt-1">
             Select a statistical module below to begin your analysis.
           </p>
         </div>
@@ -297,7 +297,7 @@ const Dashboard = ({ onAuthClick }) => {
             <button
               onClick={handleExcelToCsvClick}
               disabled={converting}
-              className="flex items-center space-x-2 rounded-2xl border border-brand-orange text-brand-orange bg-white px-6 py-3.5 font-display text-sm font-bold shadow-xs hover:bg-orange-50 active:scale-[0.98] transition-all duration-200 disabled:opacity-50 cursor-pointer"
+              className="flex items-center space-x-2 rounded-2xl border border-brand-orange text-brand-orange bg-white dark:bg-slate-800 dark:hover:bg-slate-700 px-6 py-3.5 font-display text-sm font-bold shadow-xs hover:bg-orange-50 active:scale-[0.98] transition-all duration-200 disabled:opacity-50 cursor-pointer"
             >
               {converting ? (
                 <div className="h-4.5 w-4.5 animate-spin rounded-full border border-brand-orange border-t-transparent" />
@@ -331,34 +331,34 @@ const Dashboard = ({ onAuthClick }) => {
 
       {/* Active Loaded Dataset Banner */}
       {file && (
-        <div className="mb-6 rounded-2xl border border-slate-100 bg-slate-50/90 p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 shadow-xs animate-fade-in">
+        <div className="mb-6 rounded-2xl border border-slate-100 dark:border-slate-800 bg-slate-50/90 dark:bg-slate-900/80 p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 shadow-xs animate-fade-in">
           <div className="flex items-center space-x-3">
-            <div className="rounded-xl bg-indigo-50 p-2.5 text-brand-indigo">
+            <div className="rounded-xl bg-indigo-50 dark:bg-indigo-950/60 p-2.5 text-brand-indigo dark:text-indigo-300">
               <Upload className="h-5 w-5" />
             </div>
             <div>
-              <p className="font-sans text-[10px] font-bold text-slate-400 uppercase tracking-wider">Loaded Active Dataset</p>
-              <p className="font-sans text-sm font-bold text-slate-800">{file.name}</p>
+              <p className="font-sans text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Loaded Active Dataset</p>
+              <p className="font-sans text-sm font-bold text-slate-800 dark:text-slate-100">{file.name}</p>
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <button
               onClick={() => setViewerOpen(true)}
-              className="inline-flex items-center space-x-1.5 rounded-xl border border-slate-200 bg-white px-3.5 py-2 font-sans text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors shadow-2xs cursor-pointer"
+              className="inline-flex items-center space-x-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3.5 py-2 font-sans text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors shadow-2xs cursor-pointer"
             >
               <Eye className="h-3.5 w-3.5 text-brand-orange" />
               <span>View / Edit Data</span>
             </button>
             <button
               onClick={handleGlobalUpload}
-              className="inline-flex items-center space-x-1.5 rounded-xl border border-slate-200 bg-white px-3.5 py-2 font-sans text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors shadow-2xs cursor-pointer"
+              className="inline-flex items-center space-x-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3.5 py-2 font-sans text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors shadow-2xs cursor-pointer"
             >
-              <Upload className="h-3.5 w-3.5 text-brand-indigo" />
+              <Upload className="h-3.5 w-3.5 text-brand-indigo dark:text-indigo-300" />
               <span>Choose Other File</span>
             </button>
             <button
               onClick={() => setFile(null)}
-              className="inline-flex items-center space-x-1.5 rounded-xl border border-red-200 bg-red-50/80 px-3.5 py-2 font-sans text-xs font-semibold text-red-600 hover:bg-red-100 transition-colors shadow-2xs cursor-pointer"
+              className="inline-flex items-center space-x-1.5 rounded-xl border border-red-200 dark:border-red-900/50 bg-red-50/80 dark:bg-red-950/30 px-3.5 py-2 font-sans text-xs font-semibold text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-950/50 transition-colors shadow-2xs cursor-pointer"
             >
               <Trash2 className="h-3.5 w-3.5" />
               <span>Remove File</span>
@@ -374,17 +374,17 @@ const Dashboard = ({ onAuthClick }) => {
           return (
             <div 
               key={m.id}
-              className="flex flex-col justify-between rounded-3xl border border-slate-100 bg-white p-6 shadow-md shadow-slate-100/50 hover:shadow-xl hover:shadow-slate-200/50 transition-all duration-300"
+              className="flex flex-col justify-between rounded-3xl border border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-md shadow-slate-100/50 dark:shadow-none hover:shadow-xl dark:hover:border-slate-700 transition-all duration-300"
             >
               <div>
                 {/* Icon Placeholder at top */}
-                <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-2xl bg-indigo-50 text-brand-indigo">
+                <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-2xl bg-indigo-50 dark:bg-indigo-950/60 text-brand-indigo dark:text-indigo-300">
                   <Icon className="h-5.5 w-5.5" />
                 </div>
-                <h3 className="font-display text-base font-bold text-slate-800">
+                <h3 className="font-display text-base font-bold text-slate-800 dark:text-slate-100">
                   {m.title}
                 </h3>
-                <p className="font-sans text-xs text-slate-400 mt-2 leading-relaxed min-h-[40px]">
+                <p className="font-sans text-xs text-slate-400 dark:text-slate-400 mt-2 leading-relaxed min-h-[40px]">
                   {m.description}
                 </p>
               </div>

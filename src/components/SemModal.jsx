@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useAuth, API_URL } from '../context/AuthContext';
 import { X, Upload, Check, AlertCircle, Download, RefreshCw, Eye, Info, Layers, Play, Plus, Trash2, HelpCircle } from 'lucide-react';
 import DatasetViewerModal from './DatasetViewerModal';
+import { getWordReportHeader, getWordReportFooter } from '../utils/reportHeader';
 
 const SemModal = ({ isOpen, onClose }) => {
   const { token, user } = useAuth();
@@ -451,32 +452,15 @@ const SemModal = ({ isOpen, onClose }) => {
           </style>
         </head>
         <body>
-          <h1>Structural Equation Modeling (SEM) Analysis Report</h1>
-          
-          <div align="center">
-          <table align="center" class="meta-table" style="width: 75%;">
-            <tr>
-              <td class="meta-label">Analysis Engine</td>
-              <td>${results.engine}</td>
-            </tr>
-            <tr>
-              <td class="meta-label">Dataset File</td>
-              <td>${file.name}</td>
-            </tr>
-            <tr>
-              <td class="meta-label">Model Methodology</td>
-              <td>${semType === 'pls' ? 'Partial Least Squares SEM (PLS-SEM)' : 'Covariance-Based SEM (CB-SEM)'}</td>
-            </tr>
-            <tr>
-              <td class="meta-label">Report Date</td>
-              <td>${new Date().toLocaleString()}</td>
-            </tr>
-            <tr>
-              <td class="meta-label">Curator</td>
-              <td>${user ? user.full_name : 'Guest Researcher'}</td>
-            </tr>
-          </table>
-          </div>
+          ${getWordReportHeader({
+            title: 'Structural Equation Modeling (SEM) Analysis Report',
+            testApplied: semType === 'pls' ? 'Partial Least Squares SEM (PLS-SEM)' : 'Covariance-Based SEM (CB-SEM)',
+            fileName: file ? file.name : '',
+            curator: user ? user.full_name : 'Guest Researcher',
+            extraMeta: [
+              ['Analysis Engine', results.engine || 'StatSathi SEM Engine']
+            ]
+          })}
 
           <h2 style="color: #4F46E5; font-family: Arial, sans-serif; font-size: 14pt; margin-top: 20px;">1. Inner Structural Model (Path Coefficients)</h2>
           <div align="center">
@@ -549,9 +533,7 @@ const SemModal = ({ isOpen, onClose }) => {
           </div>
           ` : ''}
 
-          <p style="margin-top: 40px; font-size: 9pt; color: #64748B; border-top: 1px solid #E2E8F0; padding-top: 10px; text-align: center;">
-            Stat Sathi &copy; 2026 - Your Trustworthy Research Analytics Companion - developed by Ravi, PhD Scholar in IISS Bhopal
-          </p>
+          ${getWordReportFooter()}
         </body>
         </html>
       `;

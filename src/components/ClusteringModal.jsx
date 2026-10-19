@@ -1,9 +1,20 @@
-import React, { useState, useRef, useEffect } from 'react';
+import { apiFetch } from '../utils/apiFetch';
+import { useState, useRef, useEffect } from 'react';
 import { useAuth, API_URL } from '../context/AuthContext';
-import { X, Upload, Check, AlertCircle, Download, RefreshCw, Eye, Info, Layers, GitBranch } from 'lucide-react';
+import { X, AlertCircle, Download, RefreshCw, Eye, GitBranch } from 'lucide-react';
 import Plotly from 'plotly.js-dist-min';
 import DatasetViewerModal from './DatasetViewerModal';
-import { getWordReportHeader, getWordReportFooter } from '../utils/reportHeader';
+import DatasetPicker from './DatasetPicker';
+import { useDataset } from '../hooks/useDataset';
+import { downloadDocxReport } from '../utils/reportApi';
+import SaveToProjectButton from './SaveToProjectButton';
+import ReopenedBanner from './ReopenedBanner';
+import FigurePresetSelect from './FigurePresetSelect';
+import { PALETTE_OPTIONS, themedLayout, isStylePalette } from '../utils/figureStyle';
+import { exportPlotlyFigure } from '../utils/plotlyExport';
+import { useFigurePreferences } from '../utils/figurePreferences';
+import ClusterExtraChart from './ClusterExtraChart';
+import ResultChartPanel from './ResultChartPanel';
 
 const CLUSTER_PALETTES = {
   classic: {
@@ -32,37 +43,68 @@ const CLUSTER_PALETTES = {
   }
 };
 
-const ClusteringModal = ({ isOpen, onClose }) => {
-  const { token, user } = useAuth();
+// Publication palettes shared with every chart (figure_style.json)
+PALETTE_OPTIONS.forEach(p => {
+  CLUSTER_PALETTES[p.value] = { name: p.label, colors: p.colors };
+});
+
+const ClusteringModal = ({ isOpen, onClose, initialAnalysis = null }) => {
+  const saved = initialAnalysis?.parameters || {};
+  const { token } = useAuth();
 
   // Dataset states
-  const [file, setFile] = useState(null);
-
-
-
-
-  const [columns, setColumns] = useState([]);
-  const [numericColumns, setNumericColumns] = useState([]);
-  const [loadingCols, setLoadingCols] = useState(false);
-  const [dragActive, setDragActive] = useState(false);
-  const fileInputRef = useRef(null);
+  const dataset = useDataset({
+    active: isOpen && !initialAnalysis,
+    onLoaded: () => {
+      setSelectedCols([]);
+      setLabelCol('');
+      setResults(null);
+    },
+    onCleared: () => {
+      setSelectedCols([]);
+      setLabelCol('');
+      setResults(null);
+      setError(null);
+    },
+  });
+  const { file, columns, numericColumns } = dataset;
 
   // Parameter states
   const [selectedCols, setSelectedCols] = useState([]);
   const [clusterMethod, setClusterMethod] = useState('kmeans'); // 'kmeans' or 'hierarchical'
   const [k, setK] = useState(3);
   const [cutHeight, setCutHeight] = useState('');
+  const [linkage, setLinkage] = useState('ward');
+  const [distance, setDistance] = useState('euclidean');
+  const [labelCol, setLabelCol] = useState('');
   const [scatterX, setScatterX] = useState('');
   const [scatterY, setScatterY] = useState('');
   
   // Results & UI states
   const [loadingAnalysis, setLoadingAnalysis] = useState(false);
-  const [results, setResults] = useState(null);
+  const [results, setResults] = useState(initialAnalysis?.result || null);
+  const [reopened, setReopened] = useState(Boolean(initialAnalysis?.result));
+
+  // Fetch the dataset this analysis was run on, then restore its settings so it can be run again
+  const restoreSaved = async () => {
+    setReopened(false);
+    setResults(null);
+    const loaded = await dataset.selectProjectDataset(initialAnalysis.dataset, initialAnalysis.projectName);
+    if (loaded) {
+      setClusterMethod(saved.method || 'kmeans');
+      setK(saved.k || 3);
+      setSelectedCols(saved.variables || []);
+      setLinkage(saved.linkage || 'ward');
+      setDistance(saved.distance || 'euclidean');
+      setLabelCol(saved.labels || '');
+    }
+  };
   const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState('profile'); // 'dendrogram', 'biplot', 'profile', 'data'
   const [viewerOpen, setViewerOpen] = useState(false);
   const [downloadDpi, setDownloadDpi] = useState(150);
-  const [clusterPalette, setClusterPalette] = useState('classic');
+  const [figurePrefs, setFigurePrefs] = useFigurePreferences();
+  const [clusterPalette, setClusterPalette] = useState(figurePrefs.palette);
 
   // Plotly chart refs
   const dendrogramRef = useRef(null);
@@ -118,20 +160,15 @@ const ClusteringModal = ({ isOpen, onClose }) => {
 
         const layout = {
           title: {
-            text: 'Hierarchical Clustering Dendrogram (Ward\'s Linkage)',
-            font: { family: 'Outfit, sans-serif', size: 14, color: '#1E293B', weight: 'bold' }
+            text: 'Hierarchical Clustering Dendrogram (Ward\'s Linkage)'
           },
           xaxis: {
-            title: { text: 'Observations / Linkage Groups', font: { family: 'Outfit, sans-serif', size: 11, color: '#475569' } },
+            title: { text: 'Observations / Linkage Groups' },
             showticklabels: false,
-            gridcolor: '#F1F5F9'
           },
           yaxis: {
-            title: { text: 'Distance (Height)', font: { family: 'Outfit, sans-serif', size: 11, color: '#475569' } },
-            gridcolor: '#F1F5F9'
+            title: { text: 'Distance (Height)' },
           },
-          plot_bgcolor: '#ffffff',
-          paper_bgcolor: '#ffffff',
           margin: { t: 50, r: 40, l: 60, b: 50 },
           shapes: [
             {
@@ -150,7 +187,7 @@ const ClusteringModal = ({ isOpen, onClose }) => {
         };
 
         const config = { responsive: true, displayModeBar: false };
-        Plotly.newPlot(dendrogramRef.current, traces, layout, config);
+        Plotly.newPlot(dendrogramRef.current, traces, themedLayout(layout, { palette: clusterPalette }), config);
       }
     }
 
@@ -285,93 +322,32 @@ const ClusteringModal = ({ isOpen, onClose }) => {
       
       const layout = {
         title: {
-          text: `Cluster Scatter Plot: ${colX} vs ${colY}`,
-          font: { family: 'Outfit, sans-serif', size: 14, color: '#1E293B', weight: 'bold' }
+          text: `Cluster Scatter Plot: ${colX} vs ${colY}`
         },
         xaxis: {
-          title: { text: colX, font: { family: 'Outfit, sans-serif', size: 11, color: '#475569' } },
-          gridcolor: '#F1F5F9',
-          zerolinecolor: '#E2E8F0'
+          title: { text: colX },
         },
         yaxis: {
-          title: { text: colY, font: { family: 'Outfit, sans-serif', size: 11, color: '#475569' } },
-          gridcolor: '#F1F5F9',
-          zerolinecolor: '#E2E8F0'
+          title: { text: colY },
         },
-        plot_bgcolor: '#ffffff',
-        paper_bgcolor: '#ffffff',
         margin: { t: 50, r: 40, l: 60, b: 50 },
         showlegend: true,
         legend: { x: 0, y: 1 }
       };
       
       const config = { responsive: true, displayModeBar: false };
-      Plotly.newPlot(biplotRef.current, traces, layout, config);
+      Plotly.newPlot(biplotRef.current, traces, themedLayout(layout, { palette: clusterPalette }), config);
     }
   }, [results, activeTab, cutHeight, clusterMethod, k, scatterX, scatterY, clusterPalette]);
 
   if (!isOpen) return null;
 
   // File processing
-  const handleDrag = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (e.type === "dragenter" || e.type === "dragover") setDragActive(true);
-    else if (e.type === "dragleave") setDragActive(false);
-  };
-
-  const handleDrop = async (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setDragActive(false);
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      await processFile(e.dataTransfer.files[0]);
-    }
-  };
-
-  const handleFileChange = async (e) => {
-    if (e.target.files && e.target.files[0]) {
-      await processFile(e.target.files[0]);
-    }
-  };
-
   const handleSaveEditedData = async (editedFile) => {
     setResults(null);
     setError(null);
     if (editedFile) {
-      await processFile(editedFile);
-    }
-  };
-
-  const processFile = async (selectedFile) => {
-    setFile(selectedFile);
-    setColumns([]);
-    setNumericColumns([]);
-    setSelectedCols([]);
-    setResults(null);
-    setError(null);
-    setLoadingCols(true);
-
-    const formData = new FormData();
-    formData.append('file', selectedFile);
-
-    try {
-      const response = await fetch(`${API_URL}/analyze/columns`, {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${token}` },
-        body: formData
-      });
-
-      if (!response.ok) throw new Error('Failed to parse columns from dataset.');
-
-      const data = await response.json();
-      setColumns(data.columns || []);
-      setNumericColumns(data.numeric_columns || []);
-    } catch (err) {
-      setError(err.message || 'An error occurred while loading the dataset.');
-      setFile(null);
-    } finally {
-      setLoadingCols(false);
+      await dataset.selectFile(editedFile);
     }
   };
 
@@ -402,9 +378,13 @@ const ClusteringModal = ({ isOpen, onClose }) => {
     if (clusterMethod === 'hierarchical' && cutHeight) {
       formData.append('cut_height', cutHeight);
     }
+    formData.append('linkage', linkage);
+    formData.append('distance', distance);
+    if (labelCol) formData.append('label_col', labelCol);
+    if (isStylePalette(clusterPalette)) formData.append('palette', clusterPalette);
 
     try {
-      const response = await fetch(`${API_URL}/analyze/cluster`, {
+      const response = await apiFetch(`${API_URL}/analyze/cluster`, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}` },
         body: formData
@@ -422,15 +402,6 @@ const ClusteringModal = ({ isOpen, onClose }) => {
     }
   };
 
-  const handleReset = () => {
-    setFile(null);
-    setColumns([]);
-    setNumericColumns([]);
-    setSelectedCols([]);
-    setResults(null);
-    setError(null);
-  };
-
   const handleAnalyzeNew = () => {
     setResults(null);
     setError(null);
@@ -441,23 +412,15 @@ const ClusteringModal = ({ isOpen, onClose }) => {
     let targetRef = chartType === 'dendrogram' ? dendrogramRef.current : biplotRef.current;
     if (!targetRef) return;
 
-    const scale = downloadDpi / 96;
     const filename = `statsathi_cluster_${chartType}_export_${downloadDpi}dpi`;
 
-    Plotly.downloadImage(targetRef, {
-      format: format,
-      width: 800,
-      height: 600,
-      scale: scale,
-      filename: filename
-    });
+    exportPlotlyFigure(targetRef, { format, preset: figurePrefs.preset, dpi: downloadDpi, filename: filename }).catch(err => setError(err.message));
   };
 
   // Report downloads
   const handleDownloadReport = (format) => {
     if (!results) return;
 
-    const activeLabels = clusterMethod === 'kmeans' ? results.kmeans.labels : results.hierarchical.labels;
     const summaries = clusterMethod === 'kmeans' ? results.kmeans.summaries : results.hierarchical.summaries;
     
     let report = `================================================================================\n`;
@@ -466,7 +429,7 @@ const ClusteringModal = ({ isOpen, onClose }) => {
     report += `Generated on: ${new Date().toLocaleString()}\n`;
     report += `Dataset File: ${file.name}\n`;
     report += `Variables Selected: ${selectedCols.join(', ')}\n`;
-    report += `Clustering Method: ${clusterMethod === 'kmeans' ? 'K-Means' : 'Hierarchical (Ward\'s Linkage)'}\n`;
+    report += `Clustering Method: ${clusterMethod === 'kmeans' ? 'K-Means' : `Hierarchical (${results.hierarchical.linkage_label}, ${results.hierarchical.distance_label} distance)`}\n`;
     if (clusterMethod === 'kmeans') {
       report += `Number of Clusters (K): ${k}\n`;
     } else {
@@ -506,7 +469,6 @@ const ClusteringModal = ({ isOpen, onClose }) => {
     report += sizeRow + '\n\n';
 
     const fileName = `StatSathi_Clustering_Report_${file.name.split('.')[0]}`;
-    const title = "Stat Sathi Clustering Analysis Report";
 
     if (format === 'txt') {
       const blob = new Blob([report], { type: 'text/plain;charset=utf-8' });
@@ -517,121 +479,70 @@ const ClusteringModal = ({ isOpen, onClose }) => {
       link.click();
       document.body.removeChild(link);
     } else if (format === 'doc') {
-      // Styled word tables (centrally aligned)
-      const overallMeanCols = selectedCols.map(col => {
-        const overallMean = results.records.reduce((acc, r) => acc + (r[col] || 0), 0) / results.records.length;
-        return `
-          <tr>
-            <td style="border: 1px solid #CBD5E1; padding: 8px; font-weight: bold; background-color: #F8FAFC; color: #1E293B;">${col}</td>
-            <td style="border: 1px solid #CBD5E1; padding: 8px; text-align: right; font-family: 'Courier New', Courier, monospace;">${overallMean.toFixed(4)}</td>
-            ${summaries.map(s => {
-              const val = s.means[col];
-              return `<td style="border: 1px solid #CBD5E1; padding: 8px; text-align: right; font-family: 'Courier New', Courier, monospace;">${val !== null && val !== undefined ? val.toFixed(4) : 'N/A'}</td>`;
-            }).join('')}
-          </tr>
-        `;
-      }).join('');
-
-      const sizeCols = `
-        <tr style="background-color: #F8FAFC; font-weight: bold;">
-          <td style="border: 1px solid #CBD5E1; padding: 8px; color: #1E293B;">Observations Count (N)</td>
-          <td style="border: 1px solid #CBD5E1; padding: 8px; text-align: right;">${results.records.length}</td>
-          ${summaries.map(s => `<td style="border: 1px solid #CBD5E1; padding: 8px; text-align: right;">${s.count}</td>`).join('')}
-        </tr>
-      `;
-
-      const htmlContent = `
-        <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
-        <head>
-          <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
-          <title>${title}</title>
-          <!--[if gte mso 9]>
-          <xml>
-            <w:WordDocument>
-              <w:View>Print</w:View>
-              <w:Zoom>100</w:Zoom>
-            </w:WordDocument>
-          </xml>
-          <![endif]-->
-          <style>
-            body { font-family: Arial, sans-serif; font-size: 11pt; line-height: 1.6; color: #1E293B; margin: 1in; }
-            h1 { color: #4F46E5; font-size: 18pt; border-bottom: 2px solid #4F46E5; padding-bottom: 6px; margin-bottom: 20px; }
-            h2 { color: #1E293B; font-size: 14pt; margin-top: 25px; border-bottom: 1px solid #E2E8F0; padding-bottom: 4px; }
-            p { margin-bottom: 15px; }
-            .meta-table { border-collapse: collapse; width: 75%; margin-left: auto; margin-right: auto; margin-bottom: 25px; }
-            .meta-table td { padding: 8px; border: 1px solid #E2E8F0; }
-            .meta-label { font-weight: bold; background-color: #F8FAFC; width: 30%; }
-          </style>
-        </head>
-        <body>
-          ${getWordReportHeader({
-            title: 'Clustering Analysis and Risk Zoning Report',
-            testApplied: clusterMethod === 'kmeans' ? 'K-Means Clustering' : "Hierarchical Clustering (Ward's Linkage)",
-            fileName: file ? file.name : '',
-            curator: user ? user.full_name : 'Guest Researcher',
-            extraMeta: [
-              ['Analysis Module', 'Unsupervised Machine Learning Clustering'],
-              ...(clusterMethod === 'kmeans' ? [['Specified Clusters (K)', k]] : [['Cut Height Used', results.hierarchical.cut_height_used.toFixed(4)]]),
-              ['Selected Variables', selectedCols.join(', ')]
-            ]
-          })}
-
-          <h2 style="color: #4F46E5; font-family: Arial, sans-serif; font-size: 14pt; margin-top: 20px;">1. Cluster Profiles (Variable Means)</h2>
-          <div align="center">
-          <table align="center" style="border-collapse: collapse; width: 95%; font-family: Arial, sans-serif; font-size: 10pt; margin-left: auto; margin-right: auto; margin-bottom: 25px;">
-            <thead>
-              <tr style="background-color: #4F46E5; color: white;">
-                <th style="border: 1px solid #CBD5E1; padding: 8px; text-align: left; font-weight: bold;">Variable</th>
-                <th style="border: 1px solid #CBD5E1; padding: 8px; text-align: right; font-weight: bold;">Overall Mean</th>
-                ${summaries.map(s => `<th style="border: 1px solid #CBD5E1; padding: 8px; text-align: right; font-weight: bold;">Cluster ${s.cluster_id}</th>`).join('')}
-              </tr>
-            </thead>
-            <tbody>
-              ${overallMeanCols}
-              ${sizeCols}
-            </tbody>
-          </table>
-          </div>
-
-          ${getWordReportFooter()}
-        </body>
-        </html>
-      `;
-      const centeredHtml = htmlContent
-        .replace(/width:\s*100%/gi, 'width: 80%')
-        .replace(/width:\s*95%/gi, 'width: 80%')
-        .replace(/class="meta-table"/gi, 'class="meta-table" style="width: 75%;"')
-        .replace(/<table([^>]*)>/gi, (match, attrs) => {
-          let newAttrs = attrs;
-          if (/width:\s*100%/i.test(newAttrs)) {
-            newAttrs = newAttrs.replace(/width:\s*100%/i, 'width: 80%');
-          }
-          if (/width:\s*95%/i.test(newAttrs)) {
-            newAttrs = newAttrs.replace(/width:\s*95%/i, 'width: 80%');
-          }
-          if (/style="/i.test(newAttrs)) {
-            newAttrs = newAttrs.replace(/style="/i, 'style="mso-table-align: center; margin-left: auto; margin-right: auto; ');
-          } else {
-            newAttrs = ' style="mso-table-align: center; margin-left: auto; margin-right: auto;"' + newAttrs;
-          }
-          if (!/align=/i.test(newAttrs)) {
-            newAttrs = ' align="center"' + newAttrs;
-          }
-          return `<center><table${newAttrs}>`;
-        })
-        .replace(/<\/table>/gi, '</table></center>');
-      const blob = new Blob(['\ufeff' + centeredHtml], { type: 'application/msword;charset=utf-8' });
-      const link = document.createElement('a');
-      link.href = URL.createObjectURL(blob);
-      link.download = `${fileName}.doc`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+      downloadDocxReport(token, buildDocxReport(fileName)).catch(err => setError(err.message));
     }
+  };
+  // Structured content for the server-side Word (.docx) report
+  const buildDocxReport = (fileName) => {
+    const summaries = clusterMethod === 'kmeans' ? results.kmeans.summaries : results.hierarchical.summaries;
+    const overallMean = (col) => results.records.reduce((acc, r) => acc + (r[col] || 0), 0) / results.records.length;
+    const fixed = (v, digits = 4) => (v === null || v === undefined ? 'N/A' : v.toFixed(digits));
+    const quality = results.quality || {};
+    return {
+      title: 'Clustering Analysis Report',
+      test_applied: clusterMethod === 'kmeans' ? 'K-means clustering' : `Hierarchical clustering (${results.hierarchical.linkage_label}, ${results.hierarchical.distance_label} distance)`,
+      dataset_name: file?.name,
+      filename: fileName,
+      sections: [{
+        heading: 'Overview',
+        paragraphs: [
+          `Variables: ${selectedCols.join(', ')} (standardized before clustering).`,
+          clusterMethod === 'kmeans'
+            ? `K-means clustering with K = ${k}.`
+            : `Hierarchical clustering (${results.hierarchical.linkage_label}, ${results.hierarchical.distance_label} distance) cut at height ${results.hierarchical.cut_height_used.toFixed(4)}, giving ${summaries.length} clusters.`
+        ]
+      }, {
+        heading: '1. Cluster Profiles (Variable Means)',
+        tables: [{
+          columns: ['Variable', 'Overall mean', ...summaries.map(s => `Cluster ${s.cluster_id}`)],
+          rows: [
+            ...selectedCols.map(col => [col, overallMean(col).toFixed(4), ...summaries.map(s => fixed(s.means[col]))]),
+            ['Observations (N)', results.records.length, ...summaries.map(s => s.count)]
+          ]
+        }]
+      }, {
+        heading: '2. Cluster Quality',
+        tables: [{
+          columns: ['Measure', 'Value', 'Guide'],
+          rows: [
+            ['Silhouette width', fixed(clusterMethod === 'kmeans' ? quality.kmeans_silhouette : quality.hierarchical_silhouette, 3), '> 0.5 strong, 0.25–0.5 moderate structure'],
+            ['Cophenetic correlation (tree)', fixed(quality.cophenetic_correlation, 3), '> 0.75: the tree preserves the original distances well'],
+            ...(clusterMethod === 'kmeans' ? [['K-means inertia (WCSS)', fixed(quality.kmeans_inertia, 2), 'Within-cluster sum of squares on standardized data']] : [])
+          ]
+        }]
+      }, ...(results.charts ? [{
+        heading: '3. Tree and Cluster Selection',
+        tables: [
+          ...(results.linkage_comparison?.length ? [{
+            columns: ['Linkage', 'Cophenetic correlation'],
+            rows: results.linkage_comparison.map(row => [row.label, row.cophenetic_correlation.toFixed(3)]),
+            note: 'How faithfully each tree preserves the original distances between observations.'
+          }] : []),
+          ...(results.k_selection?.rows?.length ? [{
+            columns: ['k', 'Hierarchical silhouette', 'K-means silhouette', 'K-means WSS'],
+            rows: results.k_selection.rows.map(row => [row.k, fixed(row.hierarchical_silhouette, 3), fixed(row.kmeans_silhouette, 3), fixed(row.kmeans_wss, 1)]),
+            note: `Highest average silhouette width: k = ${results.k_selection.suggested[clusterMethod === 'kmeans' ? 'kmeans' : 'hierarchical']}.`
+          }] : [])
+        ],
+        images: [['dendrogram', 'Dendrogram'], ['circular', 'Circular dendrogram'], ['heatmap', 'Heatmap with dendrograms'], ['k_selection', 'Choosing the number of clusters']]
+          .filter(([key]) => results.charts[key])
+          .map(([key, caption], i) => ({ data: `data:image/png;base64,${results.charts[key]}`, caption: `Figure ${i + 1}. ${caption}` }))
+      }] : [])]
+    };
   };
 
   return (
-    <div className="fixed inset-0 z-40 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-xs animate-fade-in">
+    <div role="dialog" aria-modal="true" className="fixed inset-0 z-40 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-xs animate-fade-in">
       <div className="flex h-[88vh] w-full max-w-5xl flex-col rounded-3xl border border-slate-100 bg-white shadow-2xl overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4 bg-slate-50/50">
@@ -648,7 +559,7 @@ const ClusteringModal = ({ isOpen, onClose }) => {
               </p>
             </div>
           </div>
-          <button
+          <button data-dialog-close aria-label="Close"
             onClick={onClose}
             className="rounded-full p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition-colors"
           >
@@ -668,83 +579,18 @@ const ClusteringModal = ({ isOpen, onClose }) => {
             </div>
           )}
 
-          {/* Step 1: File Uploader */}
-          {!file && (
-            <div
-              onDragEnter={handleDrag}
-              onDragOver={handleDrag}
-              onDragLeave={handleDrag}
-              onDrop={handleDrop}
-              className={`flex flex-col items-center justify-center rounded-3xl border-2 border-dashed p-12 transition-all duration-300 ${
-                dragActive
-                  ? 'border-brand-indigo bg-indigo-50/20'
-                  : 'border-slate-200 bg-slate-50/50 hover:bg-slate-50'
-              }`}
-            >
-              <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-indigo-50 text-brand-indigo shadow-xs">
-                <Upload className="h-6 w-6" />
-              </div>
-              <h3 className="font-display text-sm font-bold text-slate-800">
-                Upload your dataset
-              </h3>
-              <p className="font-sans text-[11px] text-slate-400 mt-1 leading-relaxed text-center max-w-sm">
-                Drag and drop your spreadsheet file here, or click to browse. Supports CSV, Excel (.xlsx, .xls) files.
-              </p>
-              
-              <button
-                onClick={() => fileInputRef.current.click()}
-                className="mt-6 rounded-xl bg-brand-indigo px-5 py-2.5 font-sans text-xs font-bold text-white shadow-md shadow-indigo-100 hover:bg-indigo-700 transition-colors cursor-pointer"
-              >
-                Browse Files
-              </button>
-              
-              <input
-                ref={fileInputRef}
-                type="file"
-                className="hidden"
-                accept=".csv,.xlsx,.xls"
-                onChange={handleFileChange}
-              />
-            </div>
-          )}
-
-          {/* Loading columns from uploaded file */}
-          {loadingCols && (
-            <div className="flex flex-col items-center justify-center py-20">
-              <RefreshCw className="h-8 w-8 text-brand-indigo animate-spin" />
-              <p className="font-display text-xs font-bold text-slate-500 mt-4">Parsing dataset structure...</p>
-            </div>
-          )}
-
           {/* Step 2: Parameter Configuration Form */}
-          {file && !loadingCols && !results && !loadingAnalysis && (
-            <form onSubmit={runAnalysis} className="space-y-6">
-              {/* Selected File Card */}
-              <div className="rounded-2xl border border-slate-100 bg-slate-50 p-4 flex justify-between items-center">
-                <div>
-                  <p className="font-sans text-[9px] font-bold text-slate-400 uppercase tracking-wider">Selected Dataset</p>
-                  <p className="font-sans text-sm font-semibold text-slate-700 truncate max-w-[250px]">{file.name}</p>
-                </div>
-                <div className="flex space-x-2">
-                  <button
-                    type="button"
-                    onClick={() => setViewerOpen(true)}
-                    className="rounded-xl border border-slate-200 bg-white p-2 text-slate-500 hover:bg-slate-50 hover:text-slate-800 transition-colors text-xs font-semibold flex items-center space-x-1 cursor-pointer"
-                  >
-                    <Eye className="h-3.5 w-3.5 text-brand-orange" />
-                    <span>View Data</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleReset}
-                    className="rounded-xl border border-slate-200 bg-white p-2 text-slate-500 hover:bg-slate-50 hover:text-slate-800 transition-colors text-xs font-semibold flex items-center space-x-1 cursor-pointer"
-                  >
-                    <RefreshCw className="h-3.5 w-3.5" />
-                    <span>Change File</span>
-                  </button>
-                </div>
-              </div>
+          {!results && !loadingAnalysis && (
+            <div className="space-y-6">
+              <DatasetPicker
+                dataset={dataset}
+                title="Select or drop a dataset to cluster"
+                hint="Numeric variables measured on the same observations (CSV or Excel); they are standardized before clustering."
+                onViewData={() => setViewerOpen(true)}
+              />
 
+              {file && (
+              <form onSubmit={runAnalysis} className="space-y-6">
               {/* Select inputs */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {/* Numeric Columns checklist */}
@@ -781,7 +627,7 @@ const ClusteringModal = ({ isOpen, onClose }) => {
                       className="w-full rounded-xl border border-slate-200 bg-white py-3 px-4 font-sans text-sm outline-hidden focus:border-brand-indigo focus:ring-4 focus:ring-brand-indigo/10 transition-all"
                     >
                       <option value="kmeans">K-Means Clustering</option>
-                      <option value="hierarchical">Hierarchical (Ward's Linkage)</option>
+                      <option value="hierarchical">Hierarchical (Agglomerative)</option>
                     </select>
                   </div>
 
@@ -819,7 +665,7 @@ const ClusteringModal = ({ isOpen, onClose }) => {
                     <label className="font-sans text-xs font-bold text-slate-500">Cluster Color Palette</label>
                     <select
                       value={clusterPalette}
-                      onChange={(e) => setClusterPalette(e.target.value)}
+                      onChange={(e) => { setClusterPalette(e.target.value); setFigurePrefs({ palette: e.target.value }); }}
                       className="w-full rounded-xl border border-slate-200 bg-white py-3 px-4 font-sans text-sm outline-hidden focus:border-brand-indigo focus:ring-4 focus:ring-brand-indigo/10 transition-all"
                     >
                       {Object.keys(CLUSTER_PALETTES).map(paletteKey => (
@@ -832,13 +678,65 @@ const ClusteringModal = ({ isOpen, onClose }) => {
                 </div>
               </div>
 
+              <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-xs space-y-3">
+                <p className="font-sans text-xs font-bold text-slate-500">Tree options (hierarchical clustering)</p>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  <label className="space-y-1">
+                    <span className="font-sans text-[11px] font-semibold text-slate-500">Linkage method</span>
+                    <select
+                      value={linkage}
+                      onChange={(e) => { const value = e.target.value; setLinkage(value); if (['ward', 'centroid', 'median'].includes(value)) setDistance('euclidean'); }}
+                      className="w-full rounded-xl border border-slate-200 bg-white py-2 px-3 font-sans text-xs outline-hidden focus:border-brand-indigo"
+                    >
+                      <option value="ward">Ward (compact clusters)</option>
+                      <option value="average">Average / UPGMA</option>
+                      <option value="complete">Complete</option>
+                      <option value="weighted">Weighted average / WPGMA</option>
+                      <option value="single">Single (nearest neighbour)</option>
+                      <option value="centroid">Centroid / UPGMC</option>
+                      <option value="median">Median / WPGMC</option>
+                    </select>
+                  </label>
+                  <label className="space-y-1">
+                    <span className="font-sans text-[11px] font-semibold text-slate-500">Distance measure</span>
+                    <select
+                      value={distance}
+                      onChange={(e) => setDistance(e.target.value)}
+                      disabled={['ward', 'centroid', 'median'].includes(linkage)}
+                      className="w-full rounded-xl border border-slate-200 bg-white py-2 px-3 font-sans text-xs outline-hidden focus:border-brand-indigo disabled:bg-slate-50 disabled:text-slate-400"
+                    >
+                      <option value="euclidean">Euclidean</option>
+                      <option value="cityblock">Manhattan</option>
+                      <option value="correlation">1 - Pearson r (shape)</option>
+                      <option value="cosine">Cosine</option>
+                    </select>
+                  </label>
+                  <label className="space-y-1">
+                    <span className="font-sans text-[11px] font-semibold text-slate-500">Label leaves by</span>
+                    <select
+                      value={labelCol}
+                      onChange={(e) => setLabelCol(e.target.value)}
+                      className="w-full rounded-xl border border-slate-200 bg-white py-2 px-3 font-sans text-xs outline-hidden focus:border-brand-indigo"
+                    >
+                      <option value="">Row number</option>
+                      {columns.map(c => <option key={c} value={c}>{c}</option>)}
+                    </select>
+                  </label>
+                </div>
+                <p className="font-sans text-[10px] text-slate-400">
+                  Ward, centroid and median linkage need Euclidean distances. Correlation distance groups observations with a similar pattern across variables rather than similar magnitudes. The Dendrogram Styles tab compares every linkage method and suggests a number of clusters.
+                </p>
+              </div>
+
               <button
                 type="submit"
                 className="w-full rounded-2xl bg-brand-indigo py-3.5 font-sans text-sm font-bold text-white shadow-md shadow-indigo-100 hover:bg-indigo-700 transition-colors cursor-pointer"
               >
                 Execute Clustering Module
               </button>
-            </form>
+              </form>
+              )}
+            </div>
           )}
 
           {/* Running Analysis Loader */}
@@ -850,6 +748,8 @@ const ClusteringModal = ({ isOpen, onClose }) => {
           )}
 
           {/* Step 3: Analysis Results Panel */}
+          {reopened && <ReopenedBanner analysis={initialAnalysis} onRestore={restoreSaved} />}
+
           {results && !loadingAnalysis && (
             <div className="space-y-6 animate-fade-in">
               
@@ -858,7 +758,11 @@ const ClusteringModal = ({ isOpen, onClose }) => {
                 {[
                   { id: 'profile', label: 'Cluster Profiles' },
                   ...(clusterMethod === 'hierarchical' ? [{ id: 'dendrogram', label: 'Dendrogram Tree' }] : []),
+                  ...(results.charts ? [{ id: 'trees', label: 'Dendrogram Styles' }] : []),
                   { id: 'biplot', label: 'Cluster Scatter Plot' },
+                  { id: 'silhouette', label: 'Silhouette Plot' },
+                  { id: 'radar', label: 'Profile Radar' },
+                  { id: 'heatmap', label: 'Profile Heatmap' },
                   { id: 'data', label: 'Export Dataset' }
                 ].map(t => (
                   <button
@@ -878,6 +782,23 @@ const ClusteringModal = ({ isOpen, onClose }) => {
               {/* Tab 1: Profile Grids */}
               {activeTab === 'profile' && (
                 <div className="space-y-6">
+                  {/* Cluster quality measures */}
+                  {results.quality && (
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 font-sans text-xs">
+                      {[
+                        ['Silhouette Width', clusterMethod === 'kmeans' ? results.quality.kmeans_silhouette : results.quality.hierarchical_silhouette, 3, '> 0.5 strong, 0.25–0.5 moderate structure'],
+                        ['Cophenetic Correlation', results.quality.cophenetic_correlation, 3, 'How faithfully the tree preserves distances (> 0.75 good)'],
+                        ['K-Means Inertia (WCSS)', results.quality.kmeans_inertia, 2, 'Within-cluster sum of squares on standardized data'],
+                        ['Clusters Found', (clusterMethod === 'kmeans' ? results.kmeans.summaries : results.hierarchical.summaries).length, 0, clusterMethod === 'kmeans' ? 'K-Means' : 'Ward hierarchical']
+                      ].map(([label, value, digits, hint]) => (
+                        <div key={label} className="rounded-xl border border-slate-100 bg-white p-3 shadow-xs" title={hint}>
+                          <p className="text-[10px] font-bold text-slate-400 uppercase">{label}</p>
+                          <p className="mt-0.5 font-mono text-sm font-bold text-slate-800">{value == null ? 'n/a' : Number(value).toFixed(digits)}</p>
+                          <p className="mt-0.5 text-[10px] text-slate-400 leading-snug">{hint}</p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                   <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-xs overflow-x-auto">
                     <div className="flex justify-between items-center mb-3">
                       <h4 className="font-display text-xs font-bold text-slate-700">Cluster Characteristics (Mean Profiles)</h4>
@@ -933,6 +854,7 @@ const ClusteringModal = ({ isOpen, onClose }) => {
                   <div className="flex flex-wrap justify-between items-center bg-slate-50/50 p-3 rounded-2xl border border-slate-100 gap-3">
                     <div className="flex items-center space-x-4">
                       <div className="flex items-center space-x-2">
+                        <FigurePresetSelect value={figurePrefs.preset} onChange={(preset) => setFigurePrefs({ preset })} className="mr-2" />
                         <span className="font-sans text-[10px] font-bold text-slate-400 uppercase">Export Resolution:</span>
                         {[150, 300, 600].map(dpiVal => (
                           <button
@@ -950,7 +872,7 @@ const ClusteringModal = ({ isOpen, onClose }) => {
                         <label className="font-sans text-[10px] font-bold text-slate-400 uppercase">Palette:</label>
                         <select
                           value={clusterPalette}
-                          onChange={(e) => setClusterPalette(e.target.value)}
+                          onChange={(e) => { setClusterPalette(e.target.value); setFigurePrefs({ palette: e.target.value }); }}
                           className="rounded-lg border border-slate-200 bg-white px-2 py-1 font-sans text-[11px] text-slate-600 outline-hidden focus:border-brand-indigo focus:ring-1 focus:ring-brand-indigo transition-all"
                         >
                           {Object.keys(CLUSTER_PALETTES).map(paletteKey => (
@@ -976,6 +898,78 @@ const ClusteringModal = ({ isOpen, onClose }) => {
                   </div>
                   <div className="bg-white rounded-2xl border border-slate-100 p-4 shadow-xs">
                     <div ref={dendrogramRef} className="w-full h-[400px]"></div>
+                  </div>
+                </div>
+              )}
+
+              {/* Dendrogram styles, linkage comparison and choosing k */}
+              {activeTab === 'trees' && results.charts && (
+                <div className="space-y-4">
+                  <ResultChartPanel
+                    token={token}
+                    file={file}
+                    classicPlot={results.charts.dendrogram}
+                    initialImages={Object.fromEntries(Object.entries(results.charts).filter(([key, image]) => key !== 'dendrogram' && image))}
+                    options={[
+                      { value: 'classic', label: 'Dendrogram', hint: `${results.hierarchical.linkage_label} on ${results.hierarchical.distance_label} distances; branches and labels coloured by cluster, dashed line at the cut.` },
+                      ...(results.charts.circular ? [{ value: 'circular', label: 'Circular tree', hint: 'The same tree drawn radially: compact when there are many observations.' }] : []),
+                      ...(results.charts.heatmap ? [{ value: 'heatmap', label: 'Heatmap + tree', hint: 'Standardized values with the observation tree on the left and a variable tree on top.' }] : []),
+                      ...(results.charts.k_selection ? [{ value: 'k_selection', label: 'Choosing k', hint: 'Average silhouette width for each k and the K-means elbow curve.' }] : [])
+                    ]}
+                    filenameBase="statsathi_cluster_tree"
+                  />
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                    {results.linkage_comparison?.length > 0 && (
+                      <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-xs overflow-x-auto">
+                        <h4 className="font-display text-xs font-bold text-slate-700 mb-2">Linkage methods compared</h4>
+                        <table className="w-full border-collapse font-sans text-xs">
+                          <thead>
+                            <tr className="border-b border-slate-100 text-slate-400">
+                              <th className="py-2 pr-3 text-left">Linkage</th>
+                              <th className="py-2 text-right">Cophenetic correlation</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {[...results.linkage_comparison].sort((a, b) => b.cophenetic_correlation - a.cophenetic_correlation).map(row => (
+                              <tr key={row.linkage} className={`border-b border-slate-50 ${row.linkage === results.hierarchical.linkage ? 'text-brand-indigo font-bold' : 'text-slate-700'}`}>
+                                <td className="py-2 pr-3">{row.label}{row.linkage === results.hierarchical.linkage ? ' (used)' : ''}</td>
+                                <td className="py-2 text-right font-mono">{row.cophenetic_correlation.toFixed(3)}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                        <p className="mt-2 font-sans text-[10px] text-slate-400">How faithfully each tree preserves the original distances between observations (higher is better; above 0.75 is usually considered good).</p>
+                      </div>
+                    )}
+                    {results.k_selection?.rows?.length > 0 && (
+                      <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-xs overflow-x-auto">
+                        <h4 className="font-display text-xs font-bold text-slate-700 mb-2">Choosing the number of clusters</h4>
+                        <table className="w-full border-collapse font-sans text-xs">
+                          <thead>
+                            <tr className="border-b border-slate-100 text-slate-400">
+                              <th className="py-2 pr-3 text-left">k</th>
+                              <th className="py-2 text-right">Hierarchical silhouette</th>
+                              <th className="py-2 text-right">K-means silhouette</th>
+                              <th className="py-2 text-right">K-means WSS</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {results.k_selection.rows.map(row => {
+                              const best = row.k === results.k_selection.suggested[clusterMethod === 'kmeans' ? 'kmeans' : 'hierarchical'];
+                              return (
+                                <tr key={row.k} className={`border-b border-slate-50 ${best ? 'bg-indigo-50/40 text-brand-indigo font-bold' : 'text-slate-700'}`}>
+                                  <td className="py-2 pr-3">{row.k}{best ? ' ★' : ''}</td>
+                                  <td className="py-2 text-right font-mono">{row.hierarchical_silhouette == null ? '-' : row.hierarchical_silhouette.toFixed(3)}</td>
+                                  <td className="py-2 text-right font-mono">{row.kmeans_silhouette == null ? '-' : row.kmeans_silhouette.toFixed(3)}</td>
+                                  <td className="py-2 text-right font-mono">{row.kmeans_wss.toFixed(1)}</td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                        <p className="mt-2 font-sans text-[10px] text-slate-400">The star marks the k with the highest average silhouette width for the method you are using. WSS: within-cluster sum of squares; look for the elbow where it stops dropping quickly.</p>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
@@ -1014,7 +1008,7 @@ const ClusteringModal = ({ isOpen, onClose }) => {
                         <label className="font-sans text-[10px] font-bold text-slate-400 uppercase">Palette:</label>
                         <select
                           value={clusterPalette}
-                          onChange={(e) => setClusterPalette(e.target.value)}
+                          onChange={(e) => { setClusterPalette(e.target.value); setFigurePrefs({ palette: e.target.value }); }}
                           className="rounded-lg border border-slate-200 bg-white px-2 py-1 font-sans text-[11px] text-slate-600 outline-hidden focus:border-brand-indigo focus:ring-1 focus:ring-brand-indigo transition-all"
                         >
                           {Object.keys(CLUSTER_PALETTES).map(paletteKey => (
@@ -1027,6 +1021,7 @@ const ClusteringModal = ({ isOpen, onClose }) => {
                     </div>
 
                     <div className="flex items-center space-x-2">
+                      <FigurePresetSelect value={figurePrefs.preset} onChange={(preset) => setFigurePrefs({ preset })} className="mr-2" />
                       <span className="font-sans text-[10px] font-bold text-slate-400 uppercase">Export Resolution:</span>
                       {[150, 300, 600].map(dpiVal => (
                         <button
@@ -1058,6 +1053,19 @@ const ClusteringModal = ({ isOpen, onClose }) => {
                     <div ref={biplotRef} className="w-full h-[450px]"></div>
                   </div>
                 </div>
+              )}
+
+              {/* Silhouette plot, profile radar, profile heatmap */}
+              {['silhouette', 'radar', 'heatmap'].includes(activeTab) && (
+                <ClusterExtraChart
+                  kind={activeTab}
+                  results={results}
+                  clusterMethod={clusterMethod}
+                  colors={CLUSTER_PALETTES[clusterPalette]?.colors || CLUSTER_PALETTES.classic.colors}
+                  figurePrefs={figurePrefs}
+                  setFigurePrefs={setFigurePrefs}
+                  onError={setError}
+                />
               )}
 
               {/* Tab 4: Export Data Grid */}
@@ -1123,6 +1131,14 @@ const ClusteringModal = ({ isOpen, onClose }) => {
                   Word
                 </button>
               </div>
+              <SaveToProjectButton
+                module="clustering"
+                report={() => buildDocxReport('report')}
+                source={dataset.source}
+                defaultTitle={`Clustering (${clusterMethod}) – ${file?.name || 'dataset'}`}
+                parameters={{ method: clusterMethod, k, variables: selectedCols, linkage, distance, labels: labelCol || null, dataset: file?.name }}
+                result={results}
+              />
               <button
                 onClick={() => setViewerOpen(true)}
                 className="inline-flex items-center space-x-1.5 rounded-xl border border-slate-200 bg-white px-4 py-2.5 font-sans text-xs font-semibold text-slate-600 hover:bg-slate-50 hover:text-slate-800 transition-colors cursor-pointer"

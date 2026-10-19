@@ -1,8 +1,10 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { apiFetch } from '../utils/apiFetch';
+import { useState, useEffect, useRef } from 'react';
 import { useAuth, API_URL } from '../context/AuthContext';
+import DatasetPicker from './DatasetPicker';
+import { useDataset } from '../hooks/useDataset';
 import {
-  X, RefreshCw, CheckCircle2, AlertCircle, Sparkles, Sliders,
-  Check, ArrowRight, Table, Info, Zap, ChevronRight, Upload, Trash2
+  X, RefreshCw, CheckCircle2, AlertCircle, Sparkles, Sliders, Check, Zap, ChevronRight
 } from 'lucide-react';
 
 const TRANSFORM_METHODS = [
@@ -43,164 +45,45 @@ const TRANSFORM_METHODS = [
 
 const DataTransformModal = ({ isOpen, onClose, file: propFile, onSaveTransformedData }) => {
   const { token } = useAuth();
-  const [activeFile, setActiveFile] = useState(propFile);
   const [loading, setLoading] = useState(false);
   const [numericCols, setNumericCols] = useState([]);
-  const [allCols, setAllCols] = useState([]);
   const [selectedCols, setSelectedCols] = useState([]);
   const [selectedMethod, setSelectedMethod] = useState('log10');
   const [error, setError] = useState(null);
   const [suggestedMethod, setSuggestedMethod] = useState(null);
   const [successMsg, setSuccessMsg] = useState(null);
-  const localFileInputRef = useRef(null);
+  // Result of the last transformation, kept on screen so lambdas and before/after diagnostics can be reviewed
+  const [transformResult, setTransformResult] = useState(null);
 
-  // Sync propFile
+  const resetOutputs = () => {
+    setSuggestedMethod(null);
+    setSuccessMsg(null);
+    setTransformResult(null);
+    setError(null);
+  };
+
+  const dataset = useDataset({
+    onLoaded: ({ numericColumns }) => {
+      setNumericCols(numericColumns);
+      setSelectedCols(numericColumns.slice(0, 1));
+      resetOutputs();
+    },
+    onCleared: () => {
+      setNumericCols([]);
+      setSelectedCols([]);
+      resetOutputs();
+    },
+  });
+  const { file: activeFile, selectFile } = dataset;
+
+  // The dashboard can hand this screen the dataset the user is already working on
+  const handedOver = useRef(null);
   useEffect(() => {
-    setActiveFile(propFile);
-  }, [propFile]);
-
-  // Fetch dataset columns on modal open or activeFile change
-  useEffect(() => {
-    if (isOpen && activeFile) {
-      setError(null);
-      setSuggestedMethod(null);
-      setSuccessMsg(null);
-      fetchColumns(activeFile);
+    if (isOpen && propFile && handedOver.current !== propFile) {
+      handedOver.current = propFile;
+      selectFile(propFile);
     }
-  }, [isOpen, activeFile]);
-
-  // Robust CSV parser supporting quotes, commas, and line breaks
-  const parseCsvText = (text) => {
-    const lines = text.split(/\r\n|\n/).filter(l => l.trim() !== '');
-    if (lines.length === 0) return { headers: [], rows: [] };
-
-    const parseCsvLine = (line) => {
-      const pattern = /(?:^|,)(?:"([^"]*(?:""[^"]*)*)"|([^",]*))/g;
-      const fields = [];
-      let match;
-      while ((match = pattern.exec(line)) !== null) {
-        let val = match[1] !== undefined ? match[1].replace(/""/g, '"') : match[2];
-        fields.push(val ? val.trim() : '');
-      }
-      return fields;
-    };
-
-    const rawHeaders = parseCsvLine(lines[0]);
-    const headers = rawHeaders.filter((h, idx) => h !== '' || idx < rawHeaders.length - 1);
-
-    const rows = [];
-    for (let i = 1; i < Math.min(lines.length, 200); i++) {
-      const fields = parseCsvLine(lines[i]);
-      if (fields.length === 0 || (fields.length === 1 && fields[0] === '')) continue;
-      const rowObj = {};
-      headers.forEach((h, idx) => {
-        if (h) rowObj[h] = fields[idx] !== undefined ? fields[idx] : '';
-      });
-      rows.push(rowObj);
-    }
-
-    return { headers, rows };
-  };
-
-  // Helper to check if a value is numeric (handles stringified numbers like "4500.1", 4500.1, "-12.5")
-  const isNumericValue = (val) => {
-    if (val === null || val === undefined) return false;
-    const str = String(val).trim();
-    if (str === '') return false;
-    // Reject Sample ID strings like "S_ID1", "S_ID2", "Sample_A", "ID_001"
-    if (/^[a-zA-Z_]/i.test(str)) return false;
-    return !isNaN(str) && !isNaN(parseFloat(str)) && isFinite(parseFloat(str));
-  };
-
-  // Detect numeric columns from parsed CSV text
-  const parseLocalCsvNumericColumns = (csvText) => {
-    const { headers, rows } = parseCsvText(csvText);
-    if (headers.length === 0 || rows.length === 0) return [];
-
-    return headers.filter(header => {
-      const sampleVals = rows
-        .map(r => r[header])
-        .filter(v => v !== null && v !== undefined && String(v).trim() !== '');
-
-      if (sampleVals.length === 0) return false;
-
-      const numCount = sampleVals.filter(isNumericValue).length;
-      return (numCount / sampleVals.length) >= 0.6;
-    });
-  };
-
-  const fetchColumns = async (fileToParse) => {
-    try {
-      setLoading(true);
-      setError(null);
-
-      // Read file text client-side first for immediate & robust numeric column detection
-      if (fileToParse && fileToParse.name && fileToParse.name.endsWith('.csv')) {
-        const text = await fileToParse.text();
-        const numCols = parseLocalCsvNumericColumns(text);
-        if (numCols.length > 0) {
-          setNumericCols(numCols);
-          setAllCols(numCols);
-          setSelectedCols([numCols[0]]);
-          return;
-        }
-      }
-
-      // If file is Excel (.xlsx/.xls), parse via API or fallback
-      const formData = new FormData();
-      formData.append('file', fileToParse);
-      formData.append('columns_str', 'dummy');
-
-      const res = await fetch(`${API_URL}/analyze/descriptive`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        },
-        body: formData
-      });
-
-      if (res.ok) {
-        const data = await res.json();
-        if (data.results && Object.keys(data.results).length > 0) {
-          const numCols = Object.keys(data.results);
-          setNumericCols(numCols);
-          setAllCols(numCols);
-          if (numCols.length > 0) {
-            setSelectedCols([numCols[0]]);
-          }
-          return;
-        }
-      }
-
-      setError('No numeric columns detected in the selected dataset file.');
-    } catch (err) {
-      console.error(err);
-      if (fileToParse && fileToParse.name && fileToParse.name.endsWith('.csv')) {
-        try {
-          const text = await fileToParse.text();
-          const numCols = parseLocalCsvNumericColumns(text);
-          if (numCols.length > 0) {
-            setNumericCols(numCols);
-            setAllCols(numCols);
-            setSelectedCols([numCols[0]]);
-            return;
-          }
-        } catch (localErr) {
-          console.error(localErr);
-        }
-      }
-      setError('Upload or select a valid numeric dataset file.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleLocalFileChange = (e) => {
-    const selected = e.target.files?.[0];
-    if (selected) {
-      setActiveFile(selected);
-    }
-  };
+  }, [isOpen, propFile, selectFile]);
 
   const handleToggleColumn = (colName) => {
     setSelectedCols(prev =>
@@ -239,7 +122,7 @@ const DataTransformModal = ({ isOpen, onClose, file: propFile, onSaveTransformed
       formData.append('columns', JSON.stringify(selectedCols));
       formData.append('method', selectedMethod);
 
-      const res = await fetch(`${API_URL}/analyze/transform`, {
+      const res = await apiFetch(`${API_URL}/analyze/transform`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -265,11 +148,18 @@ const DataTransformModal = ({ isOpen, onClose, file: propFile, onSaveTransformed
         const updatedBlob = new Blob([data.csv_content], { type: 'text/csv' });
         const fileNameToUse = activeFile?.name || propFile?.name || 'transformed_dataset.csv';
         const updatedFile = new File([updatedBlob], fileNameToUse, { type: 'text/csv' });
-        
-        setTimeout(() => {
-          onSaveTransformedData(updatedFile, data.records, data.transformed_columns);
-          onClose();
-        }, 1200);
+
+        // Keep the dialog open so the lambdas and before/after diagnostics can be reviewed first
+        setTransformResult({
+          lambdas: data.lambdas || {},
+          diagnostics: data.diagnostics || {},
+          notes: data.notes || [],
+          apply: () => {
+            onSaveTransformedData(updatedFile, data.records, data.transformed_columns);
+            setTransformResult(null);
+            onClose();
+          }
+        });
       }
     } catch (err) {
       setError(err.message || 'An unexpected error occurred during transformation.');
@@ -284,7 +174,7 @@ const DataTransformModal = ({ isOpen, onClose, file: propFile, onSaveTransformed
   const activeMethodInfo = TRANSFORM_METHODS.flatMap(g => g.items).find(m => m.id === selectedMethod);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-xs animate-fade-in">
+    <div role="dialog" aria-modal="true" className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-xs animate-fade-in">
       <div className="relative flex h-full max-h-[640px] w-full max-w-3xl flex-col rounded-3xl border border-slate-100 bg-white shadow-2xl overflow-hidden font-sans">
         
         {/* Header */}
@@ -302,7 +192,7 @@ const DataTransformModal = ({ isOpen, onClose, file: propFile, onSaveTransformed
               </p>
             </div>
           </div>
-          <button
+          <button data-dialog-close aria-label="Close"
             onClick={onClose}
             className="rounded-full p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors cursor-pointer"
           >
@@ -314,11 +204,11 @@ const DataTransformModal = ({ isOpen, onClose, file: propFile, onSaveTransformed
         <div className="flex-1 overflow-y-auto p-6 space-y-6">
           
           {/* Alerts */}
-          {error && (
+          {(error || dataset.error) && (
             <div className="rounded-2xl border border-red-200 bg-red-50/80 p-4 text-xs text-red-700 space-y-2 animate-fade-in">
               <div className="flex items-center space-x-2 font-bold">
                 <AlertCircle className="h-4 w-4 shrink-0 text-red-500" />
-                <span>{error}</span>
+                <span>{error || dataset.error}</span>
               </div>
               {suggestedMethod === 'yeojohnson' && (
                 <button
@@ -344,65 +234,62 @@ const DataTransformModal = ({ isOpen, onClose, file: propFile, onSaveTransformed
             </div>
           )}
 
-          {!activeFile && (
-            <div className="rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50/50 p-8 text-center space-y-3 animate-fade-in">
-              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-indigo-50 text-brand-indigo">
-                <Upload className="h-6 w-6" />
+          {/* Review before applying: lambdas, before/after shape diagnostics and notes */}
+          {transformResult && (
+            <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-xs space-y-3 animate-fade-in">
+              <h4 className="font-display text-xs font-bold text-slate-700">Transformation Diagnostics</h4>
+              <div className="overflow-x-auto">
+                <table className="w-full border-collapse text-xs text-left">
+                  <thead>
+                    <tr className="border-b border-slate-100 text-slate-400 font-bold">
+                      <th className="py-2 pr-3">Variable</th>
+                      {Object.keys(transformResult.lambdas).length > 0 && <th className="py-2 text-right">λ</th>}
+                      <th className="py-2 text-right">Skewness (before → after)</th>
+                      <th className="py-2 text-right">Kurtosis (before → after)</th>
+                      <th className="py-2 text-right">Shapiro-Wilk p (before → after)</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {Object.entries(transformResult.diagnostics).map(([col, d]) => {
+                      const fmt = (v, digits = 3) => (v === null || v === undefined ? 'n/a' : v.toFixed(digits));
+                      const fmtP = (v) => (v === null || v === undefined ? 'n/a' : v < 0.001 ? '< 0.001' : v.toFixed(4));
+                      return (
+                        <tr key={col} className="border-b border-slate-50 text-slate-700">
+                          <td className="py-2 pr-3 font-semibold">{col}</td>
+                          {Object.keys(transformResult.lambdas).length > 0 && (
+                            <td className="py-2 text-right font-mono">{fmt(transformResult.lambdas[col], 4)}</td>
+                          )}
+                          <td className="py-2 text-right font-mono">{fmt(d.before.skewness)} → {fmt(d.after.skewness)}</td>
+                          <td className="py-2 text-right font-mono">{fmt(d.before.kurtosis)} → {fmt(d.after.kurtosis)}</td>
+                          <td className="py-2 text-right font-mono">{fmtP(d.before.shapiro_p)} → {fmtP(d.after.shapiro_p)}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
               </div>
-              <h4 className="font-display text-sm font-bold text-slate-800">No Dataset File Loaded</h4>
-              <p className="text-xs text-slate-400 max-w-sm mx-auto">
-                Upload a CSV or Excel dataset to select numeric variables and apply variance stabilization or feature scaling.
-              </p>
-              <button
-                type="button"
-                onClick={() => localFileInputRef.current?.click()}
-                className="inline-flex items-center space-x-2 rounded-xl bg-brand-indigo px-4 py-2 text-xs font-bold text-white shadow-xs hover:bg-indigo-700 transition-colors cursor-pointer"
-              >
-                <Upload className="h-4 w-4" />
-                <span>Upload Dataset File</span>
-              </button>
-              <input
-                type="file"
-                ref={localFileInputRef}
-                onChange={handleLocalFileChange}
-                accept=".csv, .xlsx, .xls"
-                className="hidden"
-              />
+              {transformResult.notes.length > 0 && (
+                <ul className="list-disc space-y-1 rounded-xl border border-amber-200 bg-amber-50 py-2 pl-6 pr-3 text-[11px] text-amber-800">
+                  {transformResult.notes.map((note, idx) => <li key={idx}>{note}</li>)}
+                </ul>
+              )}
+              <div className="flex justify-end">
+                <button
+                  type="button"
+                  onClick={transformResult.apply}
+                  className="rounded-xl bg-brand-indigo px-4 py-2 text-xs font-bold text-white shadow-xs hover:bg-indigo-700 transition-colors cursor-pointer"
+                >
+                  Use Transformed Data
+                </button>
+              </div>
             </div>
           )}
 
-          {activeFile && (
-            <div className="rounded-2xl border border-slate-100 bg-slate-50 p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 animate-fade-in">
-              <div className="truncate">
-                <p className="font-sans text-[10px] font-bold text-slate-400 uppercase tracking-wider">Active Dataset File</p>
-                <p className="font-sans text-xs font-bold text-slate-700 truncate">{activeFile.name}</p>
-              </div>
-              <div className="flex flex-wrap items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => localFileInputRef.current?.click()}
-                  className="inline-flex items-center space-x-1.5 rounded-xl border border-slate-200 bg-white px-3 py-1.5 font-sans text-xs font-bold text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer"
-                >
-                  <Upload className="h-3.5 w-3.5 text-brand-indigo" />
-                  <span>Choose Other File</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setActiveFile(null);
-                    setNumericCols([]);
-                    setSelectedCols([]);
-                    setSuccessMsg(null);
-                    setError(null);
-                  }}
-                  className="inline-flex items-center space-x-1.5 rounded-xl border border-red-200 bg-red-50/80 px-3 py-1.5 font-sans text-xs font-bold text-red-600 hover:bg-red-100 transition-colors cursor-pointer"
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                  <span>Remove File</span>
-                </button>
-              </div>
-            </div>
-          )}
+          <DatasetPicker
+            dataset={dataset}
+            title="Select or drop a dataset to transform"
+            hint="Any table with the numeric variables you want to rescale or stabilize (CSV or Excel)."
+          />
 
           {/* Step 1: Select Column(s) */}
           <div className="space-y-2">
@@ -420,7 +307,7 @@ const DataTransformModal = ({ isOpen, onClose, file: propFile, onSaveTransformed
               </button>
             </div>
 
-            {loading ? (
+            {(loading || dataset.loading) ? (
               <div className="flex items-center space-x-2 text-xs text-slate-400 py-3">
                 <RefreshCw className="h-4 w-4 animate-spin text-brand-indigo" />
                 <span>Loading numeric columns...</span>
@@ -538,7 +425,7 @@ const DataTransformModal = ({ isOpen, onClose, file: propFile, onSaveTransformed
           <button
             type="button"
             onClick={handleApplyTransformation}
-            disabled={loading || selectedCols.length === 0}
+            disabled={loading || dataset.loading || selectedCols.length === 0}
             className="flex items-center space-x-2 rounded-2xl bg-brand-indigo px-6 py-2.5 font-sans text-xs font-bold text-white shadow-md hover:bg-indigo-700 disabled:opacity-50 transition-all cursor-pointer"
           >
             {loading ? (

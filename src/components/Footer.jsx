@@ -1,13 +1,9 @@
-import React from 'react';
-
-const Footer = () => {
-  return (
-    <footer className="w-full py-6 mt-auto text-center">
-      <p className="font-sans text-sm text-slate-500 dark:text-slate-400 tracking-wide">
-        Curated by Ravi, PhD Scholar ICAR-IISS
-      </p>
-    </footer>
-  );
-};
+const Footer = () => (
+  <footer className="mt-auto w-full px-4 py-6 text-center">
+    <p className="font-sans text-[12.5px] tracking-wide text-faint">
+      Curated by Ravi, PhD Scholar ICAR-IISS
+    </p>
+  </footer>
+);
 
 export default Footer;

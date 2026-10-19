@@ -1,24 +1,39 @@
+import { apiFetch } from '../utils/apiFetch';
 import React, { useState, useRef, useEffect } from 'react';
 import { useAuth, API_URL } from '../context/AuthContext';
-import { X, Upload, Check, AlertCircle, Download, RefreshCw, Eye, Info, TrendingUp, ChevronRight } from 'lucide-react';
+import { X, AlertCircle, Download, RefreshCw, Eye, Info, TrendingUp } from 'lucide-react';
 import Plotly from 'plotly.js-dist-min';
 import DatasetViewerModal from './DatasetViewerModal';
-import { getWordReportHeader, getWordReportFooter } from '../utils/reportHeader';
+import DatasetPicker from './DatasetPicker';
+import { useDataset } from '../hooks/useDataset';
+import { downloadDocxReport, formatP } from '../utils/reportApi';
+import SaveToProjectButton from './SaveToProjectButton';
+import ReopenedBanner from './ReopenedBanner';
+import FigurePresetSelect from './FigurePresetSelect';
+import FigurePaletteSelect from './FigurePaletteSelect';
+import { paletteColors, themedLayout } from '../utils/figureStyle';
+import { exportPlotlyFigure } from '../utils/plotlyExport';
+import { useFigurePreferences } from '../utils/figurePreferences';
+import RegressionExtraChart from './RegressionExtraChart';
 
-const RegressionModal = ({ isOpen, onClose }) => {
+const RegressionModal = ({ isOpen, onClose, initialAnalysis = null }) => {
+  const saved = initialAnalysis?.parameters || {};
+  // Starting a new model type clears the old one - but only when the type really changes, never on the first
+  // render, which would throw away an analysis that was just reopened
+  const lastType = useRef(null);
   const { token, user } = useAuth();
 
   // Dataset states
-  const [file, setFile] = useState(null);
-
-
-
-
-  const [columns, setColumns] = useState([]);
-  const [numericColumns, setNumericColumns] = useState([]);
-  const [loadingCols, setLoadingCols] = useState(false);
-  const [dragActive, setDragActive] = useState(false);
-  const fileInputRef = useRef(null);
+  const dataset = useDataset({
+    active: isOpen && !initialAnalysis,
+    onLoaded: () => {
+      setDepVars([]);
+      setIndVars([]);
+      setResults(null);
+    },
+    onCleared: () => setResults(null),
+  });
+  const { file, numericColumns } = dataset;
 
   // Parameter states
   const [regressionType, setRegressionType] = useState('simple'); // 'simple', 'multiple', 'plsr'
@@ -28,11 +43,26 @@ const RegressionModal = ({ isOpen, onClose }) => {
 
   // Results & UI states
   const [loadingAnalysis, setLoadingAnalysis] = useState(false);
-  const [results, setResults] = useState(null);
+  const [results, setResults] = useState(initialAnalysis?.result || null);
+  const [reopened, setReopened] = useState(Boolean(initialAnalysis?.result));
+
+  // Fetch the dataset this analysis was run on, then restore its settings so it can be run again
+  const restoreSaved = async () => {
+    setReopened(false);
+    setResults(null);
+    const loaded = await dataset.selectProjectDataset(initialAnalysis.dataset, initialAnalysis.projectName);
+    if (loaded) {
+      setRegressionType(saved.type || 'simple');
+      setDepVars(saved.dependent || []);
+      setIndVars(saved.independent || []);
+      setNComponents(saved.components || 2);
+    }
+  };
   const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState('summary'); // 'summary', 'plot', 'plsr_details', 'data'
   const [viewerOpen, setViewerOpen] = useState(false);
   const [downloadDpi, setDownloadDpi] = useState(150);
+  const [figurePrefs, setFigurePrefs] = useFigurePreferences();
 
   // Plotly chart ref
   const plotRef = useRef(null);
@@ -42,6 +72,11 @@ const RegressionModal = ({ isOpen, onClose }) => {
 
   // Reset variables when type changes
   useEffect(() => {
+    if (lastType.current === null || lastType.current === regressionType) {
+      lastType.current = regressionType;
+      return;
+    }
+    lastType.current = regressionType;
     setDepVars([]);
     setIndVars([]);
     setResults(null);
@@ -61,34 +96,10 @@ const RegressionModal = ({ isOpen, onClose }) => {
 
     const traces = [];
     let layout = {};
+    const chartColors = paletteColors(figurePrefs.palette);
 
     if (results.regression_type === 'simple') {
-      const xVar = indVars[0];
-      const yVar = depVars[0];
-      const actualX = results.actual || []; // Simple regression only has 1 predictor, let's map actual X values
-      // Wait, in OLS backend actual is Y, predicted is Y_pred.
-      // To get X values, we need to extract from df_clean or records in frontend!
-      // Let's get X values from results records or the actual independent variable.
-      // Let's see: results doesn't return X list directly but we have records!
-      // Wait, let's look at the OLS return dictionary in backend:
-      // it doesn't return X. But wait, we can pass X or reconstruct it.
-      // Actually, we can get X from results or we can add it to backend return, OR
-      // we can extract it from the data grid records which are not returned by default in regression.
-      // Wait! Let's check: does `/analyze/regression` return records? No, it returns coefficients, actual Y, predicted Y, residuals.
-      // Since it returns actual Y and predicted Y, we can plot actual Y vs predicted Y for Simple Regression as well, OR
-      // we can easily update the backend `/regression` return to include the X values list for simple regression!
-      // Yes! Or even better, we can plot Predicted vs. Actual values for all regression types!
-      // Plotting Predicted vs. Actual is standard, clean, and works perfectly for Simple, Multiple, and PLSR!
-      // But for simple regression, plotting actual X vs actual Y with the fitted line is also nice. Let's see:
-      // If we plot Actual Y (Y-axis) vs Predicted Y (X-axis), it forms a scatter plot around the 1:1 line.
-      // Let's do a Predicted vs Actual scatter plot for all types: Simple, Multiple, and PLSR. It is standard, beautiful, and completely consistent.
-      // Wait! Let's check: for simple regression, we can also reconstruct X by finding the values in the file if we want, but Predicted vs. Actual is mathematically robust and tells us the fit instantly!
-      // Let's draw a Predicted vs. Actual scatter plot for all types, which has:
-      // - Scatter points of Predicted (X) vs. Actual (Y)
-      // - A 45-degree diagonal dashed line (Y = X) representing a perfect fit!
-      // This is clean, modern, and mathematically rigorous.
-      
-      // Let's implement Predicted vs. Actual plot:
+      // Predicted against actual values, with the 1:1 line of a perfect fit
       const actual = results.actual; // 1D list for OLS
       const predicted = results.predicted; // 1D list for OLS
       
@@ -98,7 +109,7 @@ const RegressionModal = ({ isOpen, onClose }) => {
         mode: 'markers',
         type: 'scatter',
         name: 'Observations',
-        marker: { color: '#4F46E5', size: 8, line: { color: '#ffffff', width: 0.5 } },
+        marker: { color: chartColors[0], size: 8, opacity: 0.85, line: { color: '#ffffff', width: 0.5 } },
         hovertemplate: 'Predicted: %{x:.3f}<br>Actual: %{y:.3f}<extra></extra>'
       });
       
@@ -112,24 +123,19 @@ const RegressionModal = ({ isOpen, onClose }) => {
         mode: 'lines',
         type: 'scatter',
         name: 'Perfect Fit (1:1)',
-        line: { color: '#F97316', width: 2, dash: 'dash' }
+        line: { color: chartColors[1], width: 2, dash: 'dash' }
       });
       
       layout = {
         title: {
-          text: `Fit Plot (Predicted vs. Actual): ${depVars[0]}`,
-          font: { family: 'Outfit, sans-serif', size: 14, color: '#1E293B', weight: 'bold' }
+          text: `Fit Plot (Predicted vs. Actual): ${depVars[0]}`
         },
         xaxis: {
-          title: { text: 'Predicted Values', font: { family: 'Outfit, sans-serif', size: 11, color: '#475569' } },
-          gridcolor: '#F1F5F9'
+          title: { text: 'Predicted Values' },
         },
         yaxis: {
-          title: { text: 'Actual Values', font: { family: 'Outfit, sans-serif', size: 11, color: '#475569' } },
-          gridcolor: '#F1F5F9'
+          title: { text: 'Actual Values' },
         },
-        plot_bgcolor: '#ffffff',
-        paper_bgcolor: '#ffffff',
         margin: { t: 50, r: 40, l: 60, b: 50 },
         showlegend: true,
         legend: { x: 0, y: 1 }
@@ -144,7 +150,7 @@ const RegressionModal = ({ isOpen, onClose }) => {
         mode: 'markers',
         type: 'scatter',
         name: 'Observations',
-        marker: { color: '#4F46E5', size: 8, line: { color: '#ffffff', width: 0.5 } },
+        marker: { color: chartColors[0], size: 8, opacity: 0.85, line: { color: '#ffffff', width: 0.5 } },
         hovertemplate: 'Predicted: %{x:.3f}<br>Actual: %{y:.3f}<extra></extra>'
       });
       
@@ -157,24 +163,19 @@ const RegressionModal = ({ isOpen, onClose }) => {
         mode: 'lines',
         type: 'scatter',
         name: 'Perfect Fit (1:1)',
-        line: { color: '#F97316', width: 2, dash: 'dash' }
+        line: { color: chartColors[1], width: 2, dash: 'dash' }
       });
       
       layout = {
         title: {
-          text: `Fit Plot (Predicted vs. Actual): ${depVars[0]}`,
-          font: { family: 'Outfit, sans-serif', size: 14, color: '#1E293B', weight: 'bold' }
+          text: `Fit Plot (Predicted vs. Actual): ${depVars[0]}`
         },
         xaxis: {
-          title: { text: 'Predicted Values', font: { family: 'Outfit, sans-serif', size: 11, color: '#475569' } },
-          gridcolor: '#F1F5F9'
+          title: { text: 'Predicted Values' },
         },
         yaxis: {
-          title: { text: 'Actual Values', font: { family: 'Outfit, sans-serif', size: 11, color: '#475569' } },
-          gridcolor: '#F1F5F9'
+          title: { text: 'Actual Values' },
         },
-        plot_bgcolor: '#ffffff',
-        paper_bgcolor: '#ffffff',
         margin: { t: 50, r: 40, l: 60, b: 50 },
         showlegend: true,
         legend: { x: 0, y: 1 }
@@ -192,7 +193,7 @@ const RegressionModal = ({ isOpen, onClose }) => {
           mode: 'markers',
           type: 'scatter',
           name: 'Observations',
-          marker: { color: '#10B981', size: 8, line: { color: '#ffffff', width: 0.5 } },
+          marker: { color: chartColors[0], size: 8, opacity: 0.85, line: { color: '#ffffff', width: 0.5 } },
           hovertemplate: 'Predicted: %{x:.3f}<br>Actual: %{y:.3f}<extra></extra>'
         });
         
@@ -205,24 +206,19 @@ const RegressionModal = ({ isOpen, onClose }) => {
           mode: 'lines',
           type: 'scatter',
           name: 'Perfect Fit (1:1)',
-          line: { color: '#F97316', width: 2, dash: 'dash' }
+          line: { color: chartColors[1], width: 2, dash: 'dash' }
         });
         
         layout = {
           title: {
-            text: `PLSR Fit Plot (Predicted vs. Actual): ${selectedPlsTarget || depVars[0]}`,
-            font: { family: 'Outfit, sans-serif', size: 14, color: '#1E293B', weight: 'bold' }
+            text: `PLSR Fit Plot (Predicted vs. Actual): ${selectedPlsTarget || depVars[0]}`
           },
           xaxis: {
-            title: { text: 'Predicted Values', font: { family: 'Outfit, sans-serif', size: 11, color: '#475569' } },
-            gridcolor: '#F1F5F9'
+            title: { text: 'Predicted Values' },
           },
           yaxis: {
-            title: { text: 'Actual Values', font: { family: 'Outfit, sans-serif', size: 11, color: '#475569' } },
-            gridcolor: '#F1F5F9'
+            title: { text: 'Actual Values' },
           },
-          plot_bgcolor: '#ffffff',
-          paper_bgcolor: '#ffffff',
           margin: { t: 50, r: 40, l: 60, b: 50 },
           showlegend: true,
           legend: { x: 0, y: 1 }
@@ -231,75 +227,24 @@ const RegressionModal = ({ isOpen, onClose }) => {
     }
 
     const config = { responsive: true, displayModeBar: false };
-    Plotly.newPlot(plotRef.current, traces, layout, config);
+    Plotly.newPlot(plotRef.current, traces, themedLayout(layout, { palette: figurePrefs.palette }), config);
 
-  }, [results, activeTab, selectedPlsTarget, indVars, depVars]);
+  }, [results, activeTab, selectedPlsTarget, indVars, depVars, figurePrefs.palette]);
 
   if (!isOpen) return null;
 
   // File Upload Handlers
-  const handleDrag = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (e.type === "dragenter" || e.type === "dragover") setDragActive(true);
-    else if (e.type === "dragleave") setDragActive(false);
-  };
 
-  const handleDrop = async (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setDragActive(false);
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      await processFile(e.dataTransfer.files[0]);
-    }
-  };
 
-  const handleFileChange = async (e) => {
-    if (e.target.files && e.target.files[0]) {
-      await processFile(e.target.files[0]);
-    }
-  };
 
   const handleSaveEditedData = async (editedFile) => {
     setResults(null);
     setError(null);
     if (editedFile) {
-      await processFile(editedFile);
+      await dataset.selectFile(editedFile);
     }
   };
 
-  const processFile = async (selectedFile) => {
-    setFile(selectedFile);
-    setColumns([]);
-    setNumericColumns([]);
-    setDepVars([]);
-    setIndVars([]);
-    setResults(null);
-    setError(null);
-    setLoadingCols(true);
-
-    const formData = new FormData();
-    formData.append('file', selectedFile);
-
-    try {
-      const response = await fetch(`${API_URL}/analyze/columns`, {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${token}` },
-        body: formData
-      });
-
-      if (!response.ok) throw new Error('Failed to parse columns from dataset.');
-
-      const data = await response.json();
-      setColumns(data.columns || []);
-      setNumericColumns(data.numeric_columns || []);
-    } catch (err) {
-      setError(err.message || 'An error occurred while loading the dataset.');
-      setFile(null);
-    } finally {
-      setLoadingCols(false);
-    }
-  };
 
   // Selection toggles
   const handleToggleIndVar = (col) => {
@@ -357,7 +302,7 @@ const RegressionModal = ({ isOpen, onClose }) => {
     formData.append('n_components', nComponents);
 
     try {
-      const response = await fetch(`${API_URL}/analyze/regression`, {
+      const response = await apiFetch(`${API_URL}/analyze/regression`, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}` },
         body: formData
@@ -376,9 +321,7 @@ const RegressionModal = ({ isOpen, onClose }) => {
   };
 
   const handleReset = () => {
-    setFile(null);
-    setColumns([]);
-    setNumericColumns([]);
+    dataset.clear();
     setDepVars([]);
     setIndVars([]);
     setResults(null);
@@ -393,192 +336,94 @@ const RegressionModal = ({ isOpen, onClose }) => {
   // Plot download helper
   const handleDownloadPlot = (format) => {
     if (!plotRef.current) return;
-    const scale = downloadDpi / 96;
-    Plotly.downloadImage(plotRef.current, {
-      format: format,
-      width: 800,
-      height: 600,
-      scale: scale,
-      filename: `statsathi_regression_plot_${downloadDpi}dpi`
-    });
+    exportPlotlyFigure(plotRef.current, { format, preset: figurePrefs.preset, dpi: downloadDpi, filename: `statsathi_regression_plot_${downloadDpi}dpi` }).catch(err => setError(err.message));
   };
 
-  // Word Report export
-  const handleDownloadReport = () => {
+  // Word report: server-side .docx including the interactive chart as an image
+  const handleDownloadReport = async () => {
     if (!results) return;
+    let chartImage = null;
+    try {
+      if (plotRef.current) chartImage = await Plotly.toImage(plotRef.current, { format: 'png', width: 900, height: 600 });
+    } catch {
+      chartImage = null; // chart not rendered on the current tab
+    }
+    downloadDocxReport(token, buildDocxReport(chartImage)).catch(err => setError(err.message));
+  };
 
-    let html = `
-      <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
-      <head>
-        <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
-        <title>Regression Analysis Report</title>
-        <style>
-          body { font-family: Arial, sans-serif; font-size: 11pt; line-height: 1.6; color: #1e293b; margin: 1in; }
-          h2 { text-align: center; color: #4f46e5; font-size: 18pt; margin-bottom: 5px; }
-          h3 { color: #0f172a; border-bottom: 1.5pt solid #4f46e5; padding-bottom: 3px; font-size: 14pt; margin-top: 25px; }
-          table { width: 100%; border-collapse: collapse; margin: 15px auto; }
-          th, td { border: 1px solid #cbd5e1; padding: 8px 10px; font-size: 10pt; text-align: center; }
-          th { background-color: #4f46e5; color: #ffffff; font-weight: bold; }
-          tr:nth-child(even) { background-color: #f8fafc; }
-        </style>
-      </head>
-      <body>
-        ${getWordReportHeader({
-          title: 'Regression Analysis Report',
-          testApplied: results.regression_type === 'simple' ? 'Simple Linear Regression' :
-                       results.regression_type === 'multiple' ? 'Multiple Linear Regression' :
-                       'Partial Least Squares Regression (PLSR)',
-          fileName: file ? file.name : '',
-          curator: user ? user.full_name : 'Guest Researcher',
-          extraMeta: [
-            ['Dependent Variable(s)', depVars.join(', ')],
-            ['Independent Variable(s)', indVars.join(', ')]
-          ]
-        })}
-    `;
+  const buildDocxReport = (chartImage) => {
+    const typeLabel = results.regression_type === 'simple' ? 'Simple linear regression'
+      : results.regression_type === 'multiple' ? 'Multiple linear regression' : 'Partial least squares regression (PLSR)';
+    const sections = [{
+      heading: 'Model',
+      paragraphs: [`Dependent variable(s): ${depVars.join(', ')}.`, `Independent variable(s): ${indVars.join(', ')}.`]
+    }];
 
     if (results.regression_type !== 'plsr') {
-      html += `
-        <h3>Model Fit Summary</h3>
-        <table align="center" style="margin-left:auto; margin-right:auto;">
-          <thead>
-            <tr>
-              <th>Metric</th>
-              <th>Value</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr><td>R-Squared (R&sup2;)</td><td>${results.r2.toFixed(4)}</td></tr>
-            <tr><td>Adjusted R-Squared</td><td>${results.adj_r2.toFixed(4)}</td></tr>
-            <tr><td>F-Statistic</td><td>${results.f_statistic.toFixed(4)} (df: ${results.df_model}, ${results.df_resid})</td></tr>
-            <tr><td>F-Statistic p-value</td><td>${results.f_pvalue < 0.001 ? 'p &lt; 0.001' : results.f_pvalue.toFixed(4)}</td></tr>
-          </tbody>
-        </table>
-
-        <h3>Coefficients Estimates</h3>
-        <table align="center" style="margin-left:auto; margin-right:auto;">
-          <thead>
-            <tr>
-              <th>Variable</th>
-              <th>Estimate (Beta)</th>
-              <th>Std. Error</th>
-              <th>t-Statistic</th>
-              <th>p-value</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${results.coefficients.map(coef => `
-              <tr>
-                <td><strong>${coef.variable}</strong></td>
-                <td>${coef.coefficient.toFixed(4)}</td>
-                <td>${coef.std_err.toFixed(4)}</td>
-                <td>${coef.t_stat.toFixed(4)}</td>
-                <td>${coef.p_value < 0.001 ? 'p &lt; 0.001' : coef.p_value.toFixed(4)}</td>
-              </tr>
-            `).join('')}
-          </tbody>
-        </table>
-      `;
+      sections.push({
+        heading: '1. Model Fit',
+        tables: [{
+          columns: ['Metric', 'Value'],
+          rows: [
+            ['R²', results.r2.toFixed(4)],
+            ['Adjusted R²', results.adj_r2.toFixed(4)],
+            ['F statistic', `${results.f_statistic.toFixed(4)} (df = ${results.df_model}, ${results.df_resid})`],
+            ['p-value (F test)', formatP(results.f_pvalue)]
+          ]
+        }]
+      }, {
+        heading: '2. Coefficients',
+        tables: [{
+          columns: ['Variable', 'Estimate', 'Std. error', 't', 'p-value', '95% CI'],
+          rows: results.coefficients.map(c => [c.variable, c.coefficient.toFixed(4), c.std_err.toFixed(4), c.t_stat.toFixed(4), formatP(c.p_value),
+            c.ci_lower !== undefined && c.ci_lower !== null ? `[${c.ci_lower.toFixed(4)}, ${c.ci_upper.toFixed(4)}]` : 'N/A'])
+        }]
+      });
     } else {
-      html += `
-        <h3>PLSR Components & R&sup2; Summary</h3>
-        <div class="summary-info">
-          <strong>Components Used:</strong> ${results.n_components_used}
-        </div>
-        <table align="center" style="margin-left:auto; margin-right:auto;">
-          <thead>
-            <tr>
-              <th>Dependent Variable</th>
-              <th>R&sup2; Value</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${depVars.map((dep, idx) => `
-              <tr>
-                <td><strong>${dep}</strong></td>
-                <td>${results.r2_values[idx].toFixed(4)}</td>
-              </tr>
-            `).join('')}
-          </tbody>
-        </table>
-
-        <h3>Explained Variance in X (Predictors)</h3>
-        <table align="center" style="margin-left:auto; margin-right:auto;">
-          <thead>
-            <tr>
-              <th>Component</th>
-              <th>Explained Variance Proportion</th>
-              <th>Cumulative Explained Variance</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${results.explained_variance_x.map((val, idx) => {
-              const cum = results.explained_variance_x.slice(0, idx + 1).reduce((a, b) => a + b, 0);
-              return `
-                <tr>
-                  <td>Component ${idx + 1}</td>
-                  <td>${val.toFixed(4)} (${(val * 100).toFixed(2)}%)</td>
-                  <td>${cum.toFixed(4)} (${(cum * 100).toFixed(2)}%)</td>
-                </tr>
-              `;
-            }).join('')}
-          </tbody>
-        </table>
-
-        <h3>Beta Coefficients Matrix</h3>
-        <table align="center" style="margin-left:auto; margin-right:auto;">
-          <thead>
-            <tr>
-              <th>Predictor (X)</th>
-              ${depVars.map(dep => `<th>${dep}</th>`).join('')}
-            </tr>
-          </thead>
-          <tbody>
-            ${results.coefficients.map(row => `
-              <tr>
-                <td><strong>${row.variable}</strong></td>
-                ${depVars.map(dep => `<td>${row.coefficients[dep].toFixed(4)}</td>`).join('')}
-              </tr>
-            `).join('')}
-          </tbody>
-        </table>
-      `;
+      const cumulative = (values, i) => values.slice(0, i + 1).reduce((a, b) => a + b, 0);
+      const hasY = Array.isArray(results.explained_variance_y);
+      sections.push({
+        heading: '1. Model Summary',
+        paragraphs: [`Components used: ${results.n_components_used}.`],
+        tables: [{
+          columns: ['Dependent variable', 'R²'],
+          rows: depVars.map((dep, i) => [dep, results.r2_values[i].toFixed(4)])
+        }, {
+          columns: ['Component', 'X variance (%)', 'Cumulative X (%)', ...(hasY ? ['Y variance (%)', 'Cumulative Y (%)'] : [])],
+          rows: results.explained_variance_x.map((v, i) => [`Component ${i + 1}`, (v * 100).toFixed(2), (cumulative(results.explained_variance_x, i) * 100).toFixed(2),
+            ...(hasY ? [(results.explained_variance_y[i] * 100).toFixed(2), (cumulative(results.explained_variance_y, i) * 100).toFixed(2)] : [])]),
+          caption: 'Explained variance per component (standardized variables)'
+        }]
+      }, {
+        heading: '2. Coefficients (original units)',
+        tables: [{
+          columns: ['Predictor', ...depVars],
+          rows: [
+            ...results.coefficients.map(row => [row.variable, ...depVars.map(dep => row.coefficients[dep].toFixed(4))]),
+            ...(results.intercepts ? [['Intercept', ...depVars.map(dep => (results.intercepts[dep] !== undefined ? results.intercepts[dep].toFixed(4) : 'N/A'))]] : [])
+          ]
+        }]
+      });
+      if (results.vip) {
+        sections.push({
+          heading: '3. Variable Importance in Projection (VIP)',
+          tables: [{ columns: ['Predictor', 'VIP', 'Important (VIP > 1)'], rows: [...results.vip].sort((a, b) => b.vip - a.vip).map(r => [r.variable, r.vip.toFixed(3), r.vip > 1 ? 'Yes' : 'No']) }]
+        });
+      }
     }
+    if (chartImage) sections.push({ heading: 'Predicted vs. Actual', images: [{ data: chartImage, caption: 'Figure 1. Predicted versus observed values' }] });
 
-    html += `
-        ${getWordReportFooter()}
-      </body>
-      </html>
-    `;
-
-    const centeredHtml = html
-      .replace(/<table([^>]*)>/gi, (match, attrs) => {
-        let newAttrs = attrs;
-        if (/style="/i.test(newAttrs)) {
-          newAttrs = newAttrs.replace(/style="/i, 'style="mso-table-align: center; margin-left: auto; margin-right: auto; ');
-        } else {
-          newAttrs = ' style="mso-table-align: center; margin-left: auto; margin-right: auto;"' + newAttrs;
-        }
-        if (!/align=/i.test(newAttrs)) {
-          newAttrs = ' align="center"' + newAttrs;
-        }
-        return `<center><table${newAttrs}>`;
-      })
-      .replace(/<\/table>/gi, '</table></center>');
-
-    const blob = new Blob(['\ufeff' + centeredHtml], { type: 'application/msword;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `statsathi_regression_report.doc`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
+    return {
+      title: 'Regression Analysis Report',
+      test_applied: typeLabel,
+      dataset_name: file?.name,
+      filename: `StatSathi_Regression_Report_${(file?.name || 'dataset').split('.')[0]}`,
+      sections
+    };
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-xs animate-fade-in overflow-y-auto">
+    <div role="dialog" aria-modal="true" className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-xs animate-fade-in overflow-y-auto">
       <div className="relative w-full max-w-5xl rounded-3xl border border-slate-100 bg-brand-slate shadow-2xl flex flex-col max-h-[90vh] overflow-hidden">
         
         {/* Header */}
@@ -592,51 +437,32 @@ const RegressionModal = ({ isOpen, onClose }) => {
               <p className="font-sans text-[10px] text-slate-400">Perform Simple, Multiple OLS, or Partial Least Squares Regression.</p>
             </div>
           </div>
-          <button onClick={onClose} className="rounded-xl p-1.5 hover:bg-slate-50 text-slate-400 hover:text-slate-600 transition-colors cursor-pointer">
+          <button data-dialog-close aria-label="Close" onClick={onClose} className="rounded-xl p-1.5 hover:bg-slate-50 text-slate-400 hover:text-slate-600 transition-colors cursor-pointer">
             <X className="h-5 w-5" />
           </button>
         </div>
 
         {/* Content Body */}
         <div className="flex-1 overflow-y-auto p-6">
-          {!file ? (
-            /* Upload Screen */
-            <div
-              onDragEnter={handleDrag}
-              onDragOver={handleDrag}
-              onDragLeave={handleDrag}
-              onDrop={handleDrop}
-              className={`flex flex-col items-center justify-center border-2 border-dashed rounded-3xl p-12 bg-white transition-all ${
-                dragActive ? 'border-brand-orange bg-orange-50/20' : 'border-slate-200 hover:border-slate-300'
-              }`}
-            >
-              <div className="h-16 w-16 bg-orange-50 text-brand-orange rounded-full flex items-center justify-center mb-4">
-                <Upload className="h-8 w-8" />
-              </div>
-              <h3 className="font-display text-sm font-bold text-slate-700 mb-1">Drag and drop your dataset here</h3>
-              <p className="font-sans text-xs text-slate-400 mb-6">Supports CSV and Excel (.xlsx, .xls) files</p>
-              <button
-                onClick={() => fileInputRef.current?.click()}
-                className="px-5 py-2.5 bg-brand-indigo hover:bg-indigo-700 text-white font-sans text-xs font-semibold rounded-xl shadow-xs transition-colors cursor-pointer"
-              >
-                Browse Files
-              </button>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept=".csv, .xlsx, .xls"
-                onChange={handleFileChange}
-                className="hidden"
-              />
+          {(error || dataset.error) && (
+            <div className="mb-4 flex items-start space-x-2 rounded-2xl border border-rose-100 bg-rose-50 p-4 text-rose-800">
+              <AlertCircle className="h-5 w-5 shrink-0 text-rose-500" />
+              <span className="font-sans text-xs font-medium">{error || dataset.error}</span>
             </div>
-          ) : loadingCols ? (
-            /* Loading columns */
-            <div className="flex flex-col items-center justify-center py-12 bg-white rounded-3xl border border-slate-100">
-              <RefreshCw className="h-8 w-8 text-brand-indigo animate-spin mb-4" />
-              <p className="font-sans text-xs text-slate-400">Reading dataset variables...</p>
-            </div>
+          )}
+
+          {reopened && <ReopenedBanner analysis={initialAnalysis} onRestore={restoreSaved} />}
+
+          {!file && !results ? (
+            <DatasetPicker
+              dataset={dataset}
+              title="Select or drop a dataset for regression"
+              hint="One row per observation, with the response and the predictors in numeric columns (CSV or Excel)."
+            />
           ) : !results ? (
             /* Configuration Panel */
+            <div className="space-y-5">
+              <DatasetPicker dataset={dataset} onViewData={() => setViewerOpen(true)} />
             <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               
               {/* Sidebar Settings */}
@@ -801,6 +627,7 @@ const RegressionModal = ({ isOpen, onClose }) => {
               </div>
 
             </form>
+            </div>
           ) : (
             /* Results Screen */
             <div className="space-y-6 animate-fade-in">
@@ -809,7 +636,9 @@ const RegressionModal = ({ isOpen, onClose }) => {
               <div className="flex border-b border-slate-200 pb-px space-x-6 overflow-x-auto">
                 {[
                   { id: 'summary', label: 'Model Summary' },
-                  { id: 'plot', label: 'Diagnostic Fit Plot' },
+                  { id: 'plot', label: 'Predicted vs Actual' },
+                  ...(results.fit_band ? [{ id: 'line', label: 'Regression Line & Bands' }] : []),
+                  ...(results.diagnostics ? [{ id: 'diagnostics', label: 'Residual Diagnostics' }, { id: 'coefficients', label: 'Coefficient Plot' }] : []),
                   ...(results.regression_type === 'plsr' ? [{ id: 'plsr_details', label: 'PLSR Matrix Details' }] : []),
                   { id: 'data', label: 'Residuals Data' }
                 ].map(t => (
@@ -877,10 +706,40 @@ const RegressionModal = ({ isOpen, onClose }) => {
                             </div>
                           ))}
                         </div>
+                        {results.explained_variance_y && (
+                          <div className="py-2 space-y-1.5">
+                            <span className="text-slate-400 block font-bold">Explained Variance (Y):</span>
+                            {results.explained_variance_y.map((val, idx) => (
+                              <div key={idx} className="flex justify-between text-[11px] text-slate-600 bg-slate-50 p-1.5 rounded-lg">
+                                <span>Component {idx + 1}</span>
+                                <span className="font-mono font-bold">{(val * 100).toFixed(2)}%</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        {results.vip && (
+                          <div className="py-2 space-y-1.5">
+                            <span className="text-slate-400 block font-bold">VIP Scores (VIP &gt; 1 = important):</span>
+                            {[...results.vip].sort((a, b) => b.vip - a.vip).map(row => (
+                              <div key={row.variable} className={`flex justify-between text-[11px] p-1.5 rounded-lg ${row.vip > 1 ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-50 text-slate-600'}`}>
+                                <span>{row.variable}</span>
+                                <span className="font-mono font-bold">{row.vip.toFixed(3)}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     )}
 
                     <div className="pt-4 border-t border-slate-100 flex flex-col space-y-2">
+                      <SaveToProjectButton
+                        module="regression"
+                        report={() => buildDocxReport(null)}
+                        source={dataset.source}
+                        defaultTitle={`Regression – ${depVars.join(', ')}`}
+                        parameters={{ type: regressionType, dependent: depVars, independent: indVars, components: nComponents, dataset: file?.name }}
+                        result={results}
+                      />
                       <button onClick={handleDownloadReport} className="w-full py-2 bg-brand-indigo hover:bg-indigo-700 text-white font-sans text-xs font-bold rounded-xl transition-colors cursor-pointer text-center">
                         Export Report to Word
                       </button>
@@ -903,6 +762,7 @@ const RegressionModal = ({ isOpen, onClose }) => {
                             <th className="border border-slate-100 p-2">Estimate</th>
                             <th className="border border-slate-100 p-2">Std. Error</th>
                             <th className="border border-slate-100 p-2">t-value</th>
+                            <th className="border border-slate-100 p-2">95% CI</th>
                             <th className="border border-slate-100 p-2">p-value</th>
                           </tr>
                         </thead>
@@ -913,6 +773,9 @@ const RegressionModal = ({ isOpen, onClose }) => {
                               <td className="border border-slate-100 p-2">{coef.coefficient.toFixed(4)}</td>
                               <td className="border border-slate-100 p-2">{coef.std_err.toFixed(4)}</td>
                               <td className="border border-slate-100 p-2">{coef.t_stat.toFixed(4)}</td>
+                              <td className="border border-slate-100 p-2 font-mono whitespace-nowrap">
+                                {coef.ci_lower != null ? `[${coef.ci_lower.toFixed(4)}, ${coef.ci_upper.toFixed(4)}]` : 'n/a'}
+                              </td>
                               <td className={`border border-slate-100 p-2 font-bold ${coef.p_value < 0.05 ? 'text-green-600' : 'text-slate-600'}`}>
                                 {coef.p_value < 0.001 ? 'p < 0.001' : coef.p_value.toFixed(4)}
                               </td>
@@ -972,6 +835,16 @@ const RegressionModal = ({ isOpen, onClose }) => {
                                   ))}
                                 </tr>
                               ))}
+                              {results.intercepts && (
+                                <tr className="bg-slate-50/50">
+                                  <td className="border border-slate-100 p-2 text-left font-bold text-slate-500">Intercept</td>
+                                  {depVars.map(dep => (
+                                    <td key={dep} className="border border-slate-100 p-2 font-mono text-slate-500">
+                                      {results.intercepts[dep]?.toFixed(4) ?? 'n/a'}
+                                    </td>
+                                  ))}
+                                </tr>
+                              )}
                             </tbody>
                           </table>
                         </div>
@@ -1007,6 +880,8 @@ const RegressionModal = ({ isOpen, onClose }) => {
                     )}
 
                     <div className="flex items-center space-x-2">
+                      <FigurePaletteSelect value={figurePrefs.palette} onChange={(palette) => setFigurePrefs({ palette })} className="mr-2" />
+                      <FigurePresetSelect value={figurePrefs.preset} onChange={(preset) => setFigurePrefs({ preset })} className="mr-2" />
                       <span className="font-sans text-[10px] font-bold text-slate-400 uppercase">Export Resolution:</span>
                       {[150, 300, 600].map(dpiVal => (
                         <button
@@ -1038,6 +913,18 @@ const RegressionModal = ({ isOpen, onClose }) => {
                     <div ref={plotRef} className="w-full h-[450px]"></div>
                   </div>
                 </div>
+              )}
+
+              {/* Regression line with bands, residual diagnostics, coefficient plot */}
+              {['line', 'diagnostics', 'coefficients'].includes(activeTab) && (
+                <RegressionExtraChart
+                  kind={activeTab}
+                  results={results}
+                  depVar={depVars[0]}
+                  figurePrefs={figurePrefs}
+                  setFigurePrefs={setFigurePrefs}
+                  onError={setError}
+                />
               )}
 
               {/* Tab 3: PLSR Details */}

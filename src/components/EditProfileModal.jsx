@@ -1,6 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useAuth } from '../context/AuthContext';
+import ChangePasswordForm from './ChangePasswordForm';
+import AccountDataSection from './AccountDataSection';
 import { X, User, Building, Briefcase, AlertCircle, CheckCircle2 } from 'lucide-react';
 
 const EditProfileModal = ({ isOpen, onClose }) => {
@@ -59,7 +61,10 @@ const EditProfileModal = ({ isOpen, onClose }) => {
   ];
 
   return createPortal(
-    <div 
+    <div
+      role="dialog"
+      aria-modal="true"
+      data-theme-aware
       onClick={(e) => {
         if (e.target === e.currentTarget && !loading) onClose();
       }}
@@ -72,7 +77,7 @@ const EditProfileModal = ({ isOpen, onClose }) => {
             <h3 className="font-display text-lg font-bold text-slate-800 dark:text-slate-100">Edit Profile</h3>
             <p className="font-sans text-xs text-slate-400 dark:text-slate-400">Update your account details and affiliation.</p>
           </div>
-          <button
+          <button data-dialog-close aria-label="Close"
             onClick={onClose}
             className="rounded-full p-1.5 text-slate-400 hover:bg-slate-50 hover:text-slate-600 transition-colors dark:hover:bg-slate-800 dark:hover:text-slate-200"
           >
@@ -175,6 +180,14 @@ const EditProfileModal = ({ isOpen, onClose }) => {
             </button>
           </div>
         </form>
+
+        <div className="mt-5 border-t border-slate-100 pt-4 dark:border-slate-800">
+          <ChangePasswordForm />
+        </div>
+
+        <div className="mt-5 border-t border-slate-100 pt-4 dark:border-slate-800">
+          <AccountDataSection onDeleted={onClose} />
+        </div>
       </div>
     </div>,
     document.body

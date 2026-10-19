@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { apiFetch } from '../utils/apiFetch';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth, API_URL } from '../context/AuthContext';
 import {
   X, Table, AlertCircle, Info, Trash2, Copy, ArrowUp, ArrowDown,
@@ -35,18 +36,6 @@ const DatasetViewerModal = ({ isOpen, onClose, file, onSave }) => {
   const editInputRef = useRef(null);
   const [isModified, setIsModified] = useState(false);
 
-  useEffect(() => {
-    if (isOpen && file) {
-      fetchPreview();
-      setSelectedRows(new Set());
-      setSelectedCols(new Set());
-      setEditingCell(null);
-      setHistory([]);
-      setToast(null);
-      setContextMenu(null);
-      setMode('row');
-    }
-  }, [isOpen, file]);
 
   useEffect(() => {
     if (editInputRef.current) {
@@ -100,7 +89,7 @@ const DatasetViewerModal = ({ isOpen, onClose, file, onSave }) => {
     }
   };
 
-  const fetchPreview = async () => {
+  async function fetchPreview() {
     setLoading(true);
     setError(null);
     setColumns([]);
@@ -110,7 +99,7 @@ const DatasetViewerModal = ({ isOpen, onClose, file, onSave }) => {
     formData.append('file', file);
 
     try {
-      const res = await fetch(`${API_URL}/analyze/preview`, {
+      const res = await apiFetch(`${API_URL}/analyze/preview`, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}` },
         body: formData
@@ -127,7 +116,20 @@ const DatasetViewerModal = ({ isOpen, onClose, file, onSave }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }
+
+  useEffect(() => {
+    if (isOpen && file) {
+      fetchPreview();
+      setSelectedRows(new Set());
+      setSelectedCols(new Set());
+      setEditingCell(null);
+      setHistory([]);
+      setToast(null);
+      setContextMenu(null);
+      setMode('row');
+    }
+  }, [isOpen, file]);
 
   // ── ROW OPERATIONS ──────────────────────────────────────────
   const toggleRowSelect = (idx) => {
@@ -423,7 +425,7 @@ const DatasetViewerModal = ({ isOpen, onClose, file, onSave }) => {
   const hasColSelection = selectedCols.size > 0;
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-xs animate-fade-in">
+    <div role="dialog" aria-modal="true" className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-xs animate-fade-in">
       <div className="relative flex h-full max-h-[700px] w-full max-w-6xl flex-col rounded-3xl border border-slate-100 bg-white shadow-2xl overflow-hidden">
 
         {/* ── Header ── */}
@@ -442,7 +444,7 @@ const DatasetViewerModal = ({ isOpen, onClose, file, onSave }) => {
               </p>
             </div>
           </div>
-          <button onClick={onClose} className="rounded-full p-1.5 text-slate-400 hover:bg-slate-50 hover:text-slate-600 transition-colors">
+          <button data-dialog-close aria-label="Close" onClick={onClose} className="rounded-full p-1.5 text-slate-400 hover:bg-slate-50 hover:text-slate-600 transition-colors">
             <X className="h-5 w-5" />
           </button>
         </div>

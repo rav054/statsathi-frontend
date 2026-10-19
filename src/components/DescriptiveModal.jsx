@@ -1,9 +1,18 @@
-import React, { useState, useRef, useEffect } from 'react';
+import { apiFetch } from '../utils/apiFetch';
+import { useState, useRef, useEffect } from 'react';
 import { useAuth, API_URL } from '../context/AuthContext';
-import { X, Upload, Check, AlertCircle, Download, RefreshCw, Eye, Info, Calculator } from 'lucide-react';
+import { X, AlertCircle, Download, RefreshCw, Eye, Calculator } from 'lucide-react';
 import Plotly from 'plotly.js-dist-min';
 import DatasetViewerModal from './DatasetViewerModal';
-import { getWordReportHeader, getWordReportFooter } from '../utils/reportHeader';
+import DatasetPicker from './DatasetPicker';
+import { useDataset } from '../hooks/useDataset';
+import { downloadDocxReport, formatP } from '../utils/reportApi';
+import SaveToProjectButton from './SaveToProjectButton';
+import ReopenedBanner from './ReopenedBanner';
+import FigurePresetSelect from './FigurePresetSelect';
+import { PALETTE_OPTIONS, themedLayout } from '../utils/figureStyle';
+import { exportPlotlyFigure } from '../utils/plotlyExport';
+import { useFigurePreferences } from '../utils/figurePreferences';
 
 const CHART_THEMES = {
   indigo: {
@@ -50,20 +59,30 @@ const CHART_THEMES = {
   }
 };
 
-const DescriptiveModal = ({ isOpen, onClose }) => {
-  const { token, user } = useAuth();
+// Publication palettes shared with every chart (figure_style.json)
+PALETTE_OPTIONS.forEach(p => {
+  CHART_THEMES[p.value] = { name: p.label, primary: p.colors[0], secondary: p.colors[4], accent: p.colors[1], colors: p.colors };
+});
+
+const DescriptiveModal = ({ isOpen, onClose, initialAnalysis = null }) => {
+  const saved = initialAnalysis?.parameters || {};
+  const { token } = useAuth();
   
   // File upload state
-  const [file, setFile] = useState(null);
-
-
-
-
-  const [columns, setColumns] = useState([]);
-  const [numericColumns, setNumericColumns] = useState([]);
-  const [loadingCols, setLoadingCols] = useState(false);
-  const [dragActive, setDragActive] = useState(false);
-  const fileInputRef = useRef(null);
+  const dataset = useDataset({
+    active: isOpen && !initialAnalysis,
+    onLoaded: () => {
+      setSelectedCols([]);
+      setResults(null);
+    },
+    onCleared: () => {
+      setSelectedCols([]);
+      setGroupVar('');
+      setResults(null);
+      setError(null);
+    },
+  });
+  const { file, columns, numericColumns } = dataset;
 
   // Parameters state
   const [selectedCols, setSelectedCols] = useState([]);
@@ -71,7 +90,19 @@ const DescriptiveModal = ({ isOpen, onClose }) => {
   
   // Analysis results & UI state
   const [loadingAnalysis, setLoadingAnalysis] = useState(false);
-  const [results, setResults] = useState(null);
+  const [results, setResults] = useState(initialAnalysis?.result || null);
+  const [reopened, setReopened] = useState(Boolean(initialAnalysis?.result));
+
+  // Fetch the dataset this analysis was run on, then restore its settings so it can be run again
+  const restoreSaved = async () => {
+    setReopened(false);
+    setResults(null);
+    const loaded = await dataset.selectProjectDataset(initialAnalysis.dataset, initialAnalysis.projectName);
+    if (loaded) {
+      setSelectedCols(saved.variables || []);
+      setGroupVar(saved.group_var || '');
+    }
+  };
   const [error, setError] = useState(null);
   const [viewerOpen, setViewerOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('summary'); // 'summary', 'quality', 'normality', 'distribution'
@@ -79,7 +110,8 @@ const DescriptiveModal = ({ isOpen, onClose }) => {
   // Chart variable selection & export state
   const [activeChartVar, setActiveChartVar] = useState('');
   const [downloadDpi, setDownloadDpi] = useState(300);
-  const [chartTheme, setChartTheme] = useState('indigo');
+  const [figurePrefs, setFigurePrefs] = useFigurePreferences();
+  const [chartTheme, setChartTheme] = useState(figurePrefs.palette);
 
   // Chart DOM refs
   const qqChartRef = useRef(null);
@@ -148,32 +180,25 @@ const DescriptiveModal = ({ isOpen, onClose }) => {
 
       const layout = {
         title: {
-          text: `Normal Q-Q Plot: ${activeChartVar}`,
-          font: { family: 'Outfit, sans-serif', size: 15, color: '#1E293B', weight: 'bold' }
+          text: `Normal Q-Q Plot: ${activeChartVar}`
         },
         xaxis: {
-          title: { text: 'Theoretical Normal Quantiles', font: { family: 'Outfit, sans-serif', size: 12, color: '#475569' } },
-          gridcolor: '#F1F5F9',
-          zerolinecolor: '#E2E8F0'
+          title: { text: 'Theoretical Normal Quantiles' },
         },
         yaxis: {
-          title: { text: 'Sample Ordered Values', font: { family: 'Outfit, sans-serif', size: 12, color: '#475569' } },
-          gridcolor: '#F1F5F9',
-          zerolinecolor: '#E2E8F0'
+          title: { text: 'Sample Ordered Values' },
         },
-        plot_bgcolor: '#ffffff',
-        paper_bgcolor: '#ffffff',
         margin: { t: 50, r: 40, l: 60, b: 50 },
         showlegend: true,
         legend: { x: 0, y: 1 }
       };
 
-      Plotly.newPlot(qqChartRef.current, [scatterTrace, lineTrace], layout, config);
+      Plotly.newPlot(qqChartRef.current, [scatterTrace, lineTrace], themedLayout(layout, { palette: chartTheme }), config);
     }
 
     // 2. Boxplot rendering
     if (activeTab === 'distribution' && boxChartRef.current) {
-      let traces = [];
+      let traces;
       if (results.group_var && Object.keys(colData.groups).length > 0) {
         // Grouped Boxplot
         traces = Object.keys(colData.groups).map((g, idx) => {
@@ -208,29 +233,24 @@ const DescriptiveModal = ({ isOpen, onClose }) => {
 
       const layout = {
         title: {
-          text: `Box & Whisker Plot: ${activeChartVar} ${results.group_var ? `by ${results.group_var}` : ''}`,
-          font: { family: 'Outfit, sans-serif', size: 15, color: '#1E293B', weight: 'bold' }
+          text: `Box & Whisker Plot: ${activeChartVar} ${results.group_var ? `by ${results.group_var}` : ''}`
         },
         xaxis: {
-          title: { text: results.group_var || 'All Data', font: { family: 'Outfit, sans-serif', size: 12, color: '#475569' } },
-          gridcolor: '#F1F5F9'
+          title: { text: results.group_var || 'All Data' },
         },
         yaxis: {
-          title: { text: activeChartVar, font: { family: 'Outfit, sans-serif', size: 12, color: '#475569' } },
-          gridcolor: '#F1F5F9'
+          title: { text: activeChartVar },
         },
-        plot_bgcolor: '#ffffff',
-        paper_bgcolor: '#ffffff',
         margin: { t: 50, r: 40, l: 60, b: 50 },
         showlegend: results.group_var ? true : false
       };
 
-      Plotly.newPlot(boxChartRef.current, traces, layout, config);
+      Plotly.newPlot(boxChartRef.current, traces, themedLayout(layout, { palette: chartTheme }), config);
     }
 
     // 3. Histogram rendering
     if (activeTab === 'distribution' && histChartRef.current) {
-      let traces = [];
+      let traces;
       if (results.group_var && Object.keys(colData.groups).length > 0) {
         // Grouped overlay histograms
         traces = Object.keys(colData.groups).map((g, idx) => {
@@ -262,25 +282,20 @@ const DescriptiveModal = ({ isOpen, onClose }) => {
 
       const layout = {
         title: {
-          text: `Frequency Histogram: ${activeChartVar} ${results.group_var ? `by ${results.group_var}` : ''}`,
-          font: { family: 'Outfit, sans-serif', size: 15, color: '#1E293B', weight: 'bold' }
+          text: `Frequency Histogram: ${activeChartVar} ${results.group_var ? `by ${results.group_var}` : ''}`
         },
         xaxis: {
-          title: { text: activeChartVar, font: { family: 'Outfit, sans-serif', size: 12, color: '#475569' } },
-          gridcolor: '#F1F5F9'
+          title: { text: activeChartVar },
         },
         yaxis: {
-          title: { text: 'Observation Frequency', font: { family: 'Outfit, sans-serif', size: 12, color: '#475569' } },
-          gridcolor: '#F1F5F9'
+          title: { text: 'Observation Frequency' },
         },
         barmode: 'overlay',
-        plot_bgcolor: '#ffffff',
-        paper_bgcolor: '#ffffff',
         margin: { t: 50, r: 40, l: 60, b: 50 },
         showlegend: results.group_var ? true : false
       };
 
-      Plotly.newPlot(histChartRef.current, traces, layout, config);
+      Plotly.newPlot(histChartRef.current, traces, themedLayout(layout, { palette: chartTheme }), config);
     }
 
   }, [results, activeChartVar, activeTab, chartTheme]);
@@ -288,79 +303,11 @@ const DescriptiveModal = ({ isOpen, onClose }) => {
   if (!isOpen) return null;
 
   // File Drag-and-Drop Handlers
-  const handleDrag = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (e.type === "dragenter" || e.type === "dragover") {
-      setDragActive(true);
-    } else if (e.type === "dragleave") {
-      setDragActive(false);
-    }
-  };
-
-  const handleDrop = async (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setDragActive(false);
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      await processFile(e.dataTransfer.files[0]);
-    }
-  };
-
-  const handleFileChange = async (e) => {
-    if (e.target.files && e.target.files[0]) {
-      await processFile(e.target.files[0]);
-    }
-  };
-
   const handleSaveEditedData = async (editedFile) => {
     setResults(null);
     setError(null);
     if (editedFile) {
-      await processFile(editedFile);
-    }
-  };
-
-  const processFile = async (selectedFile) => {
-    setError(null);
-    const ext = selectedFile.name.split('.').pop().toLowerCase();
-    if (!['csv', 'xlsx', 'xls'].includes(ext)) {
-      setError("Supported formats: CSV or Excel (.xlsx, .xls) only.");
-      return;
-    }
-
-    setFile(selectedFile);
-    setColumns([]);
-    setNumericColumns([]);
-    setSelectedCols([]);
-    setGroupVar('');
-    setResults(null);
-    setLoadingCols(true);
-
-    const formData = new FormData();
-    formData.append('file', selectedFile);
-
-    try {
-      const response = await fetch(`${API_URL}/analyze/columns`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        },
-        body: formData
-      });
-
-      const data = await response.json();
-      if (!response.ok) {
-        throw new Error(data.detail || 'Failed to read columns from file.');
-      }
-
-      setColumns(data.columns || []);
-      setNumericColumns(data.numeric_columns || []);
-    } catch (err) {
-      setError(err.message || 'An error occurred while loading columns.');
-      setFile(null);
-    } finally {
-      setLoadingCols(false);
+      await dataset.selectFile(editedFile);
     }
   };
 
@@ -391,7 +338,7 @@ const DescriptiveModal = ({ isOpen, onClose }) => {
     }
 
     try {
-      const response = await fetch(`${API_URL}/analyze/descriptive`, {
+      const response = await apiFetch(`${API_URL}/analyze/descriptive`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -411,16 +358,6 @@ const DescriptiveModal = ({ isOpen, onClose }) => {
     } finally {
       setLoadingAnalysis(false);
     }
-  };
-
-  const handleReset = () => {
-    setFile(null);
-    setColumns([]);
-    setNumericColumns([]);
-    setSelectedCols([]);
-    setGroupVar('');
-    setResults(null);
-    setError(null);
   };
 
   const handleAnalyzeNew = () => {
@@ -464,7 +401,7 @@ const DescriptiveModal = ({ isOpen, onClose }) => {
         report += `   IQR:                  ${o.iqr.toFixed(4)}\n`;
         report += `   Skewness:             ${o.skewness.toFixed(4)}\n`;
         report += `   Kurtosis:             ${o.kurtosis.toFixed(4)}\n`;
-        report += `   C.V. %:               ${o.cv.toFixed(2)}%\n\n`;
+        report += `   C.V. %:               ${o.cv == null ? 'N/A' : o.cv.toFixed(2) + '%'}\n\n`;
 
         // Normality
         report += `2. Shapiro-Wilk Normality Check:\n`;
@@ -507,7 +444,7 @@ const DescriptiveModal = ({ isOpen, onClose }) => {
             const gn = gData.n.toString().padStart(6, ' ');
             const gMean = gData.mean.toFixed(4).padStart(12, ' ');
             const gSd = gData.sd.toFixed(4).padStart(12, ' ');
-            const gCv = gData.cv.toFixed(2).padStart(12, ' ') + '%';
+            const gCv = (gData.cv == null ? 'N/A' : gData.cv.toFixed(2) + '%').padStart(13, ' ');
             const gMed = gData.median.toFixed(4).padStart(12, ' ');
             const gMiss = `${gData.missing.count} (${gData.missing.percentage.toFixed(0)}%)`.padStart(10, ' ');
             report += `   ${level}${gn}${gMean}${gSd}${gCv}${gMed}${gMiss}\n`;
@@ -520,7 +457,6 @@ const DescriptiveModal = ({ isOpen, onClose }) => {
     });
 
     const fileName = `StatSathi_Descriptive_Report_${file.name.split('.')[0]}`;
-    const title = "Stat Sathi Descriptive Statistics Report";
 
     if (format === 'txt') {
       const blob = new Blob([report], { type: 'text/plain;charset=utf-8' });
@@ -531,257 +467,93 @@ const DescriptiveModal = ({ isOpen, onClose }) => {
       link.click();
       document.body.removeChild(link);
     } else if (format === 'doc') {
-      const variablesList = Object.keys(results.variables);
-      const overallStatsRows = metricsConfig.map(m => {
-        const valCols = variablesList.map(col => {
-          const overall = results.variables[col].overall;
-          if (overall.error) {
-            return `<td style="border: 1px solid #CBD5E1; padding: 8px; text-align: right; color: #EF4444; font-style: italic;">Error</td>`;
-          }
-          const val = overall[m.key];
-          const formattedVal = val !== undefined && val !== null ? (m.format ? m.format(val) : val) : 'N/A';
-          return `<td style="border: 1px solid #CBD5E1; padding: 8px; text-align: right; font-family: 'Courier New', Courier, monospace; color: #334155;">${formattedVal}</td>`;
-        }).join('');
-
-        return `
-          <tr>
-            <td style="border: 1px solid #CBD5E1; padding: 8px; font-weight: bold; background-color: #F8FAFC; color: #1E293B;">${m.label}</td>
-            ${valCols}
-          </tr>
-        `;
-      }).join('');
-
-      const dataQualityNormalityRows = variablesList.map(col => {
-        const overall = results.variables[col].overall;
-        const missingCount = overall.missing?.count || 0;
-        const missingPct = (overall.missing?.percentage || 0).toFixed(2) + '%';
-        const shapiro = overall.shapiro;
-        
-        let shapiroW = 'N/A';
-        let shapiroP = 'N/A';
-        let shapiroStatus = 'N/A';
-        if (shapiro) {
-          if (shapiro.error) {
-            shapiroStatus = shapiro.error;
-          } else {
-            shapiroW = shapiro.stat !== undefined ? shapiro.stat.toFixed(4) : 'N/A';
-            shapiroP = shapiro.p_value !== undefined ? (shapiro.p_value < 0.001 ? 'p < 0.001' : `p = ${shapiro.p_value.toFixed(4)}`) : 'N/A';
-            shapiroStatus = shapiro.normal ? 'Normally Distributed' : 'Not Normal';
-          }
-        }
-
-        return `
-          <tr>
-            <td style="border: 1px solid #CBD5E1; padding: 8px; font-weight: bold; background-color: #F8FAFC; color: #1E293B;">${col}</td>
-            <td style="border: 1px solid #CBD5E1; padding: 8px; text-align: right; color: #334155;">${overall.n}</td>
-            <td style="border: 1px solid #CBD5E1; padding: 8px; text-align: right; color: ${missingCount > 0 ? '#EF4444' : '#334155'}; font-weight: ${missingCount > 0 ? 'bold' : 'normal'};">${missingCount}</td>
-            <td style="border: 1px solid #CBD5E1; padding: 8px; text-align: right; color: ${missingCount > 0 ? '#EF4444' : '#334155'}; font-weight: ${missingCount > 0 ? 'bold' : 'normal'};">${missingPct}</td>
-            <td style="border: 1px solid #CBD5E1; padding: 8px; text-align: right; font-family: 'Courier New', Courier, monospace; color: #334155;">${shapiroW}</td>
-            <td style="border: 1px solid #CBD5E1; padding: 8px; text-align: right; font-family: 'Courier New', Courier, monospace; color: #334155;">${shapiroP}</td>
-            <td style="border: 1px solid #CBD5E1; padding: 8px; font-weight: bold; color: ${shapiro.normal ? '#10B981' : '#EF4444'};">${shapiroStatus}</td>
-          </tr>
-        `;
-      }).join('');
-
-      let outlierRows = [];
-      variablesList.forEach(col => {
-        const overall = results.variables[col].overall;
-        if (overall.outliers && overall.outliers.length > 0) {
-          overall.outliers.forEach(out => {
-            outlierRows.push(`
-              <tr>
-                <td style="border: 1px solid #CBD5E1; padding: 8px; font-weight: bold; color: #1E293B;">${col}</td>
-                <td style="border: 1px solid #CBD5E1; padding: 8px; text-align: right; font-weight: bold; color: #D97706;">${out.row}</td>
-                <td style="border: 1px solid #CBD5E1; padding: 8px; text-align: right; font-family: 'Courier New', Courier, monospace; color: #EF4444;">${out.val.toFixed(4)}</td>
-              </tr>
-            `);
-          });
-        }
-      });
-      const hasOutliers = outlierRows.length > 0;
-
-      let groupedTablesHtml = '';
-      if (results.group_var) {
-        groupedTablesHtml = variablesList.map(col => {
-          const colData = results.variables[col];
-          const groupKeys = Object.keys(colData.groups);
-          if (groupKeys.length === 0) return '';
-
-          const groupRows = groupKeys.map(g => {
-            const gData = colData.groups[g];
-            if (gData.error) {
-              return `
-                <tr>
-                  <td style="border: 1px solid #CBD5E1; padding: 8px; font-weight: bold; background-color: #F8FAFC; color: #1E293B;">${g}</td>
-                  <td colSpan="6" style="border: 1px solid #CBD5E1; padding: 8px; text-align: center; color: #EF4444; font-style: italic;">${gData.error}</td>
-                </tr>
-              `;
-            }
-            return `
-              <tr>
-                <td style="border: 1px solid #CBD5E1; padding: 8px; font-weight: bold; background-color: #F8FAFC; color: #1E293B;">${g}</td>
-                <td style="border: 1px solid #CBD5E1; padding: 8px; text-align: right; color: #334155;">${gData.n}</td>
-                <td style="border: 1px solid #CBD5E1; padding: 8px; text-align: right; font-family: 'Courier New', Courier, monospace; color: #334155;">${gData.mean.toFixed(4)}</td>
-                <td style="border: 1px solid #CBD5E1; padding: 8px; text-align: right; font-family: 'Courier New', Courier, monospace; color: #334155;">${gData.sd.toFixed(4)}</td>
-                <td style="border: 1px solid #CBD5E1; padding: 8px; text-align: right; font-family: 'Courier New', Courier, monospace; color: #334155;">${gData.se.toFixed(4)}</td>
-                <td style="border: 1px solid #CBD5E1; padding: 8px; text-align: right; font-family: 'Courier New', Courier, monospace; color: #334155;">${gData.median.toFixed(4)}</td>
-                <td style="border: 1px solid #CBD5E1; padding: 8px; text-align: right; font-family: 'Courier New', Courier, monospace; color: #4F46E5; font-weight: bold;">${gData.cv.toFixed(2)}%</td>
-              </tr>
-            `;
-          }).join('');
-
-          return `
-            <h3 style="color: #4F46E5; font-family: Arial, sans-serif; font-size: 12pt; margin-top: 15px; margin-bottom: 5px;">${col} Group Statistics</h3>
-            <div align="center">
-          <table align="center" style="margin-left: auto; margin-right: auto; border-collapse: collapse; width: 100%; font-family: Arial, sans-serif; font-size: 10pt; margin-bottom: 20px;">
-              <thead>
-                <tr style="background-color: #4F46E5; color: white;">
-                  <th style="border: 1px solid #CBD5E1; padding: 8px; text-align: left; font-weight: bold;">Group Level</th>
-                  <th style="border: 1px solid #CBD5E1; padding: 8px; text-align: right; font-weight: bold;">N</th>
-                  <th style="border: 1px solid #CBD5E1; padding: 8px; text-align: right; font-weight: bold;">Mean</th>
-                  <th style="border: 1px solid #CBD5E1; padding: 8px; text-align: right; font-weight: bold;">SD</th>
-                  <th style="border: 1px solid #CBD5E1; padding: 8px; text-align: right; font-weight: bold;">SE</th>
-                  <th style="border: 1px solid #CBD5E1; padding: 8px; text-align: right; font-weight: bold;">Median</th>
-                  <th style="border: 1px solid #CBD5E1; padding: 8px; text-align: right; font-weight: bold;">C.V. %</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${groupRows}
-              </tbody>
-            </table>
-          </div>
-          `;
-        }).join('');
-      }
-
-      const htmlContent = `
-        <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
-        <head>
-          <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
-          <title>${title}</title>
-          <!--[if gte mso 9]>
-          <xml>
-            <w:WordDocument>
-              <w:View>Print</w:View>
-              <w:Zoom>100</w:Zoom>
-            </w:WordDocument>
-          </xml>
-          <![endif]-->
-          <style>
-            body { font-family: Arial, sans-serif; font-size: 11pt; line-height: 1.6; color: #1E293B; margin: 1in; }
-            h1 { color: #4F46E5; font-size: 18pt; border-bottom: 2px solid #4F46E5; padding-bottom: 6px; margin-bottom: 20px; }
-            h2 { color: #1E293B; font-size: 14pt; margin-top: 25px; border-bottom: 1px solid #E2E8F0; padding-bottom: 4px; }
-            p { margin-bottom: 15px; }
-            .meta-table { border-collapse: collapse; width: 75%; margin-left: auto; margin-right: auto; margin-bottom: 25px; }
-            .meta-table td { padding: 8px; border: 1px solid #E2E8F0; }
-            .meta-label { font-weight: bold; background-color: #F8FAFC; width: 30%; }
-          </style>
-        </head>
-        <body>
-          ${getWordReportHeader({
-            title: 'Descriptive Statistics Report',
-            testApplied: 'Descriptive Statistics Summary',
-            fileName: file ? file.name : '',
-            curator: user ? user.full_name : 'Guest Researcher',
-            extraMeta: [
-              ...(results.group_var ? [['Grouping Factor', results.group_var]] : []),
-              ['Selected Variables', variablesList.join(', ')]
-            ]
-          })}
-
-          <h2 style="color: #4F46E5; font-family: Arial, sans-serif; font-size: 14pt; margin-top: 20px;">1. Overall Summary Statistics</h2>
-          <div align="center">
-          <table align="center" style="margin-left: auto; margin-right: auto; border-collapse: collapse; width: 100%; font-family: Arial, sans-serif; font-size: 10pt; margin-bottom: 25px;">
-            <thead>
-              <tr style="background-color: #4F46E5; color: white;">
-                <th style="border: 1px solid #CBD5E1; padding: 8px; text-align: left; font-weight: bold;">Statistic</th>
-                ${variablesList.map(col => `<th style="border: 1px solid #CBD5E1; padding: 8px; text-align: right; font-weight: bold;">${col}</th>`).join('')}
-              </tr>
-            </thead>
-            <tbody>
-              ${overallStatsRows}
-            </tbody>
-          </table>
-          </div>
-
-          <h2 style="color: #4F46E5; font-family: Arial, sans-serif; font-size: 14pt; margin-top: 20px;">2. Data Quality and Normality Checks</h2>
-          <div align="center">
-          <table align="center" style="margin-left: auto; margin-right: auto; border-collapse: collapse; width: 100%; font-family: Arial, sans-serif; font-size: 10pt; margin-bottom: 25px;">
-            <thead>
-              <tr style="background-color: #4F46E5; color: white;">
-                <th style="border: 1px solid #CBD5E1; padding: 8px; text-align: left; font-weight: bold;">Variable</th>
-                <th style="border: 1px solid #CBD5E1; padding: 8px; text-align: right; font-weight: bold;">Valid N</th>
-                <th style="border: 1px solid #CBD5E1; padding: 8px; text-align: right; font-weight: bold;">Missing Count</th>
-                <th style="border: 1px solid #CBD5E1; padding: 8px; text-align: right; font-weight: bold;">Missing %</th>
-                <th style="border: 1px solid #CBD5E1; padding: 8px; text-align: right; font-weight: bold;">Shapiro W</th>
-                <th style="border: 1px solid #CBD5E1; padding: 8px; text-align: right; font-weight: bold;">SW p-value</th>
-                <th style="border: 1px solid #CBD5E1; padding: 8px; text-align: left; font-weight: bold;">Normality Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${dataQualityNormalityRows}
-            </tbody>
-          </table>
-          </div>
-
-          <h2 style="color: #4F46E5; font-family: Arial, sans-serif; font-size: 14pt; margin-top: 20px;">3. Flagged Outliers (1.5 * IQR Rule)</h2>
-          ${hasOutliers ? `
-          <div align="center">
-          <table align="center" style="margin-left: auto; margin-right: auto; border-collapse: collapse; width: 100%; font-family: Arial, sans-serif; font-size: 10pt; margin-bottom: 25px;">
-            <thead>
-              <tr style="background-color: #4F46E5; color: white;">
-                <th style="border: 1px solid #CBD5E1; padding: 8px; text-align: left; font-weight: bold;">Variable</th>
-                <th style="border: 1px solid #CBD5E1; padding: 8px; text-align: right; font-weight: bold;">Excel Row Index</th>
-                <th style="border: 1px solid #CBD5E1; padding: 8px; text-align: right; font-weight: bold;">Value</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${outlierRows.join('')}
-            </tbody>
-          </table>
-          </div>
-          ` : '<p style="color: #10B981; font-weight: bold;">No outliers detected in any of the selected variables.</p>'}
-
-          ${results.group_var && groupedTablesHtml ? `
-          <h2 style="color: #4F46E5; font-family: Arial, sans-serif; font-size: 14pt; margin-top: 25px; border-bottom: 1px solid #E2E8F0; padding-bottom: 4px;">4. Grouped Statistics by Level of ${results.group_var}</h2>
-          ${groupedTablesHtml}
-          ` : ''}
-
-          ${getWordReportFooter()}
-        </body>
-        </html>
-      `;
-      const centeredHtml = htmlContent
-        .replace(/width:\s*100%/gi, 'width: 80%')
-        .replace(/width:\s*95%/gi, 'width: 80%')
-        .replace(/class="meta-table"/gi, 'class="meta-table" style="width: 75%;"')
-        .replace(/<table([^>]*)>/gi, (match, attrs) => {
-          let newAttrs = attrs;
-          if (/width:\s*100%/i.test(newAttrs)) {
-            newAttrs = newAttrs.replace(/width:\s*100%/i, 'width: 80%');
-          }
-          if (/width:\s*95%/i.test(newAttrs)) {
-            newAttrs = newAttrs.replace(/width:\s*95%/i, 'width: 80%');
-          }
-          if (/style="/i.test(newAttrs)) {
-            newAttrs = newAttrs.replace(/style="/i, 'style="mso-table-align: center; margin-left: auto; margin-right: auto; ');
-          } else {
-            newAttrs = ' style="mso-table-align: center; margin-left: auto; margin-right: auto;"' + newAttrs;
-          }
-          if (!/align=/i.test(newAttrs)) {
-            newAttrs = ' align="center"' + newAttrs;
-          }
-          return `<center><table${newAttrs}>`;
-        })
-        .replace(/<\/table>/gi, '</table></center>');
-      const blob = new Blob(['\ufeff' + centeredHtml], { type: 'application/msword;charset=utf-8' });
-      const link = document.createElement('a');
-      link.href = URL.createObjectURL(blob);
-      link.download = `${fileName}.doc`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+      downloadDocxReport(token, buildDocxReport(fileName)).catch(err => setError(err.message));
     }
+  };
+  // Structured content for the server-side Word (.docx) report
+  const buildDocxReport = (fileName) => {
+    const variablesList = Object.keys(results.variables);
+    const overallOf = (col) => results.variables[col].overall;
+    const sections = [{
+      heading: 'Overview',
+      paragraphs: [
+        `Variables analysed: ${variablesList.join(', ')}.`,
+        ...(results.group_var ? [`Grouping factor: ${results.group_var}.`] : [])
+      ]
+    }, {
+      heading: '1. Overall Summary Statistics',
+      tables: [{
+        columns: ['Statistic', ...variablesList],
+        rows: metricsConfig.map(m => [m.label, ...variablesList.map(col => {
+          const overall = overallOf(col);
+          if (overall.error) return 'Error';
+          const val = overall[m.key];
+          return val !== undefined && val !== null ? (m.format ? m.format(val) : String(val)) : 'N/A';
+        })])
+      }, {
+        columns: ['Variable', 'P10', 'P25', 'P50', 'P75', 'P90'],
+        rows: variablesList.filter(col => overallOf(col).percentiles).map(col => [col, ...['p10', 'p25', 'p50', 'p75', 'p90'].map(p => overallOf(col).percentiles[p].toFixed(4))]),
+        caption: 'Percentiles'
+      }]
+    }, {
+      heading: '2. Data Quality and Normality Checks',
+      tables: [{
+        columns: ['Variable', 'Valid N', 'Missing', 'Missing %', 'Shapiro-Wilk W', 'p-value', 'Normality'],
+        rows: variablesList.map(col => {
+          const o = overallOf(col);
+          const sw = o.shapiro;
+          const ok = sw && !sw.error;
+          return [col, o.n ?? 0, o.missing?.count ?? 0, `${(o.missing?.percentage || 0).toFixed(2)}%`,
+            ok ? sw.stat.toFixed(4) : 'N/A', ok ? formatP(sw.p_value) : 'N/A', ok ? (sw.normal ? 'Normal' : 'Not normal') : (sw?.error || 'N/A')];
+        })
+      }, {
+        columns: ['Variable', 'Lilliefors D', 'Lilliefors p', "D'Agostino K²", "D'Agostino p"],
+        rows: variablesList.map(col => {
+          const o = overallOf(col);
+          return [col, o.lilliefors ? o.lilliefors.stat.toFixed(4) : 'N/A', o.lilliefors ? formatP(o.lilliefors.p_value) : 'N/A',
+            o.dagostino_pearson ? o.dagostino_pearson.stat.toFixed(4) : 'N/A', o.dagostino_pearson ? formatP(o.dagostino_pearson.p_value) : 'N/A'];
+        }),
+        caption: 'Additional normality tests',
+        note: 'Lilliefors is the Kolmogorov-Smirnov test with estimated mean and SD; D\'Agostino-Pearson needs n ≥ 8.'
+      }]
+    }];
+
+    const outlierRows = variablesList.flatMap(col => (overallOf(col).outliers || []).map(out => [col, out.row, out.val.toFixed(4)]));
+    const zRows = variablesList.flatMap(col => (overallOf(col).z_outliers || []).map(out => [col, out.val.toFixed(4), out.z.toFixed(2)]));
+    sections.push({
+      heading: '3. Outliers',
+      paragraphs: outlierRows.length === 0 ? ['No outliers were flagged by the 1.5 × IQR rule.'] : [],
+      tables: [
+        ...(outlierRows.length > 0 ? [{ columns: ['Variable', 'Excel row', 'Value'], rows: outlierRows, caption: 'Tukey fences (1.5 × IQR)' }] : []),
+        ...(zRows.length > 0 ? [{ columns: ['Variable', 'Value', 'z'], rows: zRows, caption: '|z| > 3' }] : [])
+      ]
+    });
+
+    if (results.group_var) {
+      const groupTables = variablesList.map(col => {
+        const groups = results.variables[col].groups;
+        const keys = Object.keys(groups);
+        if (keys.length === 0) return null;
+        return {
+          columns: ['Group level', 'N', 'Mean', 'SD', 'SE', 'Median', 'C.V. %'],
+          rows: keys.map(g => {
+            const gData = groups[g];
+            if (gData.error) return [g, '–', gData.error, '–', '–', '–', '–'];
+            return [g, gData.n, gData.mean.toFixed(4), gData.sd.toFixed(4), gData.se.toFixed(4), gData.median.toFixed(4), gData.cv == null ? 'N/A' : `${gData.cv.toFixed(2)}%`];
+          }),
+          caption: `${col} by ${results.group_var}`
+        };
+      }).filter(Boolean);
+      if (groupTables.length > 0) sections.push({ heading: `4. Grouped Statistics by ${results.group_var}`, tables: groupTables });
+    }
+
+    return {
+      title: 'Descriptive Statistics Report',
+      test_applied: 'Descriptive statistics and normality checks',
+      dataset_name: file?.name,
+      filename: fileName,
+      sections
+    };
   };
 
   // High-Resolution Plot Downloader
@@ -801,18 +573,9 @@ const DescriptiveModal = ({ isOpen, onClose }) => {
 
     if (!targetRef) return;
 
-    // Apply scale multiplier based on target print DPI
-    // Standard screen is ~96 DPI. Scale factor is downloadDpi / 96.
-    const scale = downloadDpi / 96;
     const filename = `StatSathi_Descriptive_${titleStr}_${activeChartVar}_${downloadDpi}dpi`;
 
-    Plotly.downloadImage(targetRef, {
-      format: format,
-      width: 800,
-      height: 600,
-      scale: scale,
-      filename: filename
-    });
+    exportPlotlyFigure(targetRef, { format, preset: figurePrefs.preset, dpi: downloadDpi, filename: filename }).catch(err => setError(err.message));
   };
 
   // Utility to format p-value according to scientific requirements
@@ -836,12 +599,15 @@ const DescriptiveModal = ({ isOpen, onClose }) => {
     { key: 'range', label: 'Range', format: (v) => v.toFixed(4) },
     { key: 'iqr', label: 'Interquartile Range (IQR)', format: (v) => v.toFixed(4) },
     { key: 'skewness', label: 'Skewness', format: (v) => v.toFixed(4) },
-    { key: 'kurtosis', label: 'Kurtosis', format: (v) => v.toFixed(4) },
-    { key: 'cv', label: 'C.V. % (Coef of Var)', format: (v) => `${v.toFixed(2)}%` }
+    { key: 'se_skewness', label: 'Std Error of Skewness', format: (v) => (v === null || v === undefined ? 'N/A' : v.toFixed(4)) },
+    { key: 'kurtosis', label: 'Kurtosis (excess)', format: (v) => v.toFixed(4) },
+    { key: 'se_kurtosis', label: 'Std Error of Kurtosis', format: (v) => (v === null || v === undefined ? 'N/A' : v.toFixed(4)) },
+    // C.V. is undefined when the mean is zero
+    { key: 'cv', label: 'C.V. % (Coef of Var)', format: (v) => (v === null || v === undefined ? 'N/A' : `${v.toFixed(2)}%`) }
   ];
 
   return (
-    <div className="fixed inset-0 z-40 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-xs animate-fade-in">
+    <div role="dialog" aria-modal="true" className="fixed inset-0 z-40 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-xs animate-fade-in">
       <div className="flex h-[88vh] w-full max-w-5xl flex-col rounded-3xl border border-slate-100 bg-white shadow-2xl overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4 bg-slate-50/50">
@@ -858,7 +624,7 @@ const DescriptiveModal = ({ isOpen, onClose }) => {
               </p>
             </div>
           </div>
-          <button
+          <button data-dialog-close aria-label="Close"
             onClick={onClose}
             className="rounded-full p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition-colors"
           >
@@ -878,83 +644,18 @@ const DescriptiveModal = ({ isOpen, onClose }) => {
             </div>
           )}
 
-          {/* Step 1: File Uploader */}
-          {!file && (
-            <div
-              onDragEnter={handleDrag}
-              onDragOver={handleDrag}
-              onDragLeave={handleDrag}
-              onDrop={handleDrop}
-              className={`flex flex-col items-center justify-center rounded-3xl border-2 border-dashed p-12 transition-all duration-300 ${
-                dragActive
-                  ? 'border-brand-indigo bg-indigo-50/20'
-                  : 'border-slate-200 bg-slate-50/50 hover:bg-slate-50'
-              }`}
-            >
-              <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-indigo-50 text-brand-indigo shadow-xs">
-                <Upload className="h-6 w-6" />
-              </div>
-              <h3 className="font-display text-sm font-bold text-slate-800">
-                Upload your dataset
-              </h3>
-              <p className="font-sans text-[11px] text-slate-400 mt-1 leading-relaxed text-center max-w-sm">
-                Drag and drop your spreadsheet file here, or click to browse. Supports CSV, Excel (.xlsx, .xls) files.
-              </p>
-              
-              <button
-                onClick={() => fileInputRef.current.click()}
-                className="mt-6 rounded-xl bg-brand-indigo px-5 py-2.5 font-sans text-xs font-bold text-white shadow-md shadow-indigo-100 hover:bg-indigo-700 transition-colors cursor-pointer"
-              >
-                Browse Files
-              </button>
-              
-              <input
-                ref={fileInputRef}
-                type="file"
-                className="hidden"
-                accept=".csv,.xlsx,.xls"
-                onChange={handleFileChange}
-              />
-            </div>
-          )}
-
-          {/* Loading columns from uploaded file */}
-          {loadingCols && (
-            <div className="flex flex-col items-center justify-center py-20">
-              <RefreshCw className="h-8 w-8 text-brand-indigo animate-spin" />
-              <p className="font-display text-xs font-bold text-slate-500 mt-4">Parsing dataset structure...</p>
-            </div>
-          )}
-
           {/* Step 2: Parameter Configuration Form */}
-          {file && !loadingCols && !results && !loadingAnalysis && (
-            <form onSubmit={runAnalysis} className="space-y-6">
-              {/* Selected File Card */}
-              <div className="rounded-2xl border border-slate-100 bg-slate-50 p-4 flex justify-between items-center">
-                <div>
-                  <p className="font-sans text-[9px] font-bold text-slate-400 uppercase tracking-wider">Selected Dataset</p>
-                  <p className="font-sans text-sm font-semibold text-slate-700 truncate max-w-[250px]">{file.name}</p>
-                </div>
-                <div className="flex space-x-2">
-                  <button
-                    type="button"
-                    onClick={() => setViewerOpen(true)}
-                    className="rounded-xl border border-slate-200 bg-white p-2 text-slate-500 hover:bg-slate-50 hover:text-slate-800 transition-colors text-xs font-semibold flex items-center space-x-1 cursor-pointer"
-                  >
-                    <Eye className="h-3.5 w-3.5 text-brand-orange" />
-                    <span>View Data</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleReset}
-                    className="rounded-xl border border-slate-200 bg-white p-2 text-slate-500 hover:bg-slate-50 hover:text-slate-800 transition-colors text-xs font-semibold flex items-center space-x-1 cursor-pointer"
-                  >
-                    <RefreshCw className="h-3.5 w-3.5" />
-                    <span>Change File</span>
-                  </button>
-                </div>
-              </div>
+          {!results && !loadingAnalysis && (
+            <div className="space-y-6">
+              <DatasetPicker
+                dataset={dataset}
+                title="Select or drop a dataset to summarise"
+                hint="Any table with numeric columns (CSV or Excel). An optional grouping column splits the summary by group."
+                onViewData={() => setViewerOpen(true)}
+              />
 
+              {file && (
+              <form onSubmit={runAnalysis} className="space-y-6">
               {/* Select inputs */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {/* Numeric Columns checklist */}
@@ -1006,7 +707,9 @@ const DescriptiveModal = ({ isOpen, onClose }) => {
               >
                 Compute Descriptive Statistics
               </button>
-            </form>
+              </form>
+              )}
+            </div>
           )}
 
           {/* Running Analysis Loader */}
@@ -1018,6 +721,8 @@ const DescriptiveModal = ({ isOpen, onClose }) => {
           )}
 
           {/* Step 3: Analysis Results Panel */}
+          {reopened && <ReopenedBanner analysis={initialAnalysis} onRestore={restoreSaved} />}
+
           {results && !loadingAnalysis && (
             <div className="space-y-6 animate-fade-in">
               
@@ -1062,7 +767,7 @@ const DescriptiveModal = ({ isOpen, onClose }) => {
                     <label className="font-sans text-xs font-bold text-slate-500">Chart Theme:</label>
                     <select
                       value={chartTheme}
-                      onChange={(e) => setChartTheme(e.target.value)}
+                      onChange={(e) => { setChartTheme(e.target.value); setFigurePrefs({ palette: e.target.value }); }}
                       className="rounded-xl border border-slate-200 bg-white py-1.5 px-3 font-sans text-xs outline-hidden focus:border-brand-indigo transition-all"
                     >
                       {Object.keys(CHART_THEMES).map(themeKey => (
@@ -1154,7 +859,7 @@ const DescriptiveModal = ({ isOpen, onClose }) => {
                                             <td className="py-2.5 px-3 text-right font-mono">{gData.sd.toFixed(4)}</td>
                                             <td className="py-2.5 px-3 text-right font-mono">{gData.se.toFixed(4)}</td>
                                             <td className="py-2.5 px-3 text-right font-mono">{gData.median.toFixed(4)}</td>
-                                            <td className="py-2.5 px-3 text-right font-mono">{gData.cv.toFixed(2)}%</td>
+                                            <td className="py-2.5 px-3 text-right font-mono">{gData.cv == null ? 'N/A' : gData.cv.toFixed(2) + '%'}</td>
                                           </>
                                         )}
                                       </tr>
@@ -1189,7 +894,6 @@ const DescriptiveModal = ({ isOpen, onClose }) => {
                       <tbody>
                         {Object.keys(results.variables).map(col => {
                           const o = results.variables[col].overall;
-                          const total = o.n + (o.missing?.count || 0);
                           return (
                             <tr key={col} className="border-b border-slate-50 text-slate-700">
                               <td className="py-2.5 px-3 font-semibold text-slate-800">{col}</td>
@@ -1250,6 +954,39 @@ const DescriptiveModal = ({ isOpen, onClose }) => {
                       </tbody>
                     </table>
                   </div>
+
+                  {/* Percentiles and |z| > 3 outliers */}
+                  <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-xs overflow-x-auto">
+                    <h4 className="font-display text-xs font-bold text-slate-700 mb-3">Percentiles & Z-Score Outliers (|z| &gt; 3)</h4>
+                    <table className="w-full border-collapse font-sans text-xs text-left">
+                      <thead>
+                        <tr className="border-b border-slate-100 text-slate-400 font-bold bg-slate-50/50">
+                          <th className="py-2.5 px-3">Variable</th>
+                          {['P10', 'P25', 'P50', 'P75', 'P90'].map(p => <th key={p} className="py-2.5 px-3 text-right">{p}</th>)}
+                          <th className="py-2.5 px-3 text-right">|z| &gt; 3 Values</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {Object.keys(results.variables).map(col => {
+                          const o = results.variables[col].overall;
+                          if (!o.percentiles) return null;
+                          return (
+                            <tr key={col} className="border-b border-slate-50 text-slate-700">
+                              <td className="py-2.5 px-3 font-semibold text-slate-800">{col}</td>
+                              {['p10', 'p25', 'p50', 'p75', 'p90'].map(p => (
+                                <td key={p} className="py-2.5 px-3 text-right font-mono">{o.percentiles[p].toFixed(4)}</td>
+                              ))}
+                              <td className="py-2.5 px-3 text-right font-mono text-red-500">
+                                {o.z_outliers && o.z_outliers.length > 0
+                                  ? o.z_outliers.map(z => `${z.val.toFixed(3)} (z = ${z.z.toFixed(2)})`).join(', ')
+                                  : 'None'}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
               )}
 
@@ -1291,10 +1028,50 @@ const DescriptiveModal = ({ isOpen, onClose }) => {
                     );
                   })()}
 
+                  {/* Additional normality tests */}
+                  {(() => {
+                    const o = results.variables[activeChartVar]?.overall;
+                    if (!o || o.error || (!o.lilliefors && !o.dagostino_pearson)) return null;
+                    const tests = [
+                      ["Lilliefors (Kolmogorov-Smirnov, estimated mean & SD)", o.lilliefors, 'D'],
+                      ["D'Agostino-Pearson Omnibus (n ≥ 8)", o.dagostino_pearson, 'K²']
+                    ].filter(([, t]) => t);
+                    return (
+                      <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-xs overflow-x-auto">
+                        <h4 className="font-display text-xs font-bold text-slate-700 mb-3">Additional Normality Tests</h4>
+                        <table className="w-full border-collapse font-sans text-xs text-left">
+                          <thead>
+                            <tr className="border-b border-slate-100 text-slate-400 font-bold bg-slate-50/50">
+                              <th className="py-2.5 px-3">Test</th>
+                              <th className="py-2.5 px-3 text-right">Statistic</th>
+                              <th className="py-2.5 px-3 text-right">p-value</th>
+                              <th className="py-2.5 px-3 text-right">Conclusion</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {tests.map(([name, t, symbol]) => (
+                              <tr key={name} className="border-b border-slate-50 text-slate-700">
+                                <td className="py-2.5 px-3 font-semibold">{name}</td>
+                                <td className="py-2.5 px-3 text-right font-mono">{symbol} = {t.stat.toFixed(4)}</td>
+                                <td className="py-2.5 px-3 text-right font-mono">{formatPValue(t.p_value)}</td>
+                                <td className="py-2.5 px-3 text-right">
+                                  <span className={`px-2 py-0.5 rounded-lg text-[10px] font-bold ${t.normal ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-600'}`}>
+                                    {t.normal ? 'Normally Distributed' : 'Not Normal'}
+                                  </span>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    );
+                  })()}
+
                   {/* Q-Q Plot Card with High-Res Download Actions */}
                   <div className="space-y-3">
                     <div className="flex justify-between items-center bg-slate-50/50 p-3 rounded-2xl border border-slate-100">
                       <div className="flex items-center space-x-2">
+                        <FigurePresetSelect value={figurePrefs.preset} onChange={(preset) => setFigurePrefs({ preset })} className="mr-2" />
                         <span className="font-sans text-[10px] font-bold text-slate-400 uppercase">Export DPI:</span>
                         {[150, 300, 600].map(dpiVal => (
                           <button
@@ -1335,6 +1112,7 @@ const DescriptiveModal = ({ isOpen, onClose }) => {
                 <div className="space-y-6">
                   {/* Share DPI controls at the top of charts panel */}
                   <div className="flex items-center space-x-2 bg-slate-50/50 p-3 rounded-2xl border border-slate-100">
+                    <FigurePresetSelect value={figurePrefs.preset} onChange={(preset) => setFigurePrefs({ preset })} className="mr-2" />
                     <span className="font-sans text-[10px] font-bold text-slate-400 uppercase">Global Export DPI:</span>
                     {[150, 300, 600].map(dpiVal => (
                       <button
@@ -1424,6 +1202,14 @@ const DescriptiveModal = ({ isOpen, onClose }) => {
                   Word
                 </button>
               </div>
+              <SaveToProjectButton
+                module="descriptive"
+                report={() => buildDocxReport('report')}
+                source={dataset.source}
+                defaultTitle={`Descriptive statistics – ${file?.name || 'dataset'}`}
+                parameters={{ variables: Object.keys(results?.variables || {}), group_var: results?.group_var || null, dataset: file?.name }}
+                result={results}
+              />
               <button
                 onClick={() => setViewerOpen(true)}
                 className="inline-flex items-center space-x-1.5 rounded-xl border border-slate-200 bg-white px-4 py-2.5 font-sans text-xs font-semibold text-slate-600 hover:bg-slate-50 hover:text-slate-800 transition-colors cursor-pointer"

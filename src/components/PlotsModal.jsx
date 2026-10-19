@@ -1,22 +1,128 @@
-import React, { useState, useRef, useEffect } from 'react';
+import { apiFetch } from '../utils/apiFetch';
+import { useState, useEffect, useCallback } from 'react';
 import { useAuth, API_URL } from '../context/AuthContext';
-import { X, Upload, Check, AlertCircle, Download, RefreshCw, Eye, Sliders, Layout, Trash2 } from 'lucide-react';
+import { X, AlertCircle, Download, RefreshCw, Eye, Sliders } from 'lucide-react';
 import DatasetViewerModal from './DatasetViewerModal';
+import DatasetPicker from './DatasetPicker';
+import { useDataset } from '../hooks/useDataset';
+
+import FigurePresetSelect from './FigurePresetSelect';
+import { PALETTE_OPTIONS, isStylePalette, paletteColors } from '../utils/figureStyle';
+import { useFigurePreferences } from '../utils/figurePreferences';
+
+// What each chart needs from the form.
+//   x: 'numeric' | 'category' | 'any' | null (hidden)   y: 'optional' | 'required' | 'multi' | null
+//   hue: 'optional' | 'required' | null                 multiToggle: single/multiple variable switches (classic charts)
+const PLOT_GROUPS = ['Classic charts', 'Distributions', 'Comparisons', 'Relationships', 'Composition'];
+const PLOT_SPECS = {
+  boxplot: { label: 'Box Plot (Grouped/Single)', group: 'Classic charts', x: 'any', y: 'optional', hue: 'optional', multiToggle: true, yLabel: true, legend: true },
+  barplot: { label: 'Bar Chart (with Error Bars)', group: 'Classic charts', x: 'any', y: 'required', hue: 'optional', multiToggle: true, errorBars: true },
+  line: { label: 'Line Graph (with Error Bars)', group: 'Classic charts', x: 'any', y: 'required', hue: 'optional', multiToggle: true, errorBars: true, yLabel: true, legend: true },
+  violin: { label: 'Violin Plot (Grouped Split)', group: 'Classic charts', x: 'any', y: 'required', hue: 'optional', multiToggle: true },
+  histogram: { label: 'Histogram / Density', group: 'Classic charts', x: 'numeric', y: null, hue: 'optional', multiToggle: true, bins: true, legend: true },
+  qqplot: { label: 'Normal Q-Q Plot', group: 'Classic charts', x: 'numeric', y: null, hue: null, multiToggle: true, yLabel: true },
+  scatter: { label: 'Scatter Plot (with Trendline)', group: 'Classic charts', x: 'numeric', y: 'required', hue: 'optional', multiToggle: true, fitReg: true, yLabel: true, legend: true },
+  pie: { label: 'Pie Chart (Category Shares)', group: 'Classic charts', x: 'category', y: null, hue: null, multiToggle: true },
+  multiline: { label: 'High-Density Multi-Line Plot', group: 'Classic charts', x: 'numeric', y: 'multi', hue: null, multiToggle: true },
+  pcabiplot: { label: 'PCA Biplot (PC1 vs PC2)', group: 'Classic charts', x: null, y: 'multi', hue: 'optional', multiToggle: true },
+
+  raincloud: {
+    label: 'Raincloud plot', group: 'Distributions', x: 'category', y: 'required', hue: null, yLabel: true,
+    labels: { x: 'Group (X axis)', y: 'Numeric variable (Y axis)' },
+    hint: 'Half violin (cloud), box plot and every observation (rain) for each group.'
+  },
+  boxswarm: {
+    label: 'Box plot + beeswarm', group: 'Distributions', x: 'category', y: 'required', hue: 'optional', yLabel: true, legend: true,
+    labels: { x: 'Group (X axis)', y: 'Numeric variable (Y axis)' },
+    hint: 'Box plots with every observation spread out so no points overlap.'
+  },
+  ridgeline: {
+    label: 'Ridgeline plot', group: 'Distributions', x: 'numeric', y: null, hue: 'required',
+    labels: { x: 'Numeric variable', hue: 'Group (one ridge each)' },
+    hint: 'Overlapping density curves, one per group; readable even with many groups.'
+  },
+  ecdf: {
+    label: 'ECDF (cumulative distribution)', group: 'Distributions', x: 'numeric', y: null, hue: 'optional', yLabel: true, legend: true,
+    labels: { x: 'Numeric variable' },
+    hint: 'Share of observations at or below each value; compares whole distributions without choosing bins.'
+  },
+  meanci: {
+    label: 'Mean ± 95% CI dot plot', group: 'Comparisons', x: 'category', y: 'required', hue: 'optional', yLabel: true, legend: true,
+    labels: { x: 'Group (X axis)', y: 'Numeric variable (Y axis)' },
+    hint: 'Group means with t-based 95% confidence intervals over the raw observations; a clearer alternative to bar charts.'
+  },
+  lollipop: {
+    label: 'Lollipop chart (sorted means)', group: 'Comparisons', x: 'category', y: 'required', hue: null,
+    labels: { x: 'Category', y: 'Numeric variable' },
+    hint: 'Group means as dots on stems, sorted from lowest to highest.'
+  },
+  dumbbell: {
+    label: 'Dumbbell chart (two conditions)', group: 'Comparisons', x: 'category', y: 'required', hue: 'required', legend: true,
+    labels: { x: 'Category (one row each)', y: 'Numeric variable', hue: 'Two-level factor (e.g. Control / Treated)' },
+    hint: 'Means under two conditions for every category, joined by a line and sorted by the difference.'
+  },
+  paired: {
+    label: 'Paired before/after lines', group: 'Comparisons', x: 'numeric', y: 'required', hue: 'optional', yLabel: true, legend: true,
+    labels: { x: 'First measurement (e.g. Before)', y: 'Second measurement (e.g. After)', hue: 'Colour lines by group (optional)' },
+    hint: 'One line per row from the first to the second measurement, with means ± 95% CI and a paired t-test.'
+  },
+  meanheatmap: {
+    label: 'Two-factor means heatmap', group: 'Comparisons', x: 'category', y: 'required', hue: 'required',
+    labels: { x: 'Column factor', y: 'Value (mean shown in each cell)', hue: 'Row factor' },
+    hint: 'Mean for every combination of two factors, for example variety × location.'
+  },
+  estimation: {
+    label: 'Estimation plot (two groups)', group: 'Comparisons', x: 'category', y: 'required', hue: null,
+    labels: { x: 'Group (exactly 2 levels)', y: 'Numeric variable' },
+    hint: 'Observations of two groups plus the difference in means and its 95% CI on a floating axis (Gardner-Altman).'
+  },
+  paired_estimation: {
+    label: 'Paired estimation plot', group: 'Comparisons', x: 'numeric', y: 'required', hue: null,
+    labels: { x: 'First measurement (e.g. Before)', y: 'Second measurement (e.g. After)' },
+    hint: 'Paired lines plus the mean paired difference and its 95% CI on a floating axis.'
+  },
+  joint: {
+    label: 'Scatter + marginal distributions', group: 'Relationships', x: 'numeric', y: 'required', hue: 'optional', fitReg: true, yLabel: true, legend: true,
+    hint: 'Scatter plot with histograms and density curves on both axes, r and p, and an optional regression line with 95% band.'
+  },
+  density2d: {
+    label: '2-D density contours', group: 'Relationships', x: 'numeric', y: 'required', hue: null, yLabel: true,
+    hint: 'Shaded contours showing where observations concentrate; useful for large datasets.'
+  },
+  hexbin: {
+    label: 'Hexbin plot', group: 'Relationships', x: 'numeric', y: 'required', hue: null, fitReg: true, yLabel: true,
+    hint: 'Counts of observations in hexagonal cells; keeps thousands of points readable.'
+  },
+  mosaic: {
+    label: 'Mosaic plot', group: 'Composition', x: 'category', y: null, hue: 'required',
+    labels: { x: 'First categorical variable', hue: 'Second categorical variable' },
+    hint: 'Tile sizes show the cross-tabulation; colour shows where counts differ from independence (with a chi-square test).'
+  },
+  radar: {
+    label: 'Radar chart (group profiles)', group: 'Composition', x: null, y: 'multi', hue: 'required', legend: true,
+    labels: { y: 'Variables (select 3 or more)', hue: 'Group (one outline each)' },
+    hint: 'Means of each group across several variables, every axis scaled from the lowest to the highest group.'
+  }
+};
 
 const PlotsModal = ({ isOpen, onClose }) => {
   const { token } = useAuth();
   
   // State for dataset selection
-  const [file, setFile] = useState(null);
-
-
-
-
-  const [columns, setColumns] = useState([]);
-  const [numericColumns, setNumericColumns] = useState([]);
-  const [loadingCols, setLoadingCols] = useState(false);
-  const [dragActive, setDragActive] = useState(false);
-  const fileInputRef = useRef(null);
+  const dataset = useDataset({
+    active: isOpen,
+    onLoaded: () => {
+      setXVar('');
+      setYVar('');
+      setSelectedXVars([]);
+      setSelectedYVars([]);
+      setHueVar('');
+      setPlotB64(null);
+    },
+    onCleared: () => setPlotB64(null),
+  });
+  const { clear } = dataset;
+  const { file, columns, numericColumns } = dataset;
 
   // State for plot configurations
   const [plotType, setPlotType] = useState('boxplot');
@@ -32,11 +138,12 @@ const PlotsModal = ({ isOpen, onClose }) => {
   const [title, setTitle] = useState('');
   const [xlabel, setXlabel] = useState('');
   const [ylabel, setYlabel] = useState('');
-  const [palette, setPalette] = useState('sunset');
+  const [figurePrefs, setFigurePrefs] = useFigurePreferences();
+  const [palette, setPalette] = useState(figurePrefs.palette);
   const [legendLoc, setLegendLoc] = useState('best');
   const [showGrid, setShowGrid] = useState(true);
   const [aspectRatio, setAspectRatio] = useState('standard');
-  const [textColor, setTextColor] = useState('#1E293B');
+  const [textColor, setTextColor] = useState('#0F172A');
 
   // Specific settings
   const [bins, setBins] = useState(10);
@@ -72,11 +179,10 @@ const PlotsModal = ({ isOpen, onClose }) => {
   const [error, setError] = useState(null);
   const [viewerOpen, setViewerOpen] = useState(false);
   const [showDesignPanel, setShowDesignPanel] = useState(false);
+  const spec = PLOT_SPECS[plotType] || PLOT_SPECS.boxplot;
 
-  const handleReset = () => {
-    setFile(null);
-    setColumns([]);
-    setNumericColumns([]);
+  const handleReset = useCallback(() => {
+    clear();
     setPlotType('boxplot');
     setXSelectionMode('single');
     setYSelectionMode('single');
@@ -88,7 +194,7 @@ const PlotsModal = ({ isOpen, onClose }) => {
     setTitle('');
     setXlabel('');
     setYlabel('');
-    setPalette('sunset');
+    setPalette(figurePrefs.palette);
     setLegendLoc('best');
     setShowGrid(true);
     setAspectRatio('standard');
@@ -114,120 +220,97 @@ const PlotsModal = ({ isOpen, onClose }) => {
     setPlotB64(null);
     setError(null);
     setShowDesignPanel(false);
-    if (fileInputRef.current) fileInputRef.current.value = '';
-  };
+  }, [clear]);
 
   useEffect(() => {
     if (!isOpen) {
       handleReset();
     }
-  }, [isOpen]);
+  }, [isOpen, handleReset]);
 
   if (!isOpen) return null;
 
-  const handleDrag = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (e.type === "dragenter" || e.type === "dragover") {
-      setDragActive(true);
-    } else if (e.type === "dragleave") {
-      setDragActive(false);
-    }
-  };
 
-  const handleDrop = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setDragActive(false);
-    
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      handleFileSelected(e.dataTransfer.files[0]);
-    }
-  };
 
-  const handleChange = (e) => {
-    e.preventDefault();
-    if (e.target.files && e.target.files[0]) {
-      handleFileSelected(e.target.files[0]);
-    }
-  };
 
   const handleSaveEditedData = async (editedFile) => {
-    setResults(null);
+    setPlotB64(null);
     setError(null);
     if (editedFile) {
-      await handleFileSelected(editedFile);
+      await dataset.selectFile(editedFile);
     }
   };
 
-  const handleFileSelected = async (selectedFile) => {
-    setError(null);
-    const ext = selectedFile.name.split('.').pop().toLowerCase();
-    if (!['csv', 'xlsx', 'xls'].includes(ext)) {
-      setError("Supported formats: CSV or Excel (.xlsx, .xls) only.");
-      return;
-    }
-
-    setFile(selectedFile);
-    setLoadingCols(true);
-
-    const formData = new FormData();
-    formData.append('file', selectedFile);
-
-    try {
-      const res = await fetch(`${API_URL}/analyze/columns`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        },
-        body: formData
-      });
-
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.detail || "Failed to read columns.");
-      }
-
-      setColumns(data.columns || []);
-      setNumericColumns(data.numeric_columns || []);
-
-      // Set default variables
-      if (data.numeric_columns && data.numeric_columns.length > 0) {
-        setXVar(data.numeric_columns[0]);
-        if (data.numeric_columns.length > 1) {
-          setYVar(data.numeric_columns[1]);
-        }
-      } else if (data.columns && data.columns.length > 0) {
-        setXVar(data.columns[0]);
-        if (data.columns.length > 1) {
-          setYVar(data.columns[1]);
-        }
-      }
-    } catch (err) {
-      setError(err.message);
-      setFile(null);
-    } finally {
-      setLoadingCols(false);
-    }
-  };
 
   // Adjust inputs based on plotType selection
   const handlePlotTypeChange = (type) => {
+    const next = PLOT_SPECS[type];
     setPlotType(type);
     setError(null);
-    // Adjust defaults if necessary
-    if (type === 'pie') {
-      // Prefer categorical for X
-      const categorical = columns.filter(c => !numericColumns.includes(c));
-      if (categorical.length > 0) {
-        setXVar(categorical[0]);
-      }
-    } else if (['histogram', 'qqplot'].includes(type)) {
-      // Require numeric for X
-      if (numericColumns.length > 0 && !numericColumns.includes(xVar)) {
-        setXVar(numericColumns[0]);
-      }
+    if (!next.multiToggle) {
+      setXSelectionMode('single');
+      setSelectedXVars([]);
+      setYSelectionMode(next.y === 'multi' ? 'multiple' : 'single');
+      if (next.y !== 'multi') setSelectedYVars([]);
     }
+    let nextX = xVar;
+    const categorical = columns.filter(c => !numericColumns.includes(c));
+    if (next.x === 'category' && categorical.length > 0 && !categorical.includes(xVar)) {
+      nextX = categorical[0];
+    } else if (next.x === 'numeric' && numericColumns.length > 0 && !numericColumns.includes(xVar)) {
+      nextX = numericColumns[0];
+    }
+    setXVar(nextX);
+    if (next.hue === 'required' && (!hueVar || hueVar === nextX)) {
+      const candidates = categorical.filter(c => c !== nextX);
+      if (candidates.length > 0) setHueVar(candidates[0]);
+    }
+  };
+
+  // Form fields shared by the preview and the download requests
+  const buildPlotFormData = () => {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('plot_type', plotType);
+    formData.append('x_var', xVar);
+    if (spec.y && spec.y !== 'multi' && yVar) formData.append('y_var', yVar);
+    if (spec.hue && hueVar) formData.append('hue_var', hueVar);
+    if (spec.bins) {
+      formData.append('bins', bins);
+      formData.append('kde', kde);
+    }
+    if (spec.fitReg) formData.append('fit_reg', fitReg);
+    if (spec.errorBars) {
+      formData.append('errorbar_toggle', errorbarToggle);
+      formData.append('errorbar_type', errorbarType);
+    }
+    if (spec.multiToggle && selectedXVars.length > 0) formData.append('x_vars_str', selectedXVars.join(','));
+    if ((spec.multiToggle || spec.y === 'multi') && selectedYVars.length > 0) formData.append('y_vars_str', selectedYVars.join(','));
+
+    if (title) formData.append('title', title);
+    if (xlabel) formData.append('xlabel', xlabel);
+    if (ylabel) formData.append('ylabel', ylabel);
+    formData.append('palette', palette);
+    formData.append('legend_loc', legendLoc);
+    formData.append('show_grid', showGrid);
+    formData.append('aspect_ratio', aspectRatio);
+    formData.append('preset', figurePrefs.preset);
+    formData.append('text_color', textColor);
+
+    formData.append('title_font_size', titleFontSize.toString());
+    formData.append('title_font_family', titleFontFamily);
+    formData.append('label_font_size', labelFontSize.toString());
+    formData.append('label_font_family', labelFontFamily);
+    formData.append('tick_font_size', tickFontSize.toString());
+    formData.append('tick_font_family', tickFontFamily);
+
+    if (xlimMin) formData.append('xlim_min', xlimMin);
+    if (xlimMax) formData.append('xlim_max', xlimMax);
+    if (ylimMin) formData.append('ylim_min', ylimMin);
+    if (ylimMax) formData.append('ylim_max', ylimMax);
+    if (xInterval) formData.append('x_interval', xInterval);
+    if (yInterval) formData.append('y_interval', yInterval);
+    return formData;
   };
 
   const runAnalysis = async (e) => {
@@ -245,13 +328,17 @@ const PlotsModal = ({ isOpen, onClose }) => {
       return;
     }
 
-    if (['scatter', 'line', 'barplot', 'violin'].includes(plotType) && !yVar) {
-      setError(`Y Variable is required for ${plotType} charts.`);
+    if (spec.y === 'required' && !yVar) {
+      setError('Choose the Y variable for this chart.');
       return;
     }
-
-    if (['multiline', 'pcabiplot'].includes(plotType) && selectedYVars.length < 1) {
-      setError("Please select at least one numeric variable.");
+    const minimumY = plotType === 'radar' ? 3 : 1;
+    if (spec.y === 'multi' && selectedYVars.length < minimumY) {
+      setError(minimumY > 1 ? `Select at least ${minimumY} numeric variables for this chart.` : 'Please select at least one numeric variable.');
+      return;
+    }
+    if (spec.hue === 'required' && !hueVar) {
+      setError(`Choose the ${(spec.labels?.hue || 'grouping variable').toLowerCase()}.`);
       return;
     }
 
@@ -259,66 +346,10 @@ const PlotsModal = ({ isOpen, onClose }) => {
     setError(null);
     setPlotB64(null);
 
-    const formData = new FormData();
-    formData.append('file', file);
-    formData.append('plot_type', plotType);
-    formData.append('x_var', xVar);
-    if (['boxplot', 'scatter', 'line', 'barplot', 'violin'].includes(plotType) && yVar) {
-      formData.append('y_var', yVar);
-    }
-    if (['boxplot', 'histogram', 'scatter', 'line', 'barplot', 'violin', 'pcabiplot'].includes(plotType) && hueVar) {
-      formData.append('hue_var', hueVar);
-    }
-    if (plotType === 'histogram') {
-      formData.append('bins', bins);
-      formData.append('kde', kde);
-    }
-    if (plotType === 'scatter') {
-      formData.append('fit_reg', fitReg);
-    }
-
-    // Error bars
-    if (['barplot', 'line'].includes(plotType)) {
-      formData.append('errorbar_toggle', errorbarToggle);
-      formData.append('errorbar_type', errorbarType);
-    }
-
-    // Selected X and Y variables list
-    if (selectedXVars.length > 0) {
-      formData.append('x_vars_str', selectedXVars.join(','));
-    }
-    if (selectedYVars.length > 0) {
-      formData.append('y_vars_str', selectedYVars.join(','));
-    }
-
-    // Customization
-    if (title) formData.append('title', title);
-    if (xlabel) formData.append('xlabel', xlabel);
-    if (ylabel) formData.append('ylabel', ylabel);
-    formData.append('palette', palette);
-    formData.append('legend_loc', legendLoc);
-    formData.append('show_grid', showGrid);
-    formData.append('aspect_ratio', aspectRatio);
-    formData.append('text_color', textColor);
-
-    // Font Customization
-    formData.append('title_font_size', titleFontSize.toString());
-    formData.append('title_font_family', titleFontFamily);
-    formData.append('label_font_size', labelFontSize.toString());
-    formData.append('label_font_family', labelFontFamily);
-    formData.append('tick_font_size', tickFontSize.toString());
-    formData.append('tick_font_family', tickFontFamily);
-
-    // Axis Limits & Intervals
-    if (xlimMin) formData.append('xlim_min', xlimMin);
-    if (xlimMax) formData.append('xlim_max', xlimMax);
-    if (ylimMin) formData.append('ylim_min', ylimMin);
-    if (ylimMax) formData.append('ylim_max', ylimMax);
-    if (xInterval) formData.append('x_interval', xInterval);
-    if (yInterval) formData.append('y_interval', yInterval);
+    const formData = buildPlotFormData();
 
     try {
-      const res = await fetch(`${API_URL}/analyze/plot`, {
+      const res = await apiFetch(`${API_URL}/analyze/plot`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -342,70 +373,11 @@ const PlotsModal = ({ isOpen, onClose }) => {
     if (!file || !xVar) return;
     try {
       setError(null);
-      const formData = new FormData();
-      formData.append('file', file);
-      formData.append('plot_type', plotType);
-      formData.append('x_var', xVar);
-      
-      if (['boxplot', 'scatter', 'line', 'barplot', 'violin'].includes(plotType) && yVar) {
-        formData.append('y_var', yVar);
-      }
-      if (['boxplot', 'histogram', 'scatter', 'line', 'barplot', 'violin', 'pcabiplot'].includes(plotType) && hueVar) {
-        formData.append('hue_var', hueVar);
-      }
-      if (plotType === 'histogram') {
-        formData.append('bins', bins);
-        formData.append('kde', kde);
-      }
-      if (plotType === 'scatter') {
-        formData.append('fit_reg', fitReg);
-      }
-      
-      // Error bars
-      if (['barplot', 'line'].includes(plotType)) {
-        formData.append('errorbar_toggle', errorbarToggle);
-        formData.append('errorbar_type', errorbarType);
-      }
-
-      // Selected X and Y vars
-      if (selectedXVars.length > 0) {
-        formData.append('x_vars_str', selectedXVars.join(','));
-      }
-      if (selectedYVars.length > 0) {
-        formData.append('y_vars_str', selectedYVars.join(','));
-      }
-
-      // Customization
-      if (title) formData.append('title', title);
-      if (xlabel) formData.append('xlabel', xlabel);
-      if (ylabel) formData.append('ylabel', ylabel);
-      formData.append('palette', palette);
-      formData.append('legend_loc', legendLoc);
-      formData.append('show_grid', showGrid);
-      formData.append('aspect_ratio', aspectRatio);
-      formData.append('text_color', textColor);
-
-      // Fonts
-      formData.append('title_font_size', titleFontSize.toString());
-      formData.append('title_font_family', titleFontFamily);
-      formData.append('label_font_size', labelFontSize.toString());
-      formData.append('label_font_family', labelFontFamily);
-      formData.append('tick_font_size', tickFontSize.toString());
-      formData.append('tick_font_family', tickFontFamily);
-
-      // Limits
-      if (xlimMin) formData.append('xlim_min', xlimMin);
-      if (xlimMax) formData.append('xlim_max', xlimMax);
-      if (ylimMin) formData.append('ylim_min', ylimMin);
-      if (ylimMax) formData.append('ylim_max', ylimMax);
-      if (xInterval) formData.append('x_interval', xInterval);
-      if (yInterval) formData.append('y_interval', yInterval);
-
-      // Download format & resolution
+      const formData = buildPlotFormData();
       formData.append('download_format', format);
       formData.append('dpi', downloadDpi.toString());
 
-      const res = await fetch(`${API_URL}/analyze/plot/download`, {
+      const res = await apiFetch(`${API_URL}/analyze/plot/download`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -438,7 +410,7 @@ const PlotsModal = ({ isOpen, onClose }) => {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-xs animate-fade-in">
+    <div role="dialog" aria-modal="true" className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-xs animate-fade-in">
       <div className="relative flex h-full max-h-[640px] w-full max-w-4xl flex-col rounded-3xl border border-slate-100 bg-white shadow-2xl overflow-hidden">
         
         {/* Header */}
@@ -451,7 +423,7 @@ const PlotsModal = ({ isOpen, onClose }) => {
               Generate publication-grade custom charts, plots, and figures styled in your research palette.
             </p>
           </div>
-          <button
+          <button data-dialog-close aria-label="Close"
             onClick={onClose}
             className="rounded-full p-1.5 text-slate-400 hover:bg-slate-50 hover:text-slate-600 transition-colors"
           >
@@ -469,84 +441,17 @@ const PlotsModal = ({ isOpen, onClose }) => {
           )}
 
           {/* Step 1: File Upload */}
-          {!file && !loadingCols && (
-            <div 
-              onDragEnter={handleDrag}
-              onDragOver={handleDrag}
-              onDragLeave={handleDrag}
-              onDrop={handleDrop}
-              onClick={() => fileInputRef.current.click()}
-              className={`flex flex-col items-center justify-center rounded-3xl border-2 border-dashed py-16 px-6 text-center cursor-pointer transition-all duration-200 ${
-                dragActive ? 'border-brand-indigo bg-indigo-50/30' : 'border-slate-300 hover:border-brand-indigo hover:bg-slate-50/50'
-              }`}
-            >
-              <input
-                type="file"
-                ref={fileInputRef}
-                onChange={handleChange}
-                accept=".csv,.xlsx,.xls"
-                className="hidden"
+          {!plotB64 && !loadingAnalysis && (
+            <div className="space-y-6">
+              <DatasetPicker
+                dataset={dataset}
+                title="Select or drop a dataset to chart"
+                hint="Any table with the variables you want to plot (CSV or Excel)."
+                onViewData={() => setViewerOpen(true)}
               />
-              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-slate-100 text-slate-500 mb-4">
-                <Upload className="h-6 w-6 text-slate-400" />
-              </div>
-              <p className="font-sans text-sm font-semibold text-slate-700">Select or drop dataset for visualization</p>
-              <p className="font-sans text-xs text-slate-400 mt-1">Supports CSV, XLSX, and XLS formats</p>
-            </div>
-          )}
 
-          {/* Loading columns indicator */}
-          {loadingCols && (
-            <div className="flex flex-col items-center justify-center py-16 space-y-4">
-              <div className="h-10 w-10 animate-spin rounded-full border-4 border-brand-indigo border-t-transparent"></div>
-              <p className="font-sans text-sm font-medium text-slate-600 animate-pulse">Reading dataset columns...</p>
-            </div>
-          )}
-
-          {/* Step 2: Configure Plot Form */}
-          {file && !loadingCols && !plotB64 && !loadingAnalysis && (
-            <form onSubmit={runAnalysis} className="space-y-6">
-              {/* Dataset Banner */}
-              <div className="rounded-2xl border border-slate-100 bg-slate-50 p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-                <div className="truncate">
-                  <p className="font-sans text-xs font-bold text-slate-400 uppercase">Selected Dataset</p>
-                  <p className="font-sans text-sm font-semibold text-slate-700 truncate">{file.name}</p>
-                </div>
-                <div className="flex flex-wrap items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setViewerOpen(true)}
-                    className="rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-slate-600 hover:bg-slate-50 transition-colors text-xs font-semibold flex items-center space-x-1 cursor-pointer"
-                  >
-                    <Eye className="h-3.5 w-3.5 text-brand-orange" />
-                    <span>View Data</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => fileInputRef.current?.click()}
-                    className="rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-slate-600 hover:bg-slate-50 transition-colors text-xs font-semibold flex items-center space-x-1 cursor-pointer"
-                  >
-                    <Upload className="h-3.5 w-3.5 text-brand-indigo" />
-                    <span>Choose Other File</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleReset}
-                    className="rounded-xl border border-red-200 bg-red-50/70 px-3 py-1.5 text-red-600 hover:bg-red-100 transition-colors text-xs font-semibold flex items-center space-x-1 cursor-pointer"
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                    <span>Remove File</span>
-                  </button>
-                  <input
-                    type="file"
-                    ref={fileInputRef}
-                    onChange={handleChange}
-                    accept=".csv, .xlsx, .xls"
-                    className="hidden"
-                  />
-                </div>
-              </div>
-
+              {file && (
+              <form onSubmit={runAnalysis} className="space-y-6">
               {/* Core Parameters Grid */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {/* Select Plot Type */}
@@ -557,26 +462,25 @@ const PlotsModal = ({ isOpen, onClose }) => {
                     onChange={(e) => handlePlotTypeChange(e.target.value)}
                     className="w-full rounded-xl border border-slate-200 bg-white py-3 px-4 font-sans text-sm outline-hidden focus:border-brand-indigo focus:ring-4 focus:ring-brand-indigo/10 transition-all"
                   >
-                    <option value="boxplot">Box Plot (Grouped/Single)</option>
-                    <option value="barplot">Bar Chart (with Error Bars)</option>
-                    <option value="line">Line Graph (with Error Bars)</option>
-                    <option value="violin">Violin Plot (Grouped Split)</option>
-                    <option value="histogram">Histogram / Density</option>
-                    <option value="qqplot">Normal Q-Q Plot</option>
-                    <option value="scatter">Scatter Plot (with Trendline)</option>
-                    <option value="pie">Pie Chart (Category Shares)</option>
-                    <option value="multiline">High-Density Multi-Line Plot</option>
-                    <option value="pcabiplot">PCA Biplot (PC1 vs PC2)</option>
+                    {PLOT_GROUPS.map(group => (
+                      <optgroup key={group} label={group}>
+                        {Object.entries(PLOT_SPECS).filter(([, s]) => s.group === group).map(([value, s]) => (
+                          <option key={value} value={value}>{s.label}</option>
+                        ))}
+                      </optgroup>
+                    ))}
                   </select>
+                  {spec.hint && <p className="font-sans text-[11px] leading-snug text-slate-400">{spec.hint}</p>}
                 </div>
 
                 {/* Variable X selection (Hidden for PCA Biplot) */}
-                {plotType !== 'pcabiplot' && (
+                {spec.x && (
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
                       <label className="font-sans text-xs font-bold text-slate-500">
-                        {['histogram', 'qqplot', 'multiline'].includes(plotType) ? 'Variable X (Numeric)' : plotType === 'pie' ? 'Categorical Variable X' : 'X Axis Variable'}
+                        {spec.labels?.x || (spec.x === 'numeric' ? 'Variable X (Numeric)' : spec.x === 'category' ? 'Categorical Variable X' : 'X Axis Variable')}
                       </label>
+                      {spec.multiToggle && (
                       <div className="flex items-center rounded-xl bg-slate-200/60 p-0.5 border border-slate-200">
                         <button
                           type="button"
@@ -597,6 +501,7 @@ const PlotsModal = ({ isOpen, onClose }) => {
                           Multiple Variables
                         </button>
                       </div>
+                      )}
                     </div>
 
                     {xSelectionMode === 'single' ? (
@@ -606,7 +511,7 @@ const PlotsModal = ({ isOpen, onClose }) => {
                         className="w-full rounded-xl border border-slate-200 bg-white py-3 px-4 font-sans text-sm outline-hidden focus:border-brand-indigo focus:ring-4 focus:ring-brand-indigo/10 transition-all"
                       >
                         <option value="">-- Select Variable X --</option>
-                        {['histogram', 'qqplot', 'scatter', 'multiline'].includes(plotType) 
+                        {spec.x === 'numeric' 
                           ? numericColumns.map(c => <option key={c} value={c}>{c}</option>)
                           : columns.map(c => <option key={c} value={c}>{c}</option>)
                         }
@@ -654,12 +559,13 @@ const PlotsModal = ({ isOpen, onClose }) => {
                 )}
 
                 {/* Variable Y selection */}
-                {['boxplot', 'scatter', 'line', 'barplot', 'violin', 'multiline', 'pcabiplot'].includes(plotType) && (
+                {spec.y && (
                   <div className="space-y-2 animate-fade-in">
                     <div className="flex items-center justify-between">
                       <label className="font-sans text-xs font-bold text-slate-500">
-                        {plotType === 'boxplot' ? 'Y Axis Variable(s)' : 'Y Axis Variable(s) (Numeric)'}
+                        {spec.labels?.y || (plotType === 'boxplot' ? 'Y Axis Variable(s)' : 'Y Axis Variable(s) (Numeric)')}
                       </label>
+                      {spec.multiToggle && (
                       <div className="flex items-center rounded-xl bg-slate-200/60 p-0.5 border border-slate-200">
                         <button
                           type="button"
@@ -680,6 +586,7 @@ const PlotsModal = ({ isOpen, onClose }) => {
                           Multiple Variables
                         </button>
                       </div>
+                      )}
                     </div>
 
                     {ySelectionMode === 'single' ? (
@@ -734,22 +641,22 @@ const PlotsModal = ({ isOpen, onClose }) => {
                 )}
 
                 {/* Grouping Variable / Hue (boxplot, histogram, scatter, line, barplot, violin, pcabiplot) */}
-                {['boxplot', 'histogram', 'scatter', 'line', 'barplot', 'violin', 'pcabiplot'].includes(plotType) && (
+                {spec.hue && (
                   <div className="space-y-1.5 animate-fade-in">
-                    <label className="font-sans text-xs font-bold text-slate-500">Grouping Variable / Hue (Optional)</label>
+                    <label className="font-sans text-xs font-bold text-slate-500">{spec.labels?.hue || (spec.hue === 'required' ? 'Grouping Variable' : 'Grouping Variable / Hue (Optional)')}</label>
                     <select
                       value={hueVar}
                       onChange={(e) => setHueVar(e.target.value)}
                       className="w-full rounded-xl border border-slate-200 bg-white py-3 px-4 font-sans text-sm outline-hidden focus:border-brand-indigo focus:ring-4 focus:ring-brand-indigo/10 transition-all"
                     >
-                      <option value="">-- No Grouping Factor --</option>
+                      <option value="">{spec.hue === 'required' ? '-- Select Variable --' : '-- No Grouping Factor --'}</option>
                       {columns.map(c => <option key={c} value={c}>{c}</option>)}
                     </select>
                   </div>
                 )}
 
                 {/* Error Bars Option Panel (barplot & line only) */}
-                {['barplot', 'line'].includes(plotType) && (
+                {spec.errorBars && (
                   <div className="col-span-1 md:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4 rounded-2xl bg-indigo-50/20 border border-brand-indigo/10 p-4 animate-fade-in">
                     <div className="flex items-center space-x-2">
                       <input
@@ -781,7 +688,7 @@ const PlotsModal = ({ isOpen, onClose }) => {
                 )}
 
                 {/* Histogram Settings */}
-                {plotType === 'histogram' && (
+                {spec.bins && (
                   <>
                     <div className="space-y-1.5 animate-fade-in">
                       <label className="font-sans text-xs font-bold text-slate-500">Bins count: {bins}</label>
@@ -810,7 +717,7 @@ const PlotsModal = ({ isOpen, onClose }) => {
                 )}
 
                 {/* Scatter Settings */}
-                {plotType === 'scatter' && (
+                {spec.fitReg && (
                   <div className="flex items-center space-x-2 pt-6 animate-fade-in">
                     <input
                       type="checkbox"
@@ -847,27 +754,43 @@ const PlotsModal = ({ isOpen, onClose }) => {
                       <label className="font-sans text-xs font-medium text-slate-500">Color Palette</label>
                       <select
                         value={palette}
-                        onChange={(e) => setPalette(e.target.value)}
+                        onChange={(e) => { setPalette(e.target.value); setFigurePrefs({ palette: e.target.value }); }}
                         className="w-full rounded-lg border border-slate-200 bg-white py-2 px-3 font-sans text-xs outline-hidden focus:border-brand-indigo focus:ring-2 focus:ring-brand-indigo/10 transition-all"
                       >
-                        <option value="sunset">Sunset Orange (Default)</option>
-                        <option value="indigo">Indigo Blue</option>
-                        <option value="teal">Teal Green</option>
-                        <option value="crimson">Crimson Red</option>
-                        <option value="charcoal">Charcoal Grey</option>
-                        <option value="emerald">Emerald Green</option>
-                        <option value="amber">Amber Gold</option>
-                        <option value="rose">Rose Pink</option>
-                        <option value="skyblue">Sky Blue</option>
-                        <option value="forest">Forest Green</option>
-                        <option value="navy">Dark Navy</option>
-                        <option value="spring">Spring Breeze</option>
-                        <option value="summer">Summer Heat</option>
-                        <option value="autumn">Autumn Gold</option>
-                        <option value="winter">Winter Ice</option>
-                        <option value="coolwarm">Scientific Cool-Warm</option>
-                        <option value="viridis">Scientific Viridis</option>
+                        <optgroup label="Publication palettes (shared with every chart)">
+                          {PALETTE_OPTIONS.map(p => (
+                            <option key={p.value} value={p.value}>{p.label}{p.colorblindSafe && !/colour-blind/i.test(p.label) ? ' · colour-blind safe' : ''}</option>
+                          ))}
+                        </optgroup>
+                        <optgroup label="Single colour">
+                          <option value="indigo">Indigo</option>
+                          <option value="sunset">Orange</option>
+                          <option value="teal">Teal</option>
+                          <option value="emerald">Emerald</option>
+                          <option value="forest">Forest green</option>
+                          <option value="skyblue">Sky blue</option>
+                          <option value="navy">Navy</option>
+                          <option value="crimson">Crimson</option>
+                          <option value="rose">Rose</option>
+                          <option value="amber">Amber</option>
+                          <option value="charcoal">Charcoal grey</option>
+                        </optgroup>
+                        <optgroup label="Colour ramps">
+                          <option value="coolwarm">Cool-warm (diverging)</option>
+                          <option value="viridis">Viridis</option>
+                          <option value="spring">Spring</option>
+                          <option value="summer">Summer</option>
+                          <option value="autumn">Autumn</option>
+                          <option value="winter">Winter</option>
+                        </optgroup>
                       </select>
+                      {isStylePalette(palette) && (
+                        <span className="flex gap-1 pt-0.5" aria-hidden="true">
+                          {paletteColors(palette).map(colour => (
+                            <span key={colour} className="h-3 flex-1 rounded-sm" style={{ background: colour }} />
+                          ))}
+                        </span>
+                      )}
                     </div>
 
                     {/* Text & Label Color */}
@@ -878,8 +801,8 @@ const PlotsModal = ({ isOpen, onClose }) => {
                         onChange={(e) => setTextColor(e.target.value)}
                         className="w-full rounded-lg border border-slate-200 bg-white py-2 px-3 font-sans text-xs outline-hidden focus:border-brand-indigo focus:ring-2 focus:ring-brand-indigo/10 transition-all"
                       >
-                        <option value="#1E293B">Slate Dark (Default)</option>
-                        <option value="#0F172A">Charcoal Black</option>
+                        <option value="#0F172A">Charcoal (default)</option>
+                        <option value="#1E293B">Slate dark</option>
                         <option value="#64748B">Muted Slate</option>
                         <option value="#312E81">Indigo Blue</option>
                         <option value="#064E3B">Forest Green</option>
@@ -927,7 +850,7 @@ const PlotsModal = ({ isOpen, onClose }) => {
                     </div>
 
                     {/* Custom Y Label */}
-                    {['boxplot', 'scatter', 'line', 'qqplot'].includes(plotType) && (
+                    {spec.yLabel && (
                       <div className="space-y-1.5">
                         <label className="font-sans text-xs font-medium text-slate-500">Y-Axis Label</label>
                         <input
@@ -941,7 +864,7 @@ const PlotsModal = ({ isOpen, onClose }) => {
                     )}
 
                     {/* Legend Location */}
-                    {['boxplot', 'histogram', 'scatter', 'line'].includes(plotType) && (
+                    {spec.legend && (
                       <div className="space-y-1.5">
                         <label className="font-sans text-xs font-medium text-slate-500">Legend Position</label>
                         <select
@@ -1171,7 +1094,9 @@ const PlotsModal = ({ isOpen, onClose }) => {
               >
                 Generate Custom Visualization
               </button>
-            </form>
+              </form>
+              )}
+            </div>
           )}
 
           {/* Running Analysis Loader */}
@@ -1191,10 +1116,11 @@ const PlotsModal = ({ isOpen, onClose }) => {
                     Visualization Preview
                   </h4>
                   <p className="text-xs text-brand-indigo font-semibold mt-0.5">
-                    Chart: {plotType.toUpperCase()} ({xVar} {yVar ? `vs ${yVar}` : ''})
+                    Chart: {spec.label}
                   </p>
                 </div>
                 <div className="flex flex-col gap-3 max-w-sm w-full">
+                  <FigurePresetSelect value={figurePrefs.preset} onChange={(preset) => setFigurePrefs({ preset })} />
                   {/* DPI Toggle */}
                   <div className="flex items-center space-x-1 rounded-xl bg-slate-50 border border-slate-100 p-1">
                     <span className="font-sans text-[9px] font-bold text-slate-400 px-2 uppercase shrink-0">DPI:</span>
@@ -1240,6 +1166,17 @@ const PlotsModal = ({ isOpen, onClose }) => {
                       <Download className="h-3.5 w-3.5" />
                       <span>SVG</span>
                     </button>
+                    {['tiff', 'pdf', 'eps'].map(fmt => (
+                      <button
+                        key={fmt}
+                        onClick={() => triggerDownload(fmt)}
+                        className="flex-1 min-w-[50px] flex items-center justify-center space-x-1 rounded-lg bg-slate-700 hover:bg-slate-800 text-white p-1 px-2 font-sans text-xs font-semibold transition-colors"
+                        title={`Download ${fmt.toUpperCase()} for journal submission`}
+                      >
+                        <Download className="h-3.5 w-3.5" />
+                        <span>{fmt.toUpperCase()}</span>
+                      </button>
+                    ))}
                   </div>
 
                   {/* Utilities */}

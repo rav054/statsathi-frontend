@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { BookOpen, GraduationCap, ChevronDown, ChevronUp, CheckCircle2 } from 'lucide-react';
 
 const LearningHub = () => {
@@ -304,7 +304,7 @@ const LearningHub = () => {
 
 
   return (
-    <div className="flex-1 p-8 animate-fade-in transition-colors duration-200">
+    <div className="flex-1 p-4 md:p-8 animate-fade-in transition-colors duration-200">
       {/* Header section */}
       <div className="border-b border-slate-200/50 dark:border-slate-800 pb-6 mb-8">
         <h1 className="font-display text-2xl font-extrabold text-slate-800 dark:text-slate-100 tracking-tight">

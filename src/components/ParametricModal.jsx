@@ -1,23 +1,57 @@
-import React, { useState, useRef, useEffect } from 'react';
+import { apiFetch } from '../utils/apiFetch';
+import { useState, useEffect, useCallback } from 'react';
 import { useAuth, API_URL } from '../context/AuthContext';
-import { X, Upload, Check, AlertCircle, Download, RefreshCw, Info, HelpCircle, Eye } from 'lucide-react';
+import { X, AlertCircle, Download, RefreshCw, Info, Eye } from 'lucide-react';
 import DatasetViewerModal from './DatasetViewerModal';
-import { getWordReportHeader, getWordReportFooter } from '../utils/reportHeader';
+import DatasetPicker from './DatasetPicker';
+import { useDataset } from '../hooks/useDataset';
+import { downloadDocxReport, formatP } from '../utils/reportApi';
+import SaveToProjectButton from './SaveToProjectButton';
+import ReopenedBanner from './ReopenedBanner';
+import ResultChartPanel from './ResultChartPanel';
 
-const ParametricModal = ({ isOpen, onClose }) => {
+// Chart styles offered under the results (drawn by /analyze/result-chart)
+const parametricChartOptions = (testType, col1, col2) => {
+  const classic = { value: 'classic', label: 'Classic' };
+  if (testType === 'paired_t') {
+    const pairFields = { layout: 'long', x_var: col1, y_var: col2 };
+    return [
+      classic,
+      { value: 'paired', label: 'Paired lines', hint: 'One line per pair from the first to the second measurement, with means ± 95% CI.', fields: pairFields },
+      { value: 'paired_estimation', label: 'Estimation plot', hint: 'Paired lines plus the mean difference and its 95% CI on a floating axis.', fields: pairFields }
+    ];
+  }
+  const groupCharts = [
+    classic,
+    { value: 'raincloud', label: 'Raincloud', hint: 'Density, box plot and every observation.' },
+    { value: 'meanci', label: 'Mean ± 95% CI', hint: 'Means with t-based 95% confidence intervals over the observations.' }
+  ];
+  if (col2 && ['independent_t', 'z_test'].includes(testType)) {
+    return [
+      ...groupCharts,
+      { value: 'boxswarm', label: 'Box + beeswarm', hint: 'Box plots with every observation; the bracket shows the test p-value.' },
+      { value: 'estimation', label: 'Estimation plot', hint: 'Observations plus the difference in means and its 95% CI on a floating axis (Gardner-Altman).' }
+    ];
+  }
+  return groupCharts;
+};
+
+const ParametricModal = ({ isOpen, onClose, initialAnalysis = null }) => {
+  const saved = initialAnalysis?.parameters || {};
   const { token, user } = useAuth();
   
   // State for dataset selection
-  const [file, setFile] = useState(null);
-
-
-
-
-  const [columns, setColumns] = useState([]);
-  const [numericColumns, setNumericColumns] = useState([]);
-  const [loadingCols, setLoadingCols] = useState(false);
-  const [dragActive, setDragActive] = useState(false);
-  const fileInputRef = useRef(null);
+  const dataset = useDataset({
+    active: isOpen && !initialAnalysis,
+    onLoaded: ({ numericColumns: numeric }) => {
+      setCol1(numeric[0] || '');
+      setCol2(numeric[1] || '');
+      setResults(null);
+    },
+    onCleared: () => setResults(null),
+  });
+  const { clear } = dataset;
+  const { file, numericColumns } = dataset;
 
   // State for test configurations
   const [testType, setTestType] = useState('independent_t');
@@ -27,7 +61,21 @@ const ParametricModal = ({ isOpen, onClose }) => {
   
   // State for results
   const [loadingAnalysis, setLoadingAnalysis] = useState(false);
-  const [results, setResults] = useState(null);
+  const [results, setResults] = useState(initialAnalysis?.result || null);
+  const [reopened, setReopened] = useState(Boolean(initialAnalysis?.result));
+
+  // Fetch the dataset this analysis was run on, then restore its settings so it can be run again
+  const restoreSaved = async () => {
+    setReopened(false);
+    setResults(null);
+    const loaded = await dataset.selectProjectDataset(initialAnalysis.dataset, initialAnalysis.projectName);
+    if (loaded) {
+      setTestType(saved.test || 'independent_t');
+      setCol1(saved.variables?.[0] || '');
+      setCol2(saved.variables?.[1] || '');
+    }
+  };
+  const [chartImage, setChartImage] = useState(null); // chart style chosen below the results, used in reports
   const [error, setError] = useState(null);
   const [viewerOpen, setViewerOpen] = useState(false);
 
@@ -37,105 +85,29 @@ const ParametricModal = ({ isOpen, onClose }) => {
     return `p = ${p.toFixed(4)}`;
   };
 
-  const handleReset = () => {
-    setFile(null);
-    setColumns([]);
-    setNumericColumns([]);
+  const handleReset = useCallback(() => {
+    clear();
     setTestType('independent_t');
     setCol1('');
     setCol2('');
     setMu('');
     setResults(null);
     setError(null);
-    if (fileInputRef.current) fileInputRef.current.value = '';
-  };
+  }, [clear]);
 
   useEffect(() => {
     if (!isOpen) {
       handleReset();
     }
-  }, [isOpen]);
+  }, [isOpen, handleReset]);
 
   if (!isOpen) return null;
-
-  const handleDrag = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (e.type === "dragenter" || e.type === "dragover") {
-      setDragActive(true);
-    } else if (e.type === "dragleave") {
-      setDragActive(false);
-    }
-  };
-
-  const handleDrop = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setDragActive(false);
-    
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      handleFileSelected(e.dataTransfer.files[0]);
-    }
-  };
-
-  const handleChange = (e) => {
-    e.preventDefault();
-    if (e.target.files && e.target.files[0]) {
-      handleFileSelected(e.target.files[0]);
-    }
-  };
 
   const handleSaveEditedData = async (editedFile) => {
     setResults(null);
     setError(null);
     if (editedFile) {
-      await handleFileSelected(editedFile);
-    }
-  };
-
-  // Upload file to parse columns immediately
-  const handleFileSelected = async (selectedFile) => {
-    setError(null);
-    const ext = selectedFile.name.split('.').pop().toLowerCase();
-    if (!['csv', 'xlsx', 'xls'].includes(ext)) {
-      setError("Supported formats: CSV or Excel (.xlsx, .xls) only.");
-      return;
-    }
-
-    setFile(selectedFile);
-    setLoadingCols(true);
-
-    const formData = new FormData();
-    formData.append('file', selectedFile);
-
-    try {
-      const res = await fetch(`${API_URL}/analyze/columns`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        },
-        body: formData
-      });
-
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.detail || "Failed to read columns.");
-      }
-
-      setColumns(data.columns || []);
-      setNumericColumns(data.numeric_columns || []);
-
-      if (data.numeric_columns && data.numeric_columns.length > 0) {
-        setCol1(data.numeric_columns[0]);
-        if (data.numeric_columns.length > 1) {
-          setCol2(data.numeric_columns[1]);
-        }
-      }
-    } catch (err) {
-      setError(err.message);
-      setFile(null);
-    } finally {
-      setLoadingCols(false);
+      await dataset.selectFile(editedFile);
     }
   };
 
@@ -165,6 +137,7 @@ const ParametricModal = ({ isOpen, onClose }) => {
     setLoadingAnalysis(true);
     setError(null);
     setResults(null);
+    setChartImage(null);
 
     const formData = new FormData();
     formData.append('file', file);
@@ -180,7 +153,7 @@ const ParametricModal = ({ isOpen, onClose }) => {
     }
 
     try {
-      const res = await fetch(`${API_URL}/analyze/parametric`, {
+      const res = await apiFetch(`${API_URL}/analyze/parametric`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -218,7 +191,6 @@ const ParametricModal = ({ isOpen, onClose }) => {
     if (!results) return;
 
     const fileName = `StatSathi_Report_${testType}_${col1}`;
-    const title = `Stat Sathi ${results.test_used || 'Parametric Test'} Report`;
 
     if (format === 'txt') {
       let report = `==================================================\n`;
@@ -329,336 +301,81 @@ const ParametricModal = ({ isOpen, onClose }) => {
       link.click();
       document.body.removeChild(link);
     } else if (format === 'doc') {
-      const isPaired = testType === 'paired_t';
-      const isOneSample = testType === 'one_sample_t';
-      const isZTest = testType === 'z_test';
-
-      const statVal = results.statistics.t_statistic !== undefined 
-        ? results.statistics.t_statistic.toFixed(6)
-        : results.statistics.z_statistic !== undefined
-        ? results.statistics.z_statistic.toFixed(6)
-        : 'N/A';
-      
-      const dfVal = results.statistics.degrees_of_freedom !== undefined
-        ? results.statistics.degrees_of_freedom.toFixed(2).replace(/\.00$/, '')
-        : 'N/A';
-
-      const size1 = results.statistics.n || results.statistics.n_group1;
-      const mean1 = results.statistics.sample_mean !== undefined ? results.statistics.sample_mean : results.statistics.mean_group1;
-      const std1 = results.statistics.sample_std !== undefined ? results.statistics.sample_std : results.statistics.std_group1;
-
-      let descriptivesRows = `
-        <tr>
-          <td style="border: 1px solid #CBD5E1; padding: 10px; font-weight: bold; background-color: #F8FAFC; color: #1E293B;">${col1}</td>
-          <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; color: #334155;">${size1}</td>
-          <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; color: #334155; font-family: 'Courier New', Courier, monospace;">${mean1.toFixed(4)}</td>
-          <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; color: #334155; font-family: 'Courier New', Courier, monospace;">${std1.toFixed(4)}</td>
-        </tr>
-      `;
-
-      if (col2) {
-        const size2 = results.statistics.n || results.statistics.n_group2;
-        const mean2 = results.statistics.mean_group2;
-        const std2 = results.statistics.std_group2;
-        descriptivesRows += `
-          <tr>
-            <td style="border: 1px solid #CBD5E1; padding: 10px; font-weight: bold; background-color: #F8FAFC; color: #1E293B;">${col2}</td>
-            <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; color: #334155;">${size2}</td>
-            <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; color: #334155; font-family: 'Courier New', Courier, monospace;">${mean2.toFixed(4)}</td>
-            <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; color: #334155; font-family: 'Courier New', Courier, monospace;">${std2 !== undefined && std2 !== null ? std2.toFixed(4) : 'N/A'}</td>
-          </tr>
-        `;
-      }
-
-      let diffSection = '';
-      if (isPaired && results.statistics.mean_difference !== undefined) {
-        diffSection = `
-          <h2 style="color: #4F46E5; font-family: Arial, sans-serif; font-size: 14pt; margin-top: 20px;">Paired Differences Summary</h2>
-          <div align="center">
-          <table align="center" style="margin-left: auto; margin-right: auto; border-collapse: collapse; width: 100%; font-family: Arial, sans-serif; font-size: 10pt; margin-bottom: 20px;">
-            <thead>
-              <tr style="background-color: #4F46E5; color: white;">
-                <th style="border: 1px solid #CBD5E1; padding: 10px; text-align: left; font-weight: bold;">Parameter</th>
-                <th style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-weight: bold;">Value</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; font-weight: bold; background-color: #F8FAFC;">Mean Difference</td>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-family: 'Courier New', Courier, monospace;">${results.statistics.mean_difference.toFixed(4)}</td>
-              </tr>
-              <tr>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; font-weight: bold; background-color: #F8FAFC;">Std. Deviation of Differences</td>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-family: 'Courier New', Courier, monospace;">${results.statistics.std_difference.toFixed(4)}</td>
-              </tr>
-              <tr>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; font-weight: bold; background-color: #F8FAFC;">95% Confidence Interval</td>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-family: 'Courier New', Courier, monospace;">[${results.statistics.ci_difference[0].toFixed(4)}, ${results.statistics.ci_difference[1].toFixed(4)}]</td>
-              </tr>
-            </tbody>
-          </table>
-          </div>
-        `;
-      } else if (isOneSample && results.statistics.cohens_d !== undefined) {
-        diffSection = `
-          <h2 style="color: #4F46E5; font-family: Arial, sans-serif; font-size: 14pt; margin-top: 20px;">Effect Size & Confidence Interval</h2>
-          <div align="center">
-          <table align="center" style="margin-left: auto; margin-right: auto; border-collapse: collapse; width: 100%; font-family: Arial, sans-serif; font-size: 10pt; margin-bottom: 20px;">
-            <thead>
-              <tr style="background-color: #4F46E5; color: white;">
-                <th style="border: 1px solid #CBD5E1; padding: 10px; text-align: left; font-weight: bold;">Parameter</th>
-                <th style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-weight: bold;">Value</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; font-weight: bold; background-color: #F8FAFC;">Cohen's d (Effect Size)</td>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-family: 'Courier New', Courier, monospace;">${results.statistics.cohens_d.toFixed(4)}</td>
-              </tr>
-              <tr>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; font-weight: bold; background-color: #F8FAFC;">95% Confidence Interval of Mean</td>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-family: 'Courier New', Courier, monospace;">[${results.statistics.ci[0].toFixed(4)}, ${results.statistics.ci[1].toFixed(4)}]</td>
-              </tr>
-            </tbody>
-          </table>
-          </div>
-        `;
-      } else if (isZTest && results.statistics.ci_difference) {
-        diffSection = `
-          <h2 style="color: #4F46E5; font-family: Arial, sans-serif; font-size: 14pt; margin-top: 20px;">Confidence Interval</h2>
-          <div align="center">
-          <table align="center" style="margin-left: auto; margin-right: auto; border-collapse: collapse; width: 100%; font-family: Arial, sans-serif; font-size: 10pt; margin-bottom: 20px;">
-            <thead>
-              <tr style="background-color: #4F46E5; color: white;">
-                <th style="border: 1px solid #CBD5E1; padding: 10px; text-align: left; font-weight: bold;">Parameter</th>
-                <th style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-weight: bold;">Value</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; font-weight: bold; background-color: #F8FAFC;">95% Confidence Interval of the Difference</td>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-family: 'Courier New', Courier, monospace;">[${results.statistics.ci_difference[0].toFixed(4)}, ${results.statistics.ci_difference[1].toFixed(4)}]</td>
-              </tr>
-            </tbody>
-          </table>
-          </div>
-        `;
-      }
-
-      let shapiroRows = '';
-      if (isPaired) {
-        const diffMeta = results.shapiro_results?.differences;
-        if (diffMeta) {
-          shapiroRows = `
-            <tr>
-              <td style="border: 1px solid #CBD5E1; padding: 10px; font-weight: bold; background-color: #F8FAFC;">Paired Differences</td>
-              <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-family: 'Courier New', Courier, monospace;">${diffMeta.stat.toFixed(4)}</td>
-              <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-family: 'Courier New', Courier, monospace;">${diffMeta.p_value < 0.001 ? 'p &lt; 0.001' : diffMeta.p_value.toFixed(6)}</td>
-              <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: center; font-weight: bold; color: ${diffMeta.normal ? '#10B981' : '#F59E0B'};">${diffMeta.normal ? 'Normally Distributed' : 'Non-Normal'}</td>
-            </tr>
-          `;
-        }
-      } else {
-        shapiroRows = Object.entries(results.shapiro_results || {}).map(([column, meta]) => {
-          if (meta.error) {
-            return `
-              <tr>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; font-weight: bold; background-color: #F8FAFC;">${column}</td>
-                <td colspan="3" style="border: 1px solid #CBD5E1; padding: 10px; color: #EF4444; font-style: italic;">${meta.error}</td>
-              </tr>
-            `;
-          }
-          return `
-            <tr>
-              <td style="border: 1px solid #CBD5E1; padding: 10px; font-weight: bold; background-color: #F8FAFC;">${column}</td>
-              <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-family: 'Courier New', Courier, monospace;">${meta.stat.toFixed(4)}</td>
-              <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-family: 'Courier New', Courier, monospace;">${meta.p_value < 0.001 ? 'p &lt; 0.001' : meta.p_value.toFixed(6)}</td>
-              <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: center; font-weight: bold; color: ${meta.normal ? '#10B981' : '#F59E0B'};">${meta.normal ? 'Normally Distributed' : 'Non-Normal'}</td>
-            </tr>
-          `;
-        }).join('');
-      }
-
-      let leveneRow = '';
-      if (testType === 'independent_t' && results.levene_results) {
-        const lev = results.levene_results;
-        leveneRow = `
-          <h2 style="color: #4F46E5; font-family: Arial, sans-serif; font-size: 14pt; margin-top: 20px;">Levene's Equality of Variances Test</h2>
-          <div align="center">
-          <table align="center" style="margin-left: auto; margin-right: auto; border-collapse: collapse; width: 100%; font-family: Arial, sans-serif; font-size: 10pt; margin-bottom: 20px;">
-            <thead>
-              <tr style="background-color: #4F46E5; color: white;">
-                <th style="border: 1px solid #CBD5E1; padding: 10px; text-align: left; font-weight: bold;">Test Group</th>
-                <th style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-weight: bold;">Levene Statistic</th>
-                <th style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-weight: bold;">p-value</th>
-                <th style="border: 1px solid #CBD5E1; padding: 10px; text-align: center; font-weight: bold;">Result</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; font-weight: bold; background-color: #F8FAFC;">${col1} vs ${col2}</td>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-family: 'Courier New', Courier, monospace;">${lev.stat.toFixed(4)}</td>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-family: 'Courier New', Courier, monospace;">${lev.p_value < 0.001 ? 'p &lt; 0.001' : lev.p_value.toFixed(6)}</td>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: center; font-weight: bold; color: ${lev.equal_var ? '#10B981' : '#F59E0B'};">${lev.equal_var ? 'Equal Variances' : 'Unequal Variances'}</td>
-              </tr>
-            </tbody>
-          </table>
-          </div>
-        `;
-      }
-
-      const htmlContent = `
-        <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
-        <head>
-          <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
-          <title>${title}</title>
-          <!--[if gte mso 9]>
-          <xml>
-            <w:WordDocument>
-              <w:View>Print</w:View>
-              <w:Zoom>100</w:Zoom>
-            </w:WordDocument>
-          </xml>
-          <![endif]-->
-          <style>
-            body { font-family: Arial, sans-serif; font-size: 11pt; line-height: 1.6; color: #1E293B; margin: 1in; }
-            h1 { color: #4F46E5; font-size: 18pt; border-bottom: 2px solid #4F46E5; padding-bottom: 6px; margin-bottom: 20px; }
-            h2 { color: #1E293B; font-size: 14pt; margin-top: 25px; border-bottom: 1px solid #E2E8F0; padding-bottom: 4px; }
-            p { margin-bottom: 15px; }
-            .meta-table { border-collapse: collapse; width: 75%; margin-left: auto; margin-right: auto; margin-bottom: 25px; }
-            .meta-table td { padding: 8px; border: 1px solid #E2E8F0; }
-            .meta-label { font-weight: bold; background-color: #F8FAFC; width: 30%; }
-          </style>
-        </head>
-        <body>
-          ${getWordReportHeader({
-            title: 'Parametric Hypothesis Test Report',
-            testApplied: results.test_used || 'Parametric Test',
-            fileName: file ? file.name : '',
-            curator: user ? user.full_name : 'Guest Researcher'
-          })}
-
-          <h2 style="color: #4F46E5; font-family: Arial, sans-serif; font-size: 14pt; margin-top: 20px;">1. Test Statistics</h2>
-          <div align="center">
-          <table align="center" style="margin-left: auto; margin-right: auto; border-collapse: collapse; width: 100%; font-family: Arial, sans-serif; font-size: 10pt; margin-bottom: 20px;">
-            <thead>
-              <tr style="background-color: #4F46E5; color: white;">
-                <th style="border: 1px solid #CBD5E1; padding: 10px; text-align: left; font-weight: bold;">Parameter</th>
-                <th style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-weight: bold;">Value</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; font-weight: bold; background-color: #F8FAFC;">Test Statistic (${results.statistics.t_statistic !== undefined ? 't' : 'Z'})</td>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-family: 'Courier New', Courier, monospace; font-weight: bold;">${statVal}</td>
-              </tr>
-              ${results.statistics.degrees_of_freedom !== undefined ? `
-              <tr>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; font-weight: bold; background-color: #F8FAFC;">Degrees of Freedom (df)</td>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-family: 'Courier New', Courier, monospace;">${dfVal}</td>
-              </tr>
-              ` : ''}
-              ${results.statistics.hypothesized_mean !== undefined ? `
-              <tr>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; font-weight: bold; background-color: #F8FAFC;">Hypothesized Mean (&mu;₀)</td>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-family: 'Courier New', Courier, monospace;">${results.statistics.hypothesized_mean}</td>
-              </tr>
-              ` : ''}
-              <tr>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; font-weight: bold; background-color: #F8FAFC;">p-value</td>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-family: 'Courier New', Courier, monospace; font-weight: bold; color: ${results.statistics.significant ? '#EF4444' : '#1E293B'};">${results.statistics.p_value < 0.001 ? 'p &lt; 0.001' : results.statistics.p_value.toFixed(6)}</td>
-              </tr>
-              <tr>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; font-weight: bold; background-color: #F8FAFC;">Significance Level (&alpha;)</td>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-family: 'Courier New', Courier, monospace;">0.05</td>
-              </tr>
-              <tr>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; font-weight: bold; background-color: #F8FAFC;">Conclusion</td>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; font-weight: bold; color: ${results.statistics.significant ? '#10B981' : '#64748B'};">${results.statistics.significant ? 'Statistically Significant (Reject H₀)' : 'Not Statistically Significant (Fail to Reject H₀)'}</td>
-              </tr>
-            </tbody>
-          </table>
-          </div>
-
-          <h2 style="color: #4F46E5; font-family: Arial, sans-serif; font-size: 14pt; margin-top: 20px;">2. Sample Descriptive Statistics</h2>
-          <div align="center">
-          <table align="center" style="margin-left: auto; margin-right: auto; border-collapse: collapse; width: 100%; font-family: Arial, sans-serif; font-size: 10pt; margin-bottom: 20px;">
-            <thead>
-              <tr style="background-color: #4F46E5; color: white;">
-                <th style="border: 1px solid #CBD5E1; padding: 10px; text-align: left; font-weight: bold;">Variable / Group</th>
-                <th style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-weight: bold;">Sample Size (n)</th>
-                <th style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-weight: bold;">Mean</th>
-                <th style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-weight: bold;">Std. Deviation</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${descriptivesRows}
-            </tbody>
-          </table>
-          </div>
-
-          ${diffSection}
-
-          <h2 style="color: #4F46E5; font-family: Arial, sans-serif; font-size: 14pt; margin-top: 20px;">3. Assumption Checks</h2>
-          <h3 style="color: #1E293B; font-family: Arial, sans-serif; font-size: 11pt; margin-top: 10px;">Normality Check (Shapiro-Wilk Test)</h3>
-          <div align="center">
-          <table align="center" style="margin-left: auto; margin-right: auto; border-collapse: collapse; width: 100%; font-family: Arial, sans-serif; font-size: 10pt; margin-bottom: 20px;">
-            <thead>
-              <tr style="background-color: #4F46E5; color: white;">
-                <th style="border: 1px solid #CBD5E1; padding: 10px; text-align: left; font-weight: bold;">Variable</th>
-                <th style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-weight: bold;">W Statistic</th>
-                <th style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-weight: bold;">p-value</th>
-                <th style="border: 1px solid #CBD5E1; padding: 10px; text-align: center; font-weight: bold;">Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${shapiroRows}
-            </tbody>
-          </table>
-          </div>
-
-          ${leveneRow}
-
-          ${getWordReportFooter()}
-        </body>
-        </html>
-      `;
-      const centeredHtml = htmlContent
-        .replace(/width:\s*100%/gi, 'width: 80%')
-        .replace(/width:\s*95%/gi, 'width: 80%')
-        .replace(/class="meta-table"/gi, 'class="meta-table" style="width: 75%;"')
-        .replace(/<table([^>]*)>/gi, (match, attrs) => {
-          let newAttrs = attrs;
-          if (/width:\s*100%/i.test(newAttrs)) {
-            newAttrs = newAttrs.replace(/width:\s*100%/i, 'width: 80%');
-          }
-          if (/width:\s*95%/i.test(newAttrs)) {
-            newAttrs = newAttrs.replace(/width:\s*95%/i, 'width: 80%');
-          }
-          if (/style="/i.test(newAttrs)) {
-            newAttrs = newAttrs.replace(/style="/i, 'style="mso-table-align: center; margin-left: auto; margin-right: auto; ');
-          } else {
-            newAttrs = ' style="mso-table-align: center; margin-left: auto; margin-right: auto;"' + newAttrs;
-          }
-          if (!/align=/i.test(newAttrs)) {
-            newAttrs = ' align="center"' + newAttrs;
-          }
-          return `<center><table${newAttrs}>`;
-        })
-        .replace(/<\/table>/gi, '</table></center>');
-      const blob = new Blob(['\ufeff' + centeredHtml], { type: 'application/msword;charset=utf-8' });
-      const link = document.createElement('a');
-      link.href = URL.createObjectURL(blob);
-      link.download = `${fileName}.doc`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+      downloadDocxReport(token, buildDocxReport(fileName)).catch(err => setError(err.message));
     }
-  };;;
+  };
+  // Structured content for the server-side Word (.docx) report
+  const buildDocxReport = (fileName) => {
+    const s = results.statistics;
+    const fixed = (v, digits = 4) => (v === null || v === undefined ? 'N/A' : v.toFixed(digits));
+    const interval = (pair) => (pair && pair[0] != null ? `[${pair[0].toFixed(4)}, ${pair[1].toFixed(4)}]` : 'N/A');
+    const statName = s.t_statistic !== undefined ? 't' : 'Z';
+    const statValue = s.t_statistic !== undefined ? s.t_statistic : s.z_statistic;
+
+    const testRows = [[`Test statistic (${statName})`, fixed(statValue)]];
+    if (s.degrees_of_freedom !== undefined && s.degrees_of_freedom !== null) testRows.push(['Degrees of freedom', s.degrees_of_freedom.toFixed(2).replace(/\.00$/, '')]);
+    if (s.hypothesized_mean !== undefined) testRows.push(['Hypothesized mean (μ₀)', String(s.hypothesized_mean)]);
+    testRows.push(['p-value', formatP(s.p_value)], ['Significance level (α)', '0.05'],
+      ['Conclusion', s.significant ? 'Statistically significant (reject H₀)' : 'Not statistically significant (fail to reject H₀)']);
+
+    const descriptiveRows = [[col1, s.n || s.n_group1, fixed(s.sample_mean ?? s.mean_group1), fixed(s.sample_std ?? s.std_group1)]];
+    if (col2 && s.mean_group2 !== undefined) descriptiveRows.push([col2, s.n || s.n_group2, fixed(s.mean_group2), fixed(s.std_group2)]);
+
+    const effectRows = [];
+    if (s.mean_difference !== undefined) effectRows.push(['Mean difference', fixed(s.mean_difference)]);
+    if (s.std_difference !== undefined) effectRows.push(['SD of differences', fixed(s.std_difference)]);
+    if (s.se_difference !== undefined && s.se_difference !== null) effectRows.push(['SE of the difference', fixed(s.se_difference)]);
+    if (s.ci_difference) effectRows.push(['95% CI of the difference', interval(s.ci_difference)]);
+    if (s.ci) effectRows.push(['95% CI of the mean', interval(s.ci)]);
+    if (s.cohens_d !== undefined && s.cohens_d !== null) effectRows.push([testType === 'paired_t' ? "Cohen's d_z" : "Cohen's d", fixed(s.cohens_d)]);
+    if (s.hedges_g !== undefined && s.hedges_g !== null) effectRows.push(["Hedges' g", fixed(s.hedges_g)]);
+
+    const sections = [{
+      heading: '1. Test Statistics',
+      tables: [{ columns: ['Parameter', 'Value'], rows: testRows }]
+    }];
+    if (s.student && s.welch) {
+      sections[0].tables.push({
+        columns: ['Test', 't', 'df', 'p-value', '95% CI of the difference'],
+        rows: [
+          ["Student's t (equal variances)", fixed(s.student.t_statistic), fixed(s.student.degrees_of_freedom, 2), formatP(s.student.p_value), interval(s.student.ci_difference)],
+          ["Welch's t (unequal variances)", fixed(s.welch.t_statistic), fixed(s.welch.degrees_of_freedom, 2), formatP(s.welch.p_value), interval(s.welch.ci_difference)]
+        ],
+        caption: 'Both versions of the independent t-test',
+        note: `${results.test_used} was reported above, selected by Levene's test.`
+      });
+    }
+    sections.push({ heading: '2. Sample Descriptive Statistics', tables: [{ columns: ['Variable / group', 'n', 'Mean', 'SD'], rows: descriptiveRows }] });
+    if (effectRows.length > 0) sections.push({ heading: '3. Effect Size and Confidence Intervals', tables: [{ columns: ['Parameter', 'Value'], rows: effectRows }] });
+
+    const normalityRows = testType === 'paired_t'
+      ? (results.shapiro_results?.differences && !results.shapiro_results.differences.error
+        ? [['Paired differences', fixed(results.shapiro_results.differences.stat), formatP(results.shapiro_results.differences.p_value), results.shapiro_results.differences.normal ? 'Normal' : 'Not normal']]
+        : [])
+      : Object.entries(results.shapiro_results || {}).map(([column, meta]) => (meta.error
+        ? [column, 'N/A', 'N/A', meta.error]
+        : [column, fixed(meta.stat), formatP(meta.p_value), meta.normal ? 'Normal' : 'Not normal']));
+    const assumptionTables = [];
+    if (normalityRows.length > 0) assumptionTables.push({ columns: ['Variable', 'Shapiro-Wilk W', 'p-value', 'Status'], rows: normalityRows, caption: 'Normality (Shapiro-Wilk)' });
+    if (testType === 'independent_t' && results.levene_results) {
+      const lev = results.levene_results;
+      assumptionTables.push({ columns: ['Comparison', 'Levene statistic', 'p-value', 'Result'], rows: [[`${col1} vs ${col2}`, fixed(lev.stat), formatP(lev.p_value), lev.equal_var ? 'Equal variances' : 'Unequal variances']], caption: "Levene's test for equal variances" });
+    }
+    if (assumptionTables.length > 0) sections.push({ heading: '4. Assumption Checks', tables: assumptionTables });
+    if (chartImage || results.plot) sections.push({ heading: 'Figure', images: [{ data: `data:image/png;base64,${chartImage || results.plot}`, caption: `Figure 1. ${results.test_used || 'Parametric test'}` }] });
+
+    return {
+      title: 'Parametric Hypothesis Test Report',
+      test_applied: results.test_used || 'Parametric test',
+      dataset_name: file?.name,
+      filename: fileName,
+      sections
+    };
+  };
 
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-xs animate-fade-in">
+    <div role="dialog" aria-modal="true" className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-xs animate-fade-in">
       <div className="relative flex h-full max-h-[640px] w-full max-w-4xl flex-col rounded-3xl border border-slate-100 bg-white shadow-2xl overflow-hidden">
         
         {/* Header */}
@@ -671,7 +388,7 @@ const ParametricModal = ({ isOpen, onClose }) => {
               Compare groups assuming normally distributed data. t-Test, Paired t-Test, Z-Test.
             </p>
           </div>
-          <button
+          <button data-dialog-close aria-label="Close"
             onClick={onClose}
             className="rounded-full p-1.5 text-slate-400 hover:bg-slate-50 hover:text-slate-600 transition-colors"
           >
@@ -688,69 +405,18 @@ const ParametricModal = ({ isOpen, onClose }) => {
             </div>
           )}
 
-          {/* Step 1: File Upload */}
-          {!file && !loadingCols && (
-            <div 
-              onDragEnter={handleDrag}
-              onDragOver={handleDrag}
-              onDragLeave={handleDrag}
-              onDrop={handleDrop}
-              onClick={() => fileInputRef.current.click()}
-              className={`flex flex-col items-center justify-center rounded-3xl border-2 border-dashed py-16 px-6 text-center cursor-pointer transition-all duration-200 ${
-                dragActive ? 'border-brand-indigo bg-indigo-50/30' : 'border-slate-300 hover:border-brand-indigo hover:bg-slate-50/50'
-              }`}
-            >
-              <input
-                type="file"
-                ref={fileInputRef}
-                onChange={handleChange}
-                accept=".csv,.xlsx,.xls"
-                className="hidden"
-              />
-              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-slate-100 text-slate-500 mb-4">
-                <Upload className="h-6 w-6 text-slate-400" />
-              </div>
-              <p className="font-sans text-sm font-semibold text-slate-700">Select or drop dataset for Parametric analysis</p>
-              <p className="font-sans text-xs text-slate-400 mt-1">Supports CSV, XLSX, and XLS formats</p>
-            </div>
-          )}
-
-          {/* Loading columns indicator */}
-          {loadingCols && (
-            <div className="flex flex-col items-center justify-center py-16 space-y-4">
-              <div className="h-10 w-10 animate-spin rounded-full border-4 border-brand-indigo border-t-transparent"></div>
-              <p className="font-sans text-sm font-medium text-slate-600 animate-pulse">Reading dataset columns...</p>
-            </div>
-          )}
-
           {/* Step 2: Configure Test Form */}
-          {file && !loadingCols && !results && !loadingAnalysis && (
-            <form onSubmit={runAnalysis} className="space-y-6">
-              <div className="rounded-2xl border border-slate-100 bg-slate-50 p-4 flex justify-between items-center">
-                <div className="truncate">
-                  <p className="font-sans text-xs font-bold text-slate-400 uppercase">Selected Dataset</p>
-                  <p className="font-sans text-sm font-semibold text-slate-700 truncate">{file.name}</p>
-                </div>
-                <div className="flex space-x-2">
-                  <button
-                    type="button"
-                    onClick={() => setViewerOpen(true)}
-                    className="rounded-xl border border-slate-200 bg-white p-2 text-slate-500 hover:bg-slate-50 hover:text-slate-800 transition-colors text-xs font-semibold flex items-center space-x-1"
-                  >
-                    <Eye className="h-3.5 w-3.5 text-brand-orange" />
-                    <span>View Data</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleReset}
-                    className="rounded-xl border border-slate-200 bg-white p-2 text-slate-500 hover:bg-slate-50 hover:text-slate-800 transition-colors text-xs font-semibold flex items-center space-x-1"
-                  >
-                    <RefreshCw className="h-3.5 w-3.5" />
-                    <span>Change File</span>
-                  </button>
-                </div>
-              </div>
+          {!results && !loadingAnalysis && (
+            <div className="space-y-6">
+              <DatasetPicker
+                dataset={dataset}
+                title="Select or drop a dataset for the test"
+                hint="Each group or measurement in its own column (CSV or Excel)."
+                onViewData={() => setViewerOpen(true)}
+              />
 
+              {file && (
+              <form onSubmit={runAnalysis} className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {/* Select Test Type */}
                 <div className="space-y-1.5">
@@ -815,7 +481,9 @@ const ParametricModal = ({ isOpen, onClose }) => {
               >
                 Run Parametric Test
               </button>
-            </form>
+              </form>
+              )}
+            </div>
           )}
 
           {/* Running Analysis Loader */}
@@ -827,6 +495,8 @@ const ParametricModal = ({ isOpen, onClose }) => {
           )}
 
           {/* Step 3: Analysis Results Output */}
+          {reopened && <ReopenedBanner analysis={initialAnalysis} onRestore={restoreSaved} />}
+
           {results && !loadingAnalysis && (
             <div className="space-y-6 animate-fade-in">
               <div className="flex justify-between items-start">
@@ -856,6 +526,14 @@ const ParametricModal = ({ isOpen, onClose }) => {
                       Word
                     </button>
                   </div>
+                  <SaveToProjectButton
+                    module="parametric"
+                    report={() => buildDocxReport('report')}
+                    source={dataset.source}
+                    defaultTitle={`${results?.test_used || 'Parametric test'} – ${[col1, col2].filter(Boolean).join(' vs ')}`}
+                    parameters={{ test: testType, variables: [col1, col2].filter(Boolean), dataset: file?.name }}
+                    result={results}
+                  />
                   <button
                     onClick={handleDownloadPlot}
                     className="flex items-center space-x-1.5 rounded-lg bg-brand-indigo p-1.5 px-3 hover:bg-indigo-700 text-white font-sans text-xs font-semibold transition-colors"
@@ -1013,30 +691,36 @@ const ParametricModal = ({ isOpen, onClose }) => {
                 </div>
 
                 {/* Task 2: Paired t-Test section for paired differences */}
-                {testType === 'paired_t' && results.statistics.mean_difference !== undefined && (
+                {['paired_t', 'independent_t'].includes(testType) && results.statistics.mean_difference !== undefined && (
                   <div className="mt-4 pt-3 border-t border-dashed border-slate-100 grid grid-cols-3 gap-3 text-xs font-sans animate-fade-in">
                     <div className="rounded-xl bg-slate-50 p-2.5 border border-slate-100/50">
                       <p className="text-[10px] font-bold text-slate-400 uppercase">Mean Difference</p>
                       <p className="font-semibold text-slate-700 mt-0.5">{results.statistics.mean_difference.toFixed(4)}</p>
                     </div>
                     <div className="rounded-xl bg-slate-50 p-2.5 border border-slate-100/50">
-                      <p className="text-[10px] font-bold text-slate-400 uppercase">Standard Deviation of Diff</p>
-                      <p className="font-semibold text-slate-700 mt-0.5">{results.statistics.std_difference.toFixed(4)}</p>
+                      <p className="text-[10px] font-bold text-slate-400 uppercase">
+                        {testType === 'paired_t' ? 'Standard Deviation of Diff' : 'Std. Error of Difference'}
+                      </p>
+                      <p className="font-semibold text-slate-700 mt-0.5">
+                        {(testType === 'paired_t' ? results.statistics.std_difference : results.statistics.se_difference)?.toFixed(4) ?? 'n/a'}
+                      </p>
                     </div>
                     <div className="rounded-xl bg-slate-50 p-2.5 border border-slate-100/50">
                       <p className="text-[10px] font-bold text-slate-400 uppercase">95% CI [Lower, Upper]</p>
                       <p className="font-semibold text-slate-700 mt-0.5">
-                        {`[${results.statistics.ci_difference[0].toFixed(4)}, ${results.statistics.ci_difference[1].toFixed(4)}]`}
+                        {`[${results.statistics.ci_difference[0]?.toFixed(4) ?? 'n/a'}, ${results.statistics.ci_difference[1]?.toFixed(4) ?? 'n/a'}]`}
                       </p>
                     </div>
                   </div>
                 )}
 
                 {/* Task 3: One-Sample t-Test section for Cohen's d and 95% Confidence Interval */}
-                {testType === 'one_sample_t' && results.statistics.cohens_d !== undefined && (
+                {['one_sample_t', 'paired_t', 'independent_t'].includes(testType) && results.statistics.cohens_d !== undefined && results.statistics.cohens_d !== null && (
                   <div className="mt-4 pt-3 border-t border-dashed border-slate-100 grid grid-cols-2 gap-3 text-xs font-sans animate-fade-in">
                     <div className="rounded-xl bg-slate-50 p-2.5 border border-slate-100/50">
-                      <p className="text-[10px] font-bold text-slate-400 uppercase">Cohen's d (Effect Size)</p>
+                      <p className="text-[10px] font-bold text-slate-400 uppercase">
+                        {testType === 'paired_t' ? "Cohen's d_z (Effect Size)" : testType === 'independent_t' ? "Cohen's d, pooled SD (Effect Size)" : "Cohen's d (Effect Size)"}
+                      </p>
                       <p className="font-semibold text-slate-700 mt-0.5">
                         {results.statistics.cohens_d.toFixed(4)}
                         <span className="text-[10px] text-slate-400 font-normal ml-1.5">
@@ -1046,12 +730,14 @@ const ParametricModal = ({ isOpen, onClose }) => {
                         </span>
                       </p>
                     </div>
-                    <div className="rounded-xl bg-slate-50 p-2.5 border border-slate-100/50">
-                      <p className="text-[10px] font-bold text-slate-400 uppercase">95% Confidence Interval of Mean</p>
-                      <p className="font-semibold text-slate-700 mt-0.5">
-                        {`[${results.statistics.ci[0].toFixed(4)}, ${results.statistics.ci[1].toFixed(4)}]`}
-                      </p>
-                    </div>
+                    {results.statistics.ci && (
+                      <div className="rounded-xl bg-slate-50 p-2.5 border border-slate-100/50">
+                        <p className="text-[10px] font-bold text-slate-400 uppercase">95% Confidence Interval of Mean</p>
+                        <p className="font-semibold text-slate-700 mt-0.5">
+                          {`[${results.statistics.ci[0].toFixed(4)}, ${results.statistics.ci[1].toFixed(4)}]`}
+                        </p>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -1152,15 +838,27 @@ const ParametricModal = ({ isOpen, onClose }) => {
                 </div>
               </div>
 
-              {/* Base64 Plot View */}
+              {/* Result chart with alternative styles */}
               {results.plot && (
-                <div className="flex flex-col items-center justify-center bg-slate-50 rounded-3xl p-6 border border-slate-100 shadow-inner">
-                  <img
-                    src={`data:image/png;base64,${results.plot}`}
-                    alt="Parametric Analysis Chart"
-                    className="max-h-[320px] w-auto object-contain rounded-2xl border border-slate-200/50 bg-white p-2 shadow-sm"
-                  />
-                </div>
+                <ResultChartPanel
+                  key={results.plot.slice(-32)}
+                  token={token}
+                  file={file}
+                  classicPlot={results.plot}
+                  options={parametricChartOptions(testType, col1, col2)}
+                  fields={{
+                    layout: 'wide',
+                    cols_str: (col2 && ['independent_t', 'z_test'].includes(testType) ? [col1, col2] : [col1]).join(','),
+                    p_value: results.statistics?.p_value,
+                    test_label: results.test_used,
+                    equal_var: results.levene_results?.equal_var,
+                    ...(testType === 'one_sample_t' || (testType === 'z_test' && !col2)
+                      ? { reference: parseFloat(mu) || 0, reference_label: `Hypothesized mean = ${parseFloat(mu) || 0}` }
+                      : {})
+                  }}
+                  filenameBase={`parametric_${testType}_${col1}`}
+                  onImageChange={setChartImage}
+                />
               )}
             </div>
           )}

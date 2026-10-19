@@ -1,8 +1,16 @@
-import React, { useState, useRef, useEffect } from 'react';
+import { apiFetch } from '../utils/apiFetch';
+import { useState, useEffect } from 'react';
 import { useAuth, API_URL } from '../context/AuthContext';
-import { X, Upload, Check, AlertCircle, Download, RefreshCw, Layers, Eye } from 'lucide-react';
+import { X, AlertCircle, RefreshCw, Layers } from 'lucide-react';
 import DatasetViewerModal from './DatasetViewerModal';
-import { getWordReportHeader, getWordReportFooter } from '../utils/reportHeader';
+import DatasetPicker from './DatasetPicker';
+import { useDataset } from '../hooks/useDataset';
+import { downloadDocxReport } from '../utils/reportApi';
+import SaveToProjectButton from './SaveToProjectButton';
+import ReopenedBanner from './ReopenedBanner';
+import ResultChartPanel from './ResultChartPanel';
+import { PALETTE_OPTIONS } from '../utils/figureStyle';
+import { useFigurePreferences } from '../utils/figurePreferences';
 
 const pcaPalettes = [
   { value: 'Oranges', label: 'Sunset Orange' },
@@ -10,105 +18,74 @@ const pcaPalettes = [
   { value: 'Greens', label: 'Forest Green' },
   { value: 'coolwarm', label: 'Divergent Red-Blue' },
   { value: 'Purples', label: 'Deep Purple' },
-  { value: 'magma', label: 'Magma Pink-Black' }
+  { value: 'magma', label: 'Magma Pink-Black' },
+  ...PALETTE_OPTIONS.map(p => ({ value: p.value, label: p.label }))
 ];
 
-const PcaModal = ({ isOpen, onClose }) => {
-  const { user } = useAuth();
+const PcaModal = ({ isOpen, onClose, initialAnalysis = null }) => {
+  const saved = initialAnalysis?.parameters || {};
+  const { user, token } = useAuth();
   
   // File state
-  const [file, setFile] = useState(null);
-
-
-
-
-  const [columns, setColumns] = useState([]);
-  const [numericColumns, setNumericColumns] = useState([]);
-  const [loadingCols, setLoadingCols] = useState(false);
-  const [dragActive, setDragActive] = useState(false);
-  const fileInputRef = useRef(null);
+  const dataset = useDataset({
+    active: isOpen && !initialAnalysis,
+    onLoaded: () => {
+      setSelectedCols([]);
+      setHueVar('');
+      setLabelCol('');
+      setResults(null);
+    },
+    onCleared: () => setResults(null),
+  });
+  const { file, columns, numericColumns } = dataset;
 
   // PCA Parameters
   const [selectedCols, setSelectedCols] = useState([]);
   const [hueVar, setHueVar] = useState('');
   const [scale, setScale] = useState(true);
-  const [palette, setPalette] = useState('Oranges');
+  const [figurePrefs, setFigurePrefs] = useFigurePreferences();
+  const [palette, setPalette] = useState(figurePrefs.palette);
 
   // Results & UI state
   const [loadingAnalysis, setLoadingAnalysis] = useState(false);
-  const [results, setResults] = useState(null);
+  const [results, setResults] = useState(initialAnalysis?.result || null);
+  const [reopened, setReopened] = useState(Boolean(initialAnalysis?.result));
+
+  // Fetch the dataset this analysis was run on, then restore its settings so it can be run again
+  const restoreSaved = async () => {
+    setReopened(false);
+    setResults(null);
+    const loaded = await dataset.selectProjectDataset(initialAnalysis.dataset, initialAnalysis.projectName);
+    if (loaded) {
+      setSelectedCols(saved.variables || []);
+      setScale(saved.scale !== false);
+      setHueVar(saved.hue || '');
+      setXComponent(saved.biplot?.x || 1);
+      setYComponent(saved.biplot?.y || 2);
+      setBiplotType(saved.biplot?.type || 'distance');
+      setEllipse(saved.biplot?.ellipse || 'confidence');
+      setLabelCol(saved.biplot?.labels || '');
+      setRotateComponents(saved.varimax === 'auto' ? '' : (saved.varimax || ''));
+    }
+  };
   const [error, setError] = useState(null);
   const [viewerOpen, setViewerOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('eigenvalues'); // 'eigenvalues', 'loadings', 'scores', 'biplot'
+  const [loadingView, setLoadingView] = useState('eigenvectors'); // 'eigenvectors' or 'correlation'
 
-  const handleDrag = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (e.type === "dragenter" || e.type === "dragover") {
-      setDragActive(true);
-    } else if (e.type === "dragleave") {
-      setDragActive(false);
-    }
-  };
-
-  const handleDrop = async (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setDragActive(false);
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      await processFile(e.dataTransfer.files[0]);
-    }
-  };
-
-  const handleFileChange = async (e) => {
-    if (e.target.files && e.target.files[0]) {
-      await processFile(e.target.files[0]);
-    }
-  };
+  // Biplot and rotation options
+  const [xComponent, setXComponent] = useState(1);
+  const [yComponent, setYComponent] = useState(2);
+  const [biplotType, setBiplotType] = useState('distance');
+  const [ellipse, setEllipse] = useState('confidence');
+  const [labelCol, setLabelCol] = useState('');
+  const [rotateComponents, setRotateComponents] = useState('');
 
   const handleSaveEditedData = async (editedFile) => {
     setResults(null);
     setError(null);
     if (editedFile) {
-      await processFile(editedFile);
-    }
-  };
-
-  const processFile = async (selectedFile) => {
-    setFile(selectedFile);
-    setColumns([]);
-    setNumericColumns([]);
-    setSelectedCols([]);
-    setHueVar('');
-    setResults(null);
-    setError(null);
-    setLoadingCols(true);
-
-    const formData = new FormData();
-    formData.append('file', selectedFile);
-
-    try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`${API_URL}/analyze/columns`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        },
-        body: formData
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to parse columns from dataset.');
-      }
-
-      const data = await response.json();
-      setColumns(data.columns || []);
-      setNumericColumns(data.numeric_columns || []);
-    } catch (err) {
-      setError(err.message || 'An error occurred while loading the dataset.');
-      setFile(null);
-    } finally {
-      setLoadingCols(false);
+      await dataset.selectFile(editedFile);
     }
   };
 
@@ -139,10 +116,16 @@ const PcaModal = ({ isOpen, onClose }) => {
       formData.append('hue_var', hueVar);
     }
     formData.append('palette', palette);
+    formData.append('x_component', String(xComponent));
+    formData.append('y_component', String(yComponent));
+    formData.append('biplot_type', biplotType);
+    formData.append('ellipse', ellipse);
+    if (labelCol) formData.append('label_col', labelCol);
+    if (rotateComponents) formData.append('rotate_components', rotateComponents);
 
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`${API_URL}/analyze/pca`, {
+      const response = await apiFetch(`${API_URL}/analyze/pca`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -171,11 +154,10 @@ const PcaModal = ({ isOpen, onClose }) => {
   }, [palette]);
 
   const handleReset = () => {
-    setFile(null);
-    setColumns([]);
-    setNumericColumns([]);
+    dataset.clear();
     setSelectedCols([]);
     setHueVar('');
+    setLabelCol('');
     setResults(null);
     setError(null);
   };
@@ -184,7 +166,6 @@ const PcaModal = ({ isOpen, onClose }) => {
     if (!results) return;
 
     const fileName = `StatSathi_PCA_Report_${file.name.split('.')[0]}`;
-    const title = "Stat Sathi PCA Report";
 
     if (format === 'txt') {
       let report = `================================================================================\n`;
@@ -244,172 +225,93 @@ const PcaModal = ({ isOpen, onClose }) => {
       link.click();
       document.body.removeChild(link);
     } else if (format === 'doc') {
-      const eigenvalueRows = results.pc_names.map((name, i) => `
-        <tr>
-          <td style="border: 1px solid #CBD5E1; padding: 10px; font-weight: bold; background-color: #F8FAFC; color: #1E293B;">${name}</td>
-          <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-family: 'Courier New', Courier, monospace; color: #334155;">${results.eigenvalues[i].toFixed(4)}</td>
-          <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-family: 'Courier New', Courier, monospace; color: #334155;">${(results.explained_variance_ratio[i] * 100).toFixed(2)}%</td>
-          <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-family: 'Courier New', Courier, monospace; font-weight: bold; color: #4F46E5;">${(results.cumulative_variance_ratio[i] * 100).toFixed(2)}%</td>
-        </tr>
-      `).join('');
-
-      const loadingsRows = results.variable_names.map(col => {
-        const loadingsArray = results.loadings[col];
-        return `
-          <tr>
-            <td style="border: 1px solid #CBD5E1; padding: 10px; font-weight: bold; background-color: #F8FAFC; color: #1E293B;">${col}</td>
-            ${loadingsArray.map(val => `<td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-family: 'Courier New', Courier, monospace; color: #334155;">${val.toFixed(4)}</td>`).join('')}
-          </tr>
-        `;
-      }).join('');
-
-      let scoresRows = '';
-      if (results.sample_scores && results.sample_scores.length > 0) {
-        scoresRows = results.sample_scores.slice(0, 100).map((row, idx) => `
-          <tr>
-            <td style="border: 1px solid #CBD5E1; padding: 8px; font-weight: bold; text-align: center; background-color: #F8FAFC; color: #64748B;">${idx + 1}</td>
-            ${row.map(val => `<td style="border: 1px solid #CBD5E1; padding: 8px; text-align: right; font-family: 'Courier New', Courier, monospace; color: #334155;">${val.toFixed(4)}</td>`).join('')}
-          </tr>
-        `).join('');
-      }
-
-      const htmlContent = `
-        <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
-        <head>
-          <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
-          <title>${title}</title>
-          <!--[if gte mso 9]>
-          <xml>
-            <w:WordDocument>
-              <w:View>Print</w:View>
-              <w:Zoom>100</w:Zoom>
-            </w:WordDocument>
-          </xml>
-          <![endif]-->
-          <style>
-            body { font-family: Arial, sans-serif; font-size: 11pt; line-height: 1.6; color: #1E293B; margin: 1in; }
-            h1 { color: #4F46E5; font-size: 18pt; border-bottom: 2px solid #4F46E5; padding-bottom: 6px; margin-bottom: 20px; }
-            h2 { color: #1E293B; font-size: 14pt; margin-top: 25px; border-bottom: 1px solid #E2E8F0; padding-bottom: 4px; }
-            p { margin-bottom: 15px; }
-            .meta-table { border-collapse: collapse; width: 75%; margin-left: auto; margin-right: auto; margin-bottom: 25px; }
-            .meta-table td { padding: 8px; border: 1px solid #E2E8F0; }
-            .meta-label { font-weight: bold; background-color: #F8FAFC; width: 30%; }
-          </style>
-        </head>
-        <body>
-          ${getWordReportHeader({
-            title: 'Principal Component Analysis (PCA) Report',
-            testApplied: 'Multivariate Principal Component Analysis (PCA)',
-            fileName: file ? file.name : '',
-            curator: user ? user.full_name : 'Guest Researcher',
-            extraMeta: [
-              ['Standardization Applied', scale ? 'Yes (Z-score Scaling)' : 'No'],
-              ...(hueVar ? [['Grouping Variable', hueVar]] : []),
-              ['Selected Variables', selectedCols.join(', ')]
-            ]
-          })}
-
-          <h2 style="color: #4F46E5; font-family: Arial, sans-serif; font-size: 14pt; margin-top: 20px;">1. Eigenvalues and Explained Variance</h2>
-          <div align="center">
-          <table align="center" style="margin-left: auto; margin-right: auto; border-collapse: collapse; width: 100%; font-family: Arial, sans-serif; font-size: 10pt; margin-bottom: 20px;">
-            <thead>
-              <tr style="background-color: #4F46E5; color: white;">
-                <th style="border: 1px solid #CBD5E1; padding: 10px; text-align: left; font-weight: bold;">Principal Component</th>
-                <th style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-weight: bold;">Eigenvalue</th>
-                <th style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-weight: bold;">Explained Variance Ratio</th>
-                <th style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-weight: bold;">Cumulative Variance</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${eigenvalueRows}
-            </tbody>
-          </table>
-          </div>
-
-          <h2 style="color: #4F46E5; font-family: Arial, sans-serif; font-size: 14pt; margin-top: 20px;">2. Eigenvectors (Loadings / Component Matrix)</h2>
-          <div align="center">
-          <table align="center" style="margin-left: auto; margin-right: auto; border-collapse: collapse; width: 100%; font-family: Arial, sans-serif; font-size: 10pt; margin-bottom: 20px;">
-            <thead>
-              <tr style="background-color: #4F46E5; color: white;">
-                <th style="border: 1px solid #CBD5E1; padding: 10px; text-align: left; font-weight: bold;">Variable</th>
-                ${results.pc_names.map(name => `<th style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-weight: bold;">${name}</th>`).join('')}
-              </tr>
-            </thead>
-            <tbody>
-              ${loadingsRows}
-            </tbody>
-          </table>
-          </div>
-
-          ${scoresRows ? `
-          <h2 style="color: #4F46E5; font-family: Arial, sans-serif; font-size: 14pt; margin-top: 20px;">3. Projected Observation PC Scores (First 100 Rows)</h2>
-          <p style="font-size: 9.5pt; color: #64748B;">Total observations in dataset: ${results.sample_scores.length}</p>
-          <div align="center">
-          <table align="center" style="margin-left: auto; margin-right: auto; border-collapse: collapse; width: 100%; font-family: Arial, sans-serif; font-size: 9.5pt; margin-bottom: 20px;">
-            <thead>
-              <tr style="background-color: #4F46E5; color: white;">
-                <th style="border: 1px solid #CBD5E1; padding: 8px; text-align: center; font-weight: bold;">Row Index</th>
-                ${results.pc_names.map(name => `<th style="border: 1px solid #CBD5E1; padding: 8px; text-align: right; font-weight: bold;">${name}</th>`).join('')}
-              </tr>
-            </thead>
-            <tbody>
-              ${scoresRows}
-            </tbody>
-          </table>
-          </div>
-          ` : ''}
-
-          ${getWordReportFooter()}
-        </body>
-        </html>
-      `;
-      const centeredHtml = htmlContent
-        .replace(/width:\s*100%/gi, 'width: 80%')
-        .replace(/width:\s*95%/gi, 'width: 80%')
-        .replace(/class="meta-table"/gi, 'class="meta-table" style="width: 75%;"')
-        .replace(/<table([^>]*)>/gi, (match, attrs) => {
-          let newAttrs = attrs;
-          if (/width:\s*100%/i.test(newAttrs)) {
-            newAttrs = newAttrs.replace(/width:\s*100%/i, 'width: 80%');
-          }
-          if (/width:\s*95%/i.test(newAttrs)) {
-            newAttrs = newAttrs.replace(/width:\s*95%/i, 'width: 80%');
-          }
-          if (/style="/i.test(newAttrs)) {
-            newAttrs = newAttrs.replace(/style="/i, 'style="mso-table-align: center; margin-left: auto; margin-right: auto; ');
-          } else {
-            newAttrs = ' style="mso-table-align: center; margin-left: auto; margin-right: auto;"' + newAttrs;
-          }
-          if (!/align=/i.test(newAttrs)) {
-            newAttrs = ' align="center"' + newAttrs;
-          }
-          return `<center><table${newAttrs}>`;
-        })
-        .replace(/<\/table>/gi, '</table></center>');
-      const blob = new Blob(['\ufeff' + centeredHtml], { type: 'application/msword;charset=utf-8' });
-      const link = document.createElement('a');
-      link.href = URL.createObjectURL(blob);
-      link.download = `${fileName}.doc`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+      downloadDocxReport(token, buildDocxReport(fileName)).catch(err => setError(err.message));
     }
   };
-
-  const handleDownloadPlot = () => {
-    if (!results || !results.plot) return;
-    const link = document.createElement('a');
-    link.href = `data:image/png;base64,${results.plot}`;
-    link.download = `StatSathi_PCA_Biplot_${file.name.split('.')[0]}.png`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+  // Structured content for the server-side Word (.docx) report
+  const buildDocxReport = (fileName) => {
+    const matrixRows = (loadings) => results.variable_names.map(col => [col, ...loadings[col].map(v => v.toFixed(4))]);
+    const [planeX, planeY] = results.biplot ? [results.biplot.x_component, results.biplot.y_component] : [1, 2];
+    const sections = [{
+      heading: 'Overview',
+      paragraphs: [
+        `Variables: ${selectedCols.join(', ')}.`,
+        scale ? 'Variables were standardized, so the analysis uses the correlation matrix.' : 'Variables were centered but not standardized (covariance matrix).',
+        ...(hueVar ? [`Grouping variable for the biplot: ${hueVar}.`] : []),
+        ...(results.biplot ? [`Biplot: PC${results.biplot.x_component} vs PC${results.biplot.y_component}, ${results.biplot.type === 'correlation' ? 'correlation biplot (standardized scores, correlation loadings)' : 'distance biplot (scores and eigenvectors)'}.`] : []),
+        ...(results.kaiser_retained !== undefined && results.kaiser_retained !== null ? [`Kaiser criterion (eigenvalue ≥ 1): retain ${results.kaiser_retained} component(s).`] : [])
+      ]
+    }, {
+      heading: '1. Eigenvalues and Explained Variance',
+      tables: [{
+        columns: ['Component', 'Eigenvalue', 'Explained variance (%)', 'Cumulative (%)'],
+        rows: results.pc_names.map((name, i) => [name, results.eigenvalues[i].toFixed(4), (results.explained_variance_ratio[i] * 100).toFixed(2), (results.cumulative_variance_ratio[i] * 100).toFixed(2)])
+      }]
+    }, {
+      heading: '2. Eigenvectors (Component Loadings)',
+      tables: [{ columns: ['Variable', ...results.pc_names], rows: matrixRows(results.loadings) }]
+    }];
+    if (results.correlation_loadings) {
+      sections.push({
+        heading: '3. Correlation Loadings',
+        paragraphs: ['Correlation between each original variable and each principal component.'],
+        tables: [{ columns: ['Variable', ...results.pc_names], rows: matrixRows(results.correlation_loadings) }]
+      });
+    }
+    if (results.plot) {
+      sections.push({ heading: 'Biplot', images: [{ data: `data:image/png;base64,${results.plot}`, caption: `Figure 1. PCA biplot (PC${planeX} vs PC${planeY})` }] });
+    }
+    if (results.charts) {
+      const extra = [
+        ['scree', 'Scree plot with parallel analysis'],
+        ['correlation_circle', `Correlation circle (PC${planeX} vs PC${planeY})`],
+        ['contributions', `Variable contributions to PC${planeX} and PC${planeY}`],
+        ['loadings_heatmap', 'Correlation loadings heatmap'],
+        ['varimax_heatmap', 'Varimax-rotated loadings']
+      ].filter(([key]) => results.charts[key]);
+      sections.push({
+        heading: 'Component Charts',
+        images: extra.map(([key, caption], i) => ({ data: `data:image/png;base64,${results.charts[key]}`, caption: `Figure ${i + 2}. ${caption}` }))
+      });
+    }
+    if (results.varimax) {
+      const v = results.varimax;
+      sections.push({
+        heading: 'Varimax-Rotated Loadings',
+        paragraphs: [`Correlation loadings of the first ${v.components} components rotated by varimax (Kaiser normalization). Communalities (h²) are unchanged by the rotation.`],
+        tables: [{
+          columns: ['Variable', ...v.names, 'h²'],
+          rows: [
+            ...results.variable_names.map(col => [col, ...v.loadings[col].map(x => x.toFixed(3)), v.communalities[col].toFixed(3)]),
+            ['% of variance', ...v.percent.map(x => x.toFixed(2)), '']
+          ]
+        }]
+      });
+    }
+    if (results.sample_scores && results.sample_scores.length > 0) {
+      sections.push({
+        heading: 'Observation Scores (first 100 rows)',
+        paragraphs: [`Total observations: ${results.sample_scores.length}.`],
+        tables: [{ columns: ['Row', ...results.pc_names], rows: results.sample_scores.slice(0, 100).map((row, idx) => [idx + 1, ...row.map(v => v.toFixed(4))]) }]
+      });
+    }
+    return {
+      title: 'Principal Component Analysis (PCA) Report',
+      test_applied: 'Principal component analysis',
+      dataset_name: file?.name,
+      filename: fileName,
+      sections
+    };
   };
 
   if (!isOpen) return null;
 
+  const componentOptions = Array.from({ length: Math.max(2, selectedCols.length) }, (_, i) => i + 1);
+  const optionSelect = 'w-full rounded-xl border border-slate-200 bg-white py-2 px-3 font-sans text-xs outline-hidden focus:border-brand-indigo disabled:bg-slate-50 disabled:text-slate-400';
+  const quality = results?.observation_quality;
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-xs animate-fade-in">
+    <div role="dialog" aria-modal="true" className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-xs animate-fade-in">
       <div className="relative flex h-full max-h-[680px] w-full max-w-4xl flex-col rounded-3xl border border-slate-100 bg-white shadow-2xl overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4">
@@ -426,7 +328,7 @@ const PcaModal = ({ isOpen, onClose }) => {
               </p>
             </div>
           </div>
-          <button
+          <button data-dialog-close aria-label="Close"
             onClick={onClose}
             className="rounded-full p-1.5 text-slate-400 hover:bg-slate-50 hover:text-slate-600 transition-colors"
           >
@@ -443,75 +345,18 @@ const PcaModal = ({ isOpen, onClose }) => {
             </div>
           )}
 
-          {/* Step 1: Upload File */}
-          {!file && !loadingCols && (
-            <div
-              onDragEnter={handleDrag}
-              onDragOver={handleDrag}
-              onDragLeave={handleDrag}
-              onDrop={handleDrop}
-              onClick={() => fileInputRef.current?.click()}
-              className={`flex flex-col items-center justify-center rounded-3xl border-2 border-dashed py-16 px-6 cursor-pointer transition-all ${
-                dragActive
-                  ? 'border-brand-orange bg-orange-50/20'
-                  : 'border-slate-200 bg-slate-50/50 hover:bg-slate-50'
-              }`}
-            >
-              <input
-                type="file"
-                ref={fileInputRef}
-                onChange={handleFileChange}
-                accept=".csv,.xlsx,.xls"
-                className="hidden"
-              />
-              <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-orange-50 text-brand-orange">
-                <Upload className="h-6 w-6" />
-              </div>
-              <p className="font-display text-sm font-bold text-slate-700 text-center">
-                Drag and drop your dataset here, or <span className="text-brand-orange">browse</span>
-              </p>
-              <p className="font-sans text-[10px] text-slate-400 mt-2 text-center">
-                Supports Microsoft Excel (.xls, .xlsx) or CSV files
-              </p>
-            </div>
-          )}
-
-          {loadingCols && (
-            <div className="flex flex-col items-center justify-center py-20">
-              <RefreshCw className="h-8 w-8 text-brand-indigo animate-spin" />
-              <p className="font-display text-xs font-bold text-slate-500 mt-4">Parsing Columns...</p>
-            </div>
-          )}
-
           {/* Step 2: Parameter Configuration Form */}
-          {file && !loadingCols && !results && !loadingAnalysis && (
-            <form onSubmit={runAnalysis} className="space-y-6">
-              {/* Selected File Card */}
-              <div className="rounded-2xl border border-slate-100 bg-slate-50 p-4 flex justify-between items-center">
-                <div>
-                  <p className="font-sans text-xs font-bold text-slate-400 uppercase">Selected Dataset</p>
-                  <p className="font-sans text-sm font-semibold text-slate-700 truncate">{file.name}</p>
-                </div>
-                <div className="flex space-x-2">
-                  <button
-                    type="button"
-                    onClick={() => setViewerOpen(true)}
-                    className="rounded-xl border border-slate-200 bg-white p-2 text-slate-500 hover:bg-slate-50 hover:text-slate-800 transition-colors text-xs font-semibold flex items-center space-x-1 cursor-pointer"
-                  >
-                    <Eye className="h-3.5 w-3.5 text-brand-orange" />
-                    <span>View Data</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleReset}
-                    className="rounded-xl border border-slate-200 bg-white p-2 text-slate-500 hover:bg-slate-50 hover:text-slate-800 transition-colors text-xs font-semibold flex items-center space-x-1 cursor-pointer"
-                  >
-                    <RefreshCw className="h-3.5 w-3.5" />
-                    <span>Change File</span>
-                  </button>
-                </div>
-              </div>
+          {!results && !loadingAnalysis && (
+            <div className="space-y-6">
+              <DatasetPicker
+                dataset={dataset}
+                title="Select or drop a dataset for PCA"
+                hint="Numeric variables measured on the same observations (CSV or Excel). An optional grouping column can colour the biplot."
+                onViewData={() => setViewerOpen(true)}
+              />
 
+              {file && (
+              <form onSubmit={runAnalysis} className="space-y-6">
               {/* Grid selectors */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {/* Numeric Columns checklist */}
@@ -573,7 +418,7 @@ const PcaModal = ({ isOpen, onClose }) => {
                     <label className="font-sans text-xs font-bold text-slate-500">Biplot Color Palette</label>
                     <select
                       value={palette}
-                      onChange={(e) => setPalette(e.target.value)}
+                      onChange={(e) => { setPalette(e.target.value); setFigurePrefs({ palette: e.target.value }); }}
                       className="w-full rounded-xl border border-slate-200 bg-white py-3 px-4 font-sans text-sm outline-hidden focus:border-brand-indigo focus:ring-4 focus:ring-brand-indigo/10 transition-all"
                     >
                       {pcaPalettes.map(p => (
@@ -584,13 +429,66 @@ const PcaModal = ({ isOpen, onClose }) => {
                 </div>
               </div>
 
+              <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-xs space-y-3">
+                <p className="font-sans text-xs font-bold text-slate-500">Biplot and rotation options</p>
+                <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
+                  <label className="space-y-1">
+                    <span className="font-sans text-[11px] font-semibold text-slate-500">Horizontal axis</span>
+                    <select value={xComponent} onChange={(e) => setXComponent(Number(e.target.value))} className={optionSelect}>
+                      {componentOptions.map(n => <option key={n} value={n}>PC{n}</option>)}
+                    </select>
+                  </label>
+                  <label className="space-y-1">
+                    <span className="font-sans text-[11px] font-semibold text-slate-500">Vertical axis</span>
+                    <select value={yComponent} onChange={(e) => setYComponent(Number(e.target.value))} className={optionSelect}>
+                      {componentOptions.map(n => <option key={n} value={n}>PC{n}</option>)}
+                    </select>
+                  </label>
+                  <label className="space-y-1">
+                    <span className="font-sans text-[11px] font-semibold text-slate-500">Biplot type</span>
+                    <select value={biplotType} onChange={(e) => setBiplotType(e.target.value)} className={optionSelect}>
+                      <option value="distance">Distance (compare observations)</option>
+                      <option value="correlation">Correlation (compare variables)</option>
+                    </select>
+                  </label>
+                  <label className="space-y-1">
+                    <span className="font-sans text-[11px] font-semibold text-slate-500">Group outline</span>
+                    <select value={ellipse} onChange={(e) => setEllipse(e.target.value)} disabled={!hueVar} className={optionSelect}>
+                      <option value="confidence">95% confidence ellipse of the mean</option>
+                      <option value="data">95% data ellipse</option>
+                      <option value="hull">Convex hull</option>
+                      <option value="none">None</option>
+                    </select>
+                  </label>
+                  <label className="space-y-1">
+                    <span className="font-sans text-[11px] font-semibold text-slate-500">Label points by</span>
+                    <select value={labelCol} onChange={(e) => setLabelCol(e.target.value)} className={optionSelect}>
+                      <option value="">No labels</option>
+                      {columns.map(c => <option key={c} value={c}>{c}</option>)}
+                    </select>
+                  </label>
+                  <label className="space-y-1">
+                    <span className="font-sans text-[11px] font-semibold text-slate-500">Varimax components</span>
+                    <select value={rotateComponents} onChange={(e) => setRotateComponents(e.target.value)} className={optionSelect}>
+                      <option value="">Automatic{scale ? ' (parallel analysis)' : ''}</option>
+                      {componentOptions.filter(n => n >= 2).map(n => <option key={n} value={n}>{n} components</option>)}
+                    </select>
+                  </label>
+                </div>
+                <p className="font-sans text-[10px] text-slate-400">
+                  Distance biplots keep distances between observations; correlation biplots show correlations between variables as angles. Group outlines need a grouping variable. With more than 40 observations only the 12 furthest from the centre are labelled.
+                </p>
+              </div>
+
               <button
                 type="submit"
                 className="w-full rounded-2xl bg-brand-indigo py-3.5 font-sans text-sm font-bold text-white shadow-md shadow-indigo-100 hover:bg-indigo-700 transition-colors cursor-pointer"
               >
                 Run Multivariate PCA
               </button>
-            </form>
+              </form>
+              )}
+            </div>
           )}
 
           {loadingAnalysis && (
@@ -601,6 +499,8 @@ const PcaModal = ({ isOpen, onClose }) => {
           )}
 
           {/* Step 3: Analysis Results Dashboard */}
+          {reopened && <ReopenedBanner analysis={initialAnalysis} onRestore={restoreSaved} />}
+
           {results && !loadingAnalysis && (
             <div className="space-y-6 animate-fade-in">
               {/* Tab selector bar */}
@@ -609,7 +509,8 @@ const PcaModal = ({ isOpen, onClose }) => {
                   { id: 'eigenvalues', label: 'Eigenvalues' },
                   { id: 'loadings', label: 'Eigenvectors / Loadings' },
                   { id: 'scores', label: 'PC Scores Matrix' },
-                  { id: 'biplot', label: 'Biplot Graphic' }
+                  ...(results.varimax ? [{ id: 'rotation', label: 'Varimax Rotation' }] : []),
+                  { id: 'biplot', label: 'Charts' }
                 ].map(t => (
                   <button
                     key={t.id}
@@ -649,13 +550,48 @@ const PcaModal = ({ isOpen, onClose }) => {
                       ))}
                     </tbody>
                   </table>
+                  {results.kaiser_retained != null && (
+                    <p className="mt-3 font-sans text-[11px] text-slate-500">
+                      Kaiser criterion (eigenvalue ≥ 1): retain <span className="font-bold text-brand-indigo">{results.kaiser_retained}</span> component{results.kaiser_retained === 1 ? '' : 's'}.
+                      Eigenvalues are from the sample correlation matrix, so they sum to the number of variables.
+                    </p>
+                  )}
+                  {results.parallel_analysis && (
+                    <p className="mt-1 font-sans text-[11px] text-slate-500">
+                      Parallel analysis ({results.parallel_analysis.iterations} random datasets, 95th percentile): retain{' '}
+                      <span className="font-bold text-brand-indigo">{results.parallel_analysis.retained}</span> component{results.parallel_analysis.retained === 1 ? '' : 's'}.
+                      This is usually more reliable than the Kaiser rule; see the scree plot under Charts.
+                    </p>
+                  )}
+                  {results.scaled === false && (
+                    <p className="mt-3 font-sans text-[11px] text-slate-500">Covariance-matrix PCA (variables not standardized): the Kaiser criterion does not apply.</p>
+                  )}
                 </div>
               )}
 
               {/* Tab 2: Loadings Matrix */}
               {activeTab === 'loadings' && (
                 <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-xs overflow-x-auto">
-                  <h4 className="font-display text-xs font-bold text-slate-700 mb-3">Component Loadings (Eigenvectors Matrix)</h4>
+                  <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+                    <h4 className="font-display text-xs font-bold text-slate-700">
+                      {loadingView === 'correlation' && results.correlation_loadings
+                        ? 'Correlation Loadings (variable–component correlations)'
+                        : 'Component Loadings (Eigenvectors Matrix)'}
+                    </h4>
+                    {results.correlation_loadings && (
+                      <div className="flex space-x-1">
+                        {[['eigenvectors', 'Eigenvectors'], ['correlation', 'Correlations']].map(([id, label]) => (
+                          <button
+                            key={id}
+                            onClick={() => setLoadingView(id)}
+                            className={`rounded-lg px-2.5 py-1 font-sans text-[10px] font-bold transition-all ${loadingView === id ? 'bg-brand-indigo text-white' : 'bg-white border border-slate-200 text-slate-500 hover:bg-slate-50'}`}
+                          >
+                            {label}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                   <table className="w-full border-collapse font-sans text-xs text-left">
                     <thead>
                       <tr className="border-b border-slate-100 text-slate-400 font-bold">
@@ -669,7 +605,7 @@ const PcaModal = ({ isOpen, onClose }) => {
                       {results.variable_names.map(col => (
                         <tr key={col} className="border-b border-slate-50 text-slate-700">
                           <td className="py-2.5 font-semibold text-slate-800">{col}</td>
-                          {results.loadings[col].map((val, idx) => (
+                          {((loadingView === 'correlation' && results.correlation_loadings) ? results.correlation_loadings[col] : results.loadings[col]).map((val, idx) => (
                             <td key={idx} className="py-2.5 text-right font-mono">
                               {val >= 0 ? ` ${val.toFixed(4)}` : val.toFixed(4)}
                             </td>
@@ -696,17 +632,19 @@ const PcaModal = ({ isOpen, onClose }) => {
                           {results.pc_names.map(name => (
                             <th key={name} className="py-2 text-right">{name}</th>
                           ))}
+                          {quality && <th className="py-2 pr-3 text-right">cos² (PC{quality.components[0]}+PC{quality.components[1]})</th>}
                         </tr>
                       </thead>
                       <tbody>
                         {results.sample_scores.slice(0, 100).map((row, idx) => (
                           <tr key={idx} className="border-b border-slate-50 text-slate-700 hover:bg-slate-50/30">
-                            <td className="py-2 pl-3 font-bold text-slate-400">{idx + 1}</td>
+                            <td className="py-2 pl-3 font-bold text-slate-400">{idx + 1}{quality?.labels?.[idx] ? <span className="ml-1.5 font-semibold text-slate-600">{quality.labels[idx]}</span> : null}</td>
                             {row.map((val, pcIdx) => (
                               <td key={pcIdx} className="py-2 text-right font-mono">
                                 {val.toFixed(4)}
                               </td>
                             ))}
+                            {quality && <td className="py-2 pr-3 text-right font-mono">{quality.cos2_plane[idx].toFixed(3)}</td>}
                           </tr>
                         ))}
                       </tbody>
@@ -715,40 +653,72 @@ const PcaModal = ({ isOpen, onClose }) => {
                 </div>
               )}
 
-              {/* Tab 4: Biplot Graphic */}
-              {activeTab === 'biplot' && (
-                <div className="rounded-2xl border border-slate-100 bg-slate-50/50 p-4 flex flex-col items-center justify-center">
-                  <div className="w-full flex justify-between items-center mb-3">
-                    <h4 className="font-display text-xs font-bold text-slate-700">PCA Biplot Chart</h4>
-                    <div className="flex items-center space-x-2">
-                      <div className="flex items-center space-x-1.5 mr-2">
-                        <label className="font-sans text-[10px] font-bold text-slate-400 uppercase">Palette:</label>
-                        <select
-                          value={palette}
-                          onChange={(e) => setPalette(e.target.value)}
-                          className="rounded-lg border border-slate-200 bg-white px-2 py-1 font-sans text-[11px] text-slate-600 outline-hidden focus:border-brand-indigo focus:ring-1 focus:ring-brand-indigo transition-all animate-fade-in"
-                        >
-                          {pcaPalettes.map(p => (
-                            <option key={p.value} value={p.value}>{p.label}</option>
+              {activeTab === 'rotation' && results.varimax && (
+                <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-xs overflow-x-auto">
+                  <h4 className="font-display text-xs font-bold text-slate-700 mb-1">Varimax-Rotated Loadings ({results.varimax.components} components)</h4>
+                  <p className="mb-3 font-sans text-[11px] text-slate-500">
+                    Correlation loadings rotated by varimax (Kaiser normalization), so each variable loads mainly on one component and the components are easier to name.
+                    The rotation redistributes variance among the retained components; each variable&apos;s communality (h²) is unchanged. Bold: |loading| ≥ 0.5.
+                  </p>
+                  <table className="w-full border-collapse font-sans text-xs text-left">
+                    <thead>
+                      <tr className="border-b border-slate-100 text-slate-400 font-bold">
+                        <th className="py-2 pr-4">Variable</th>
+                        {results.varimax.names.map(name => <th key={name} className="py-2 text-right">{name}</th>)}
+                        <th className="py-2 text-right">h²</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {results.variable_names.map(col => (
+                        <tr key={col} className="border-b border-slate-50 text-slate-700">
+                          <td className="py-2.5 font-semibold text-slate-800">{col}</td>
+                          {results.varimax.loadings[col].map((val, idx) => (
+                            <td key={idx} className={`py-2.5 text-right font-mono ${Math.abs(val) >= 0.5 ? 'font-bold text-brand-indigo' : ''}`}>{val.toFixed(3)}</td>
                           ))}
-                        </select>
-                      </div>
-                      <button
-                        onClick={handleDownloadPlot}
-                        className="rounded-xl border border-slate-200 bg-white p-1.5 text-slate-500 hover:bg-slate-50 hover:text-slate-800 transition-colors text-xs font-semibold flex items-center space-x-1 cursor-pointer"
-                      >
-                        <Download className="h-3.5 w-3.5" />
-                        <span>Save Plot</span>
-                      </button>
-                    </div>
+                          <td className="py-2.5 text-right font-mono">{results.varimax.communalities[col].toFixed(3)}</td>
+                        </tr>
+                      ))}
+                      <tr className="text-slate-500">
+                        <td className="py-2.5 font-semibold">% of variance</td>
+                        {results.varimax.percent.map((val, idx) => <td key={idx} className="py-2.5 text-right font-mono">{val.toFixed(2)}%</td>)}
+                        <td />
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              )}
+
+              {/* Tab 4: Charts (biplot, scree plot, correlation circle, contributions) */}
+              {activeTab === 'biplot' && (
+                <div className="space-y-3">
+                  <div className="flex items-center justify-end space-x-1.5">
+                    <label className="font-sans text-[10px] font-bold text-slate-400 uppercase">Palette:</label>
+                    <select
+              value={palette}
+              onChange={(e) => { setPalette(e.target.value); setFigurePrefs({ palette: e.target.value }); }}
+              className="rounded-lg border border-slate-200 bg-white px-2 py-1 font-sans text-[11px] text-slate-600 outline-hidden focus:border-brand-indigo focus:ring-1 focus:ring-brand-indigo transition-all animate-fade-in"
+              >
+              {pcaPalettes.map(p => (
+              <option key={p.value} value={p.value}>{p.label}</option>
+              ))}
+              </select>
                   </div>
-                  <div className="bg-white rounded-2xl border border-slate-100 p-3 shadow-xs max-w-full overflow-hidden flex justify-center items-center">
-                    <img
-                      src={`data:image/png;base64,${results.plot}`}
-                      alt="PCA Biplot"
-                      className="max-w-[500px] h-auto rounded-xl"
-                    />
-                  </div>
+                  <ResultChartPanel
+                    key={results.plot.slice(-32)}
+                    token={token}
+                    file={file}
+                    classicPlot={results.plot}
+                    initialImages={results.charts || {}}
+                    options={[
+                      { value: 'classic', label: 'Biplot', hint: `${results.biplot?.type === 'correlation' ? 'Correlation biplot' : 'Distance biplot'}: observations on PC${results.biplot?.x_component ?? 1} and PC${results.biplot?.y_component ?? 2} with variable arrows${hueVar && results.biplot?.ellipse !== 'none' ? ' and group outlines' : ''}.` },
+                      ...(results.charts?.scree ? [{ value: 'scree', label: 'Scree plot', hint: 'Eigenvalues with the parallel-analysis threshold and the Kaiser line.' }] : []),
+                      ...(results.charts?.correlation_circle ? [{ value: 'correlation_circle', label: 'Correlation circle', hint: 'Correlations of each variable with the biplot components, coloured by quality of representation (cos²).' }] : []),
+                      ...(results.charts?.contributions ? [{ value: 'contributions', label: 'Contributions', hint: 'How much each variable contributes to the biplot components.' }] : []),
+                      ...(results.charts?.loadings_heatmap ? [{ value: 'loadings_heatmap', label: 'Loadings heatmap', hint: 'Correlation of every variable with each retained component.' }] : []),
+                      ...(results.charts?.varimax_heatmap ? [{ value: 'varimax_heatmap', label: 'Varimax loadings', hint: 'Rotated loadings: each variable loads mainly on one component.' }] : [])
+                    ]}
+                    filenameBase="statsathi_pca"
+                  />
                 </div>
               )}
             </div>
@@ -779,6 +749,14 @@ const PcaModal = ({ isOpen, onClose }) => {
             <div />
           )}
           <div className="flex space-x-2">
+            <SaveToProjectButton
+              module="pca"
+              report={() => buildDocxReport('report')}
+              source={dataset.source}
+              defaultTitle={`PCA – ${file?.name || 'dataset'}`}
+              parameters={{ variables: selectedCols, scale, hue: hueVar || null, biplot: { x: xComponent, y: yComponent, type: biplotType, ellipse, labels: labelCol || null }, varimax: rotateComponents || 'auto', dataset: file?.name }}
+              result={results}
+            />
             {file && results && (
               <button
                 onClick={handleReset}

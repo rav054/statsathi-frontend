@@ -1,9 +1,28 @@
-import React, { useState, useRef, useEffect } from 'react';
+import { apiFetch } from '../utils/apiFetch';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { useAuth, API_URL } from '../context/AuthContext';
-import { X, Upload, Check, AlertCircle, Download, RefreshCw, Info, HelpCircle, Eye, Table, Copy } from 'lucide-react';
+
+// Must match METHOD_LABELS in backend/app/posthoc.py
+const POSTHOC_LABELS = {
+  tukey: "Tukey's HSD (Tukey-Kramer)",
+  lsd: "Fisher's LSD (Critical Difference)",
+  duncan: "Duncan's Multiple Range Test (DMRT)",
+  bonferroni: 'Bonferroni-corrected t-tests',
+  games_howell: 'Games-Howell (unequal variances)'
+};
+import { X, Check, AlertCircle, Download, RefreshCw, Info, HelpCircle, Eye, Table, Copy } from 'lucide-react';
 import DatasetViewerModal from './DatasetViewerModal';
+import DatasetPicker from './DatasetPicker';
+import { useDataset } from '../hooks/useDataset';
 import Plotly from 'plotly.js-dist-min';
-import { getWordReportHeader, getWordReportFooter } from '../utils/reportHeader';
+import { downloadDocxReport, formatP } from '../utils/reportApi';
+import SaveToProjectButton from './SaveToProjectButton';
+import ReopenedBanner from './ReopenedBanner';
+import ResultChartPanel from './ResultChartPanel';
+import FigurePresetSelect from './FigurePresetSelect';
+import { PALETTE_OPTIONS, themedLayout } from '../utils/figureStyle';
+import { exportPlotlyFigure } from '../utils/plotlyExport';
+import { useFigurePreferences } from '../utils/figurePreferences';
 
 const DATA_FORMAT_GUIDES = {
   oneway: {
@@ -114,23 +133,50 @@ const anovaPalettes = [
   { value: 'Purples', label: 'Deep Purple' },
   { value: 'magma', label: 'Magma Pink-Black' },
   { value: 'sunset', label: 'Sunset Glow' },
-  { value: 'crest', label: 'Crest Teal' }
+  { value: 'crest', label: 'Crest Teal' },
+  ...PALETTE_OPTIONS.map(p => ({ value: p.value, label: p.label }))
 ];
 
-const AnovaModal = ({ isOpen, onClose }) => {
-  const { token, user } = useAuth();
+// Chart styles offered under the results (drawn by /analyze/result-chart)
+const anovaChartOptions = (testType) => {
+  const classic = { value: 'classic', label: 'Classic' };
+  if (['oneway', 'rbd_oneway', 'lsd'].includes(testType)) {
+    return [
+      classic,
+      { value: 'raincloud', label: 'Raincloud', hint: 'Density, box plot and every plot value, with post-hoc letters.' },
+      { value: 'boxswarm', label: 'Box + beeswarm', hint: 'Box plots with every observation and post-hoc letters.' },
+      { value: 'meanci', label: 'Mean ± 95% CI', hint: 'Treatment means with 95% confidence intervals and post-hoc letters.' }
+    ];
+  }
+  if (['twoway', 'rbd_twoway', 'splitplot'].includes(testType)) {
+    return [
+      classic,
+      { value: 'meanci', label: 'Means ± 95% CI by factor B', hint: 'Means of every A × B combination with 95% confidence intervals.' },
+      { value: 'meanheatmap', label: 'Means heatmap (A × B)', hint: 'Mean of every combination of the two factors.' }
+    ];
+  }
+  return [classic];
+};
+
+const AnovaModal = ({ isOpen, onClose, initialAnalysis = null }) => {
+  const saved = initialAnalysis?.parameters || {};
+  const { token } = useAuth();
   
   // State for dataset selection
-  const [file, setFile] = useState(null);
-
-
-
-
-  const [columns, setColumns] = useState([]);
-  const [numericColumns, setNumericColumns] = useState([]);
-  const [loadingCols, setLoadingCols] = useState(false);
-  const [dragActive, setDragActive] = useState(false);
-  const fileInputRef = useRef(null);
+  const dataset = useDataset({
+    active: isOpen && !initialAnalysis,
+    onLoaded: ({ numericColumns: numeric }) => {
+      setDepVar(numeric[0] || '');
+      setIndVar1('');
+      setIndVar2('');
+      setRepVar('');
+      setSelectedFactors([]);
+      setResults(null);
+    },
+    onCleared: () => setResults(null),
+  });
+  const { clear } = dataset;
+  const { file, columns, numericColumns } = dataset;
 
   // State for test configurations
   const [testType, setTestType] = useState('oneway');
@@ -140,12 +186,30 @@ const AnovaModal = ({ isOpen, onClose }) => {
   const [repVar, setRepVar] = useState('');
   const [selectedFactors, setSelectedFactors] = useState([]);
   const [posthocMethod, setPosthocMethod] = useState('tukey');
-  const [palette, setPalette] = useState('Oranges');
+  const [figurePrefs, setFigurePrefs] = useFigurePreferences();
+  const [palette, setPalette] = useState(figurePrefs.palette);
   const [showFormatGuide, setShowFormatGuide] = useState(false);
   
   // State for results
   const [loadingAnalysis, setLoadingAnalysis] = useState(false);
-  const [results, setResults] = useState(null);
+  const [results, setResults] = useState(initialAnalysis?.result || null);
+  const [reopened, setReopened] = useState(Boolean(initialAnalysis?.result));
+
+  // Fetch the dataset this analysis was run on, then restore its settings so it can be run again
+  const restoreSaved = async () => {
+    setReopened(false);
+    setResults(null);
+    const loaded = await dataset.selectProjectDataset(initialAnalysis.dataset, initialAnalysis.projectName);
+    if (loaded) {
+      setTestType(saved.design || 'oneway');
+      setDepVar(saved.dependent || '');
+      setIndVar1(saved.factor_a || '');
+      setIndVar2(saved.factor_b || '');
+      setRepVar(saved.block || '');
+      setPosthocMethod(saved.posthoc || 'tukey');
+    }
+  };
+  const [chartImage, setChartImage] = useState(null); // chart style chosen below the results, used in reports
   const [error, setError] = useState(null);
   const [viewerOpen, setViewerOpen] = useState(false);
   const [postHocModalOpen, setPostHocModalOpen] = useState(false);
@@ -269,7 +333,7 @@ const AnovaModal = ({ isOpen, onClose }) => {
   const handleCopyGridTable = () => {
     const data = buildCrossTabulatedData();
     if (!data) return;
-    const { rFactor, c1Factor, c2Factor, rowLevels, col1Levels, col2Levels, cellMap } = data;
+    const { rFactor, c2Factor, rowLevels, col1Levels, col2Levels, cellMap } = data;
     const hasSubHeader = c2Factor && col2Levels.length > 0;
 
     let html = `<table border="1" style="border-collapse: collapse; text-align: center; font-family: Arial, sans-serif; font-size: 11pt;">`;
@@ -282,7 +346,7 @@ const AnovaModal = ({ isOpen, onClose }) => {
 
     if (hasSubHeader) {
       html += `<tr style="background-color: #f8fafc;">`;
-      col1Levels.forEach(c1 => {
+      col1Levels.forEach(() => {
         col2Levels.forEach(c2 => {
           html += `<th style="border: 1px solid #94a3b8; padding: 6px; background-color: #f1f5f9;">${c2}</th>`;
         });
@@ -320,7 +384,7 @@ const AnovaModal = ({ isOpen, onClose }) => {
         navigator.clipboard.writeText(html);
         alert("Table HTML copied to clipboard!");
       });
-    } catch (e) {
+    } catch {
       navigator.clipboard.writeText(html);
       alert("Table HTML copied to clipboard!");
     }
@@ -329,15 +393,8 @@ const AnovaModal = ({ isOpen, onClose }) => {
   const handleDownloadGridChart = (format, elementId) => {
     const el = document.getElementById(elementId);
     if (!el) return;
-    const scale = downloadDpi / 96;
     const filename = `StatSathi_MultiFactor_Grid_Plot_${depVar}_${downloadDpi}dpi`;
-    Plotly.downloadImage(el, {
-      format: format,
-      width: 800,
-      height: 500,
-      scale: scale,
-      filename: filename
-    });
+    exportPlotlyFigure(el, { format, preset: figurePrefs.preset, dpi: downloadDpi, filename: filename }).catch(err => setError(err.message));
   };
 
   const getSeriesColor = (c1Idx, c2Idx, totalC1, totalC2, theme) => {
@@ -345,19 +402,12 @@ const AnovaModal = ({ isOpen, onClose }) => {
       return gridCustomColor;
     }
 
+    const shared = PALETTE_OPTIONS.find(p => p.value === theme);
+    if (shared) {
+      return shared.colors[(c1Idx * Math.max(1, totalC2) + c2Idx) % shared.colors.length];
+    }
+
     const colorFamilies = {
-      forest_field: [
-        ['#1E70B8', '#74B3E8', '#93C5FD'], // Blue family (like Image 1)
-        ['#E85D26', '#F6A483', '#FED7AA'], // Orange family (like Image 1)
-        ['#15803D', '#4ADE80', '#BBF7D0'], // Green family
-        ['#7E22CE', '#C084FC', '#F3E8FF']  // Purple family
-      ],
-      agri_green: [
-        ['#15803D', '#4ADE80', '#86EFAC'],
-        ['#C2410C', '#FB923C', '#FED7AA'],
-        ['#1E40AF', '#60A5FA', '#BFDBFE'],
-        ['#6B21A8', '#C084FC', '#F3E8FF']
-      ],
       forest_field: [
         ['#1E70B8', '#74B3E8', '#93C5FD'], // Blue family (like Image 1)
         ['#E85D26', '#F6A483', '#FED7AA'], // Orange family (like Image 1)
@@ -814,11 +864,11 @@ const AnovaModal = ({ isOpen, onClose }) => {
                     <option value="deep_purple">Deep Purple</option>
                     <option value="coolwarm">Divergent Coolwarm</option>
                     <option value="magma">Magma Dark</option>
-                    <option value="viridis">Viridis Scientific</option>
                     <option value="crimson_gold">Crimson & Gold</option>
                     <option value="autumn_harvest">Autumn Harvest</option>
                     <option value="monochrome_grey">Publication Greyscale (Journal)</option>
                     <option value="neon_vibrant">Modern Cyber Vibrant</option>
+                    {PALETTE_OPTIONS.map(p => <option key={p.value} value={p.value}>{p.label}</option>)}
                     <option value="custom">Custom Color of Choice</option>
                   </select>
                 </div>
@@ -910,6 +960,7 @@ const AnovaModal = ({ isOpen, onClose }) => {
                   {rFactor} × {c1Factor}{c2Factor ? ' × ' + c2Factor : ''} Interaction Graph
                 </span>
                 <div className="flex items-center space-x-2">
+                  <FigurePresetSelect value={figurePrefs.preset} onChange={(preset) => setFigurePrefs({ preset })} />
                   <button
                     type="button"
                     onClick={() => handleDownloadGridChart('png', elementId)}
@@ -936,7 +987,7 @@ const AnovaModal = ({ isOpen, onClose }) => {
     );
   };
 
-  const getAvailableFactors = () => {
+  function getAvailableFactors() {
     if (['crd_multifactor', 'rbd_multifactor'].includes(testType)) {
       return selectedFactors;
     }
@@ -944,7 +995,7 @@ const AnovaModal = ({ isOpen, onClose }) => {
       return [indVar1, indVar2].filter(Boolean);
     }
     return [];
-  };
+  }
 
   const getSplitLevels = () => {
     if (!results || !results.descriptives || !postHocSplitFactor) return [];
@@ -1008,6 +1059,9 @@ const AnovaModal = ({ isOpen, onClose }) => {
       sunset: { primary: '#BE123C', line: '#9F1239', accent: '#F59E0B' },
       crest: { primary: '#047857', line: '#065F46', accent: '#06B6D4' }
     };
+    PALETTE_OPTIONS.forEach(p => {
+      paletteMap[p.value] = { primary: p.colors[0], line: p.colors[0], accent: '#374151' };
+    });
 
     const currentTheme = paletteMap[palette] || paletteMap.Oranges;
     const barColor = postHocBarColor || currentTheme.primary;
@@ -1065,13 +1119,11 @@ const AnovaModal = ({ isOpen, onClose }) => {
           title: { text: postHocYLabel, font: { size: postHocFontSize + 1, family: 'Inter', weight: 'bold', color: postHocFontColor }, standoff: Math.max(10, postHocFontSize * 0.8) },
           tickfont: { color: postHocFontColor, size: postHocFontSize },
           automargin: true
-        },
-        paper_bgcolor: 'rgba(0,0,0,0)',
-        plot_bgcolor: 'rgba(0,0,0,0)'
+        }
       };
 
       const config = { responsive: true, displayModeBar: false };
-      Plotly.newPlot(element, data, layout, config);
+      Plotly.newPlot(element, data, themedLayout(layout, { palette }), config);
     };
 
     setTimeout(() => {
@@ -1095,8 +1147,8 @@ const AnovaModal = ({ isOpen, onClose }) => {
           const sortedDescriptives = Object.entries(results.descriptives || {})
             .sort((a, b) => a[0].localeCompare(b[0], undefined, {numeric: true, sensitivity: 'base'}));
           const xData = sortedDescriptives.map(([name]) => name);
-          const yData = sortedDescriptives.map(([_, info]) => info.mean);
-          const seData = sortedDescriptives.map(([_, info]) => info.se || 0);
+          const yData = sortedDescriptives.map(([, info]) => info.mean);
+          const seData = sortedDescriptives.map(([, info]) => info.se || 0);
           const textData = sortedDescriptives.map(([name]) => results.posthoc_letters?.[name] || '');
           renderChart(el, xData, yData, seData, textData, 'All Treatments');
         }
@@ -1121,12 +1173,7 @@ const AnovaModal = ({ isOpen, onClose }) => {
   const handleDownloadPostHocReport = (format) => {
     if (!results) return;
 
-    const posthocMethodLabels = {
-      tukey: "Tukey's HSD / LSD",
-      duncan: "Duncan's Multiple Range Test (DMRT)",
-      games_howell: "Games-Howell"
-    };
-    const currentMethodLabel = posthocMethodLabels[posthocMethod] || posthocMethod;
+    const currentMethodLabel = results.posthoc_method_label || POSTHOC_LABELS[posthocMethod] || posthocMethod;
 
     let reportText = `================================================================================\n`;
     reportText += `POST-HOC MEAN SEPARATION ANALYSIS REPORT (${currentMethodLabel.toUpperCase()})\n`;
@@ -1190,7 +1237,6 @@ const AnovaModal = ({ isOpen, onClose }) => {
     reportText += `================================================================================\n`;
 
     const fileName = `StatSathi_PostHoc_Report_${depVar}`;
-    const title = `Stat Sathi Post-Hoc ${currentMethodLabel} Report`;
 
     if (format === 'txt') {
       const blob = new Blob([reportText], { type: 'text/plain;charset=utf-8' });
@@ -1201,178 +1247,45 @@ const AnovaModal = ({ isOpen, onClose }) => {
       link.click();
       document.body.removeChild(link);
     } else if (format === 'doc') {
-      const sortedDescriptives = Object.entries(results.descriptives || {})
-        .sort((a, b) => a[0].localeCompare(b[0], undefined, {numeric: true, sensitivity: 'base'}));
-
-      const significanceRows = sortedDescriptives.map(([cellName, info]) => {
-        const meanStr = info.mean.toFixed(3);
-        const seStr = info.se !== undefined ? info.se.toFixed(3) : '-';
-        const groupStr = results.posthoc_letters?.[cellName] || '-';
-        return `
-          <tr>
-            <td style="border: 1px solid #CBD5E1; padding: 10px; font-weight: bold; background-color: #F8FAFC; color: #1E293B;">${cellName}</td>
-            <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-family: 'Courier New', Courier, monospace; color: #334155;">${meanStr}</td>
-            <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-family: 'Courier New', Courier, monospace; color: #334155;">${seStr}</td>
-            <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: center; font-weight: bold; color: #F97316;">${groupStr}</td>
-          </tr>
-        `;
-      }).join('');
-
-      let cdRows = '';
-      if (results.cd_results && results.cd_results.length > 0) {
-        cdRows = results.cd_results.map(r => `
-          <tr>
-            <td style="border: 1px solid #CBD5E1; padding: 10px; font-weight: bold; background-color: #F8FAFC; color: #1E293B;">${r.parameter}</td>
-            <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-family: 'Courier New', Courier, monospace;">${r.se_d.toFixed(3)}</td>
-            <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-family: 'Courier New', Courier, monospace; font-weight: bold; color: #4F46E5;">${r.cd_5.toFixed(3)}</td>
-            <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-family: 'Courier New', Courier, monospace; font-weight: bold; color: #F97316;">${r.cd_1.toFixed(3)}</td>
-          </tr>
-        `).join('');
-      }
-
-      const layoutNames = {
-        oneway: "Completely Randomized Design (CRD) - One Factor",
-        rbd_oneway: "Randomized Block Design (RBD) - One Factor",
-        lsd: "Latin Square Design (LSD)",
-        twoway: "Completely Randomized Design (CRD) - Two Factors",
-        rbd_twoway: "Randomized Block Design (RBD) - Two Factors",
-        splitplot: "Split-plot Design"
-      };
-
-      const htmlContent = `
-        <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
-        <head>
-          <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
-          <title>${title}</title>
-          <!--[if gte mso 9]>
-          <xml>
-            <w:WordDocument>
-              <w:View>Print</w:View>
-              <w:Zoom>100</w:Zoom>
-            </w:WordDocument>
-          </xml>
-          <![endif]-->
-          <style>
-            body { font-family: Arial, sans-serif; font-size: 11pt; line-height: 1.6; color: #1E293B; margin: 1in; }
-            h1 { color: #4F46E5; font-size: 18pt; border-bottom: 2px solid #4F46E5; padding-bottom: 6px; margin-bottom: 20px; }
-            h2 { color: #1E293B; font-size: 14pt; margin-top: 25px; border-bottom: 1px solid #E2E8F0; padding-bottom: 4px; }
-            p { margin-bottom: 15px; }
-            .meta-table { border-collapse: collapse; width: 75%; margin-left: auto; margin-right: auto; margin-bottom: 25px; }
-            .meta-table td { padding: 8px; border: 1px solid #E2E8F0; }
-            .meta-label { font-weight: bold; background-color: #F8FAFC; width: 30%; }
-          </style>
-        </head>
-        <body>
-          ${getWordReportHeader({
-            title: `Post-Hoc Mean Separation Analysis Report (${currentMethodLabel})`,
-            testApplied: layoutNames[testType] || testType,
-            fileName: file ? file.name : '',
-            curator: user ? user.full_name : 'Guest Researcher',
-            extraMeta: [
-              ['Dependent Variable', depVar],
-              ['Factor A (Treatment Group)', indVar1],
-              ...(indVar2 ? [['Factor B', indVar2]] : []),
-              ...(repVar ? [['Replication/Block Factor', repVar]] : [])
-            ]
-          })}
-
-          <h2 style="color: #4F46E5; font-family: Arial, sans-serif; font-size: 14pt; margin-top: 20px;">Significance Grouping Table (CD at 5% level)</h2>
-          <div align="center">
-          <table align="center" style="margin-left: auto; margin-right: auto; border-collapse: collapse; width: 80%; font-family: Arial, sans-serif; font-size: 10pt; margin-bottom: 20px;">
-            <thead>
-              <tr style="background-color: #4F46E5; color: white;">
-                <th style="border: 1px solid #CBD5E1; padding: 10px; text-align: left; font-weight: bold;">Treatment Group</th>
-                <th style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-weight: bold;">Mean</th>
-                <th style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-weight: bold;">S.E.</th>
-                <th style="border: 1px solid #CBD5E1; padding: 10px; text-align: center; font-weight: bold;">Significance Group</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${significanceRows}
-            </tbody>
-          </table>
-          </div>
-
-          <h2 style="color: #4F46E5; font-family: Arial, sans-serif; font-size: 14pt; margin-top: 20px;">Summary ANOVA Metrics</h2>
-          <div align="center">
-          <table align="center" style="margin-left: auto; margin-right: auto; border-collapse: collapse; width: 80%; font-family: Arial, sans-serif; font-size: 10pt; margin-bottom: 20px;">
-            <thead>
-              <tr style="background-color: #4F46E5; color: white;">
-                <th style="border: 1px solid #CBD5E1; padding: 10px; text-align: left; font-weight: bold;">Metric</th>
-                <th style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-weight: bold;">Value</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; font-weight: bold; background-color: #F8FAFC;">Grand Mean</td>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-family: 'Courier New', Courier, monospace;">${results.grand_mean ? results.grand_mean.toFixed(3) : 'N/A'}</td>
-              </tr>
-              <tr>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; font-weight: bold; background-color: #F8FAFC;">Coefficient of Variation (C.V. %)</td>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-family: 'Courier New', Courier, monospace;">${results.cv ? results.cv.toFixed(3) + '%' : 'N/A'}</td>
-              </tr>
-              <tr>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; font-weight: bold; background-color: #F8FAFC;">Standard Error of Mean (SE(m))</td>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-family: 'Courier New', Courier, monospace;">${results.sem ? results.sem.toFixed(3) : 'N/A'}</td>
-              </tr>
-            </tbody>
-          </table>
-          </div>
-
-          ${cdRows ? `
-          <h2 style="color: #4F46E5; font-family: Arial, sans-serif; font-size: 14pt; margin-top: 20px;">Critical Differences & Standard Errors of Difference</h2>
-          <div align="center">
-          <table align="center" style="margin-left: auto; margin-right: auto; border-collapse: collapse; width: 80%; font-family: Arial, sans-serif; font-size: 10pt; margin-bottom: 20px;">
-            <thead>
-              <tr style="background-color: #4F46E5; color: white;">
-                <th style="border: 1px solid #CBD5E1; padding: 10px; text-align: left; font-weight: bold;">Parameter</th>
-                <th style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-weight: bold;">SE(d)</th>
-                <th style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-weight: bold;">C.D. 5%</th>
-                <th style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-weight: bold;">C.D. 1%</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${cdRows}
-            </tbody>
-          </table>
-          </div>
-          ` : ''}
-
-          ${getWordReportFooter()}
-        </body>
-        </html>
-      `;
-      const centeredHtml = htmlContent
-        .replace(/width:\s*100%/gi, 'width: 80%')
-        .replace(/class="meta-table"/gi, 'class="meta-table" style="width: 75%;"')
-        .replace(/<table([^>]*)>/gi, (match, attrs) => {
-          let newAttrs = attrs;
-          if (/width:\s*100%/i.test(newAttrs)) {
-            newAttrs = newAttrs.replace(/width:\s*100%/i, 'width: 80%');
-          }
-          if (/style="/i.test(newAttrs)) {
-            newAttrs = newAttrs.replace(/style="/i, 'style="mso-table-align: center; margin-left: auto; margin-right: auto; ');
-          } else {
-            newAttrs = ' style="mso-table-align: center; margin-left: auto; margin-right: auto;"' + newAttrs;
-          }
-          if (!/align=/i.test(newAttrs)) {
-            newAttrs = ' align="center"' + newAttrs;
-          }
-          return `<center><table${newAttrs}>`;
-        })
-        .replace(/<\/table>/gi, '</table></center>');
-      const blob = new Blob(['\ufeff' + centeredHtml], { type: 'application/msword;charset=utf-8' });
-      const link = document.createElement('a');
-      link.href = URL.createObjectURL(blob);
-      link.download = `${fileName}.doc`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+      // Include the rendered post-hoc bar chart(s) as images
+      const chartElements = [chartRef.current, ...getSplitLevels().map((_, idx) => document.getElementById(`plotly-posthoc-${idx}`))].filter(Boolean);
+      Promise.all(chartElements.map(el => Plotly.toImage(el, { format: 'png', width: 900, height: 550 }).catch(() => null)))
+        .then(images => downloadDocxReport(token, buildPostHocDocxReport(fileName, currentMethodLabel, images.filter(Boolean))))
+        .catch(err => setError(err.message));
     }
   };
 
+  const buildPostHocDocxReport = (fileName, methodLabel, chartImages) => {
+    const fx3 = (v) => (v === null || v === undefined ? 'N/A' : v.toFixed(3));
+    return {
+      title: `Post-Hoc Mean Separation Report (${methodLabel})`,
+      test_applied: designLabel(testType),
+      dataset_name: file?.name,
+      filename: fileName,
+      sections: [{
+        heading: 'Design',
+        paragraphs: designParagraphs()
+      }, {
+        heading: '1. Significance Grouping',
+        tables: [{
+          columns: ['Treatment', 'Mean', 'S.E.', 'Group'],
+          rows: sortedDescriptiveEntries().map(([cell, info]) => [cell, info.mean.toFixed(3), info.se !== undefined && info.se !== null ? info.se.toFixed(3) : '–', results.posthoc_letters?.[cell] || '–']),
+          note: `Means sharing a letter do not differ significantly at the 5% level (${methodLabel}).`
+        }]
+      }, {
+        heading: '2. Summary Metrics',
+        tables: [{
+          columns: ['Metric', 'Value'],
+          rows: [['Grand mean', fx3(results.grand_mean)], ['C.V. (%)', fx3(results.cv)], ['SE(m)', fx3(results.sem)]]
+        }, ...cdDocxTable()]
+      }, ...(chartImages.length > 0 ? [{
+        heading: 'Figures',
+        images: chartImages.map((data, i) => ({ data, caption: `Figure ${i + 1}. Treatment means with ${methodLabel} groupings` }))
+      }] : [])]
+    };
+  };
+
   const handleDownloadPostHocChart = (format) => {
-    const scale = downloadDpi / 96;
     const filenameBase = `StatSathi_PostHoc_Chart_${depVar}_${downloadDpi}dpi`;
 
     const factors = getAvailableFactors();
@@ -1383,24 +1296,12 @@ const AnovaModal = ({ isOpen, onClose }) => {
       levels.forEach((level, idx) => {
         const el = document.getElementById(`plotly-posthoc-${idx}`);
         if (el) {
-          Plotly.downloadImage(el, {
-            format: format,
-            width: 800,
-            height: 500,
-            scale: scale,
-            filename: `${filenameBase}_${postHocSplitFactor}_${level}`
-          });
+          exportPlotlyFigure(el, { format, preset: figurePrefs.preset, dpi: downloadDpi, filename: `${filenameBase}_${postHocSplitFactor}_${level}` }).catch(err => setError(err.message));
         }
       });
     } else {
       if (!chartRef.current) return;
-      Plotly.downloadImage(chartRef.current, {
-        format: format,
-        width: 800,
-        height: 500,
-        scale: scale,
-        filename: filenameBase
-      });
+      exportPlotlyFigure(chartRef.current, { format, preset: figurePrefs.preset, dpi: downloadDpi, filename: filenameBase }).catch(err => setError(err.message));
     }
   };
 
@@ -1410,10 +1311,8 @@ const AnovaModal = ({ isOpen, onClose }) => {
     return `p = ${p.toFixed(3)}`;
   };
 
-  const handleReset = () => {
-    setFile(null);
-    setColumns([]);
-    setNumericColumns([]);
+  const handleReset = useCallback(() => {
+    clear();
     setTestType('oneway');
     setDepVar('');
     setIndVar1('');
@@ -1429,14 +1328,13 @@ const AnovaModal = ({ isOpen, onClose }) => {
     setError(null);
     setShowFormatGuide(false);
     setPostHocModalOpen(false);
-    if (fileInputRef.current) fileInputRef.current.value = '';
-  };
+  }, [clear]);
 
   useEffect(() => {
     if (!isOpen) {
       handleReset();
     }
-  }, [isOpen]);
+  }, [isOpen, handleReset]);
 
   useEffect(() => {
     // Reset hidden fields when layout type changes to prevent dirty payload submission
@@ -1451,108 +1349,17 @@ const AnovaModal = ({ isOpen, onClose }) => {
     }
   }, [testType]);
 
-  const handleDrag = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (e.type === "dragenter" || e.type === "dragover") {
-      setDragActive(true);
-    } else if (e.type === "dragleave") {
-      setDragActive(false);
-    }
-  };
 
-  const handleDrop = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setDragActive(false);
-    
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      handleFileSelected(e.dataTransfer.files[0]);
-    }
-  };
 
-  const handleChange = (e) => {
-    e.preventDefault();
-    if (e.target.files && e.target.files[0]) {
-      handleFileSelected(e.target.files[0]);
-    }
-  };
 
   const handleSaveEditedData = async (editedFile) => {
     setResults(null);
     setError(null);
     if (editedFile) {
-      await handleFileSelected(editedFile);
+      await dataset.selectFile(editedFile);
     }
   };
 
-  const handleFileSelected = async (selectedFile) => {
-    setError(null);
-    const ext = selectedFile.name.split('.').pop().toLowerCase();
-    if (!['csv', 'xlsx', 'xls'].includes(ext)) {
-      setError("Supported formats: CSV or Excel (.xlsx, .xls) only.");
-      return;
-    }
-
-    setFile(selectedFile);
-    setLoadingCols(true);
-
-    const formData = new FormData();
-    formData.append('file', selectedFile);
-
-    try {
-      const res = await fetch(`${API_URL}/analyze/columns`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        },
-        body: formData
-      });
-
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.detail || "Failed to read columns.");
-      }
-
-      setColumns(data.columns || []);
-      setNumericColumns(data.numeric_columns || []);
-
-      if (data.numeric_columns && data.numeric_columns.length > 0) {
-        setDepVar(data.numeric_columns[0]);
-      }
-
-      const allCols = data.columns || [];
-      if (allCols.length > 0) {
-        const diffCols = allCols.filter(c => !data.numeric_columns.includes(c));
-        if (diffCols.length > 0) {
-          setIndVar1(diffCols[0]);
-          if (diffCols.length > 1) {
-            setIndVar2(diffCols[1]);
-          } else {
-            setIndVar2(allCols[0]);
-          }
-          if (diffCols.length > 2) {
-            setRepVar(diffCols[2]);
-          } else {
-            setRepVar(allCols[0]);
-          }
-        } else {
-          setIndVar1(allCols[0]);
-          if (allCols.length > 1) {
-            setIndVar2(allCols[1]);
-          }
-          if (allCols.length > 2) {
-            setRepVar(allCols[2]);
-          }
-        }
-      }
-    } catch (err) {
-      setError(err.message);
-      setFile(null);
-    } finally {
-      setLoadingCols(false);
-    }
-  };
 
   const runAnalysis = async (e) => {
     if (e && e.preventDefault) {
@@ -1621,6 +1428,7 @@ const AnovaModal = ({ isOpen, onClose }) => {
     setLoadingAnalysis(true);
     setError(null);
     setResults(null);
+    setChartImage(null);
 
     const formData = new FormData();
     formData.append('file', file);
@@ -1644,7 +1452,7 @@ const AnovaModal = ({ isOpen, onClose }) => {
     formData.append('palette', palette);
 
     try {
-      const res = await fetch(`${API_URL}/analyze/anova`, {
+      const res = await apiFetch(`${API_URL}/analyze/anova`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -1689,7 +1497,6 @@ const AnovaModal = ({ isOpen, onClose }) => {
     if (!results) return;
 
     const fileName = `StatSathi_DoE_Report_${depVar}`;
-    const title = `Stat Sathi ${results.anova_table?.method || 'ANOVA Analysis'} Report`;
 
     if (format === 'txt') {
       let report = `==================================================\n`;
@@ -1778,7 +1585,7 @@ const AnovaModal = ({ isOpen, onClose }) => {
 
       if (testType === 'oneway' && results.posthoc_results && results.posthoc_results.length > 0) {
         report += `\n--------------------------------------------------\n`;
-        report += `4. POST-HOC PAIRWISE COMPARISONS (${posthocMethod === 'games_howell' ? 'Games-Howell' : posthocMethod === 'duncan' ? "Duncan's DMRT" : 'Tukey HSD / LSD'})\n`;
+        report += `4. POST-HOC PAIRWISE COMPARISONS (${results.posthoc_method_label || POSTHOC_LABELS[posthocMethod]})\n`;
         report += `--------------------------------------------------\n`;
         report += `Group 1                  | Group 2                  | Mean Diff  | p-value\n`;
         report += `-------------------------+--------------------------+------------+------------\n`;
@@ -1820,596 +1627,127 @@ const AnovaModal = ({ isOpen, onClose }) => {
       link.click();
       document.body.removeChild(link);
     } else if (format === 'doc') {
-      const tab = results.anova_table;
-      let anovaTableHTML = '';
-
-      if (testType === 'oneway') {
-        anovaTableHTML = `
-          <div align="center">
-          <table align="center" style="margin-left: auto; margin-right: auto; border-collapse: collapse; width: 100%; font-family: Arial, sans-serif; font-size: 10pt; margin-bottom: 20px;">
-            <thead>
-              <tr style="background-color: #4F46E5; color: white;">
-                <th style="border: 1px solid #CBD5E1; padding: 10px; text-align: left; font-weight: bold;">Source of Variation</th>
-                <th style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-weight: bold;">SS</th>
-                <th style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-weight: bold;">df</th>
-                <th style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-weight: bold;">MS</th>
-                <th style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-weight: bold;">F-value</th>
-                <th style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-weight: bold;">p-value</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; font-weight: bold; background-color: #F8FAFC;">Between Groups</td>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-family: 'Courier New', Courier, monospace;">${tab.ss_between?.toFixed(3)}</td>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right;">${tab.df_between}</td>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-family: 'Courier New', Courier, monospace;">${tab.ms_between?.toFixed(3)}</td>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-family: 'Courier New', Courier, monospace;">${tab.f_statistic?.toFixed(3)}</td>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-family: 'Courier New', Courier, monospace; font-weight: bold;">${tab.p_value < 0.001 ? 'p &lt; 0.001' : tab.p_value?.toFixed(6)}</td>
-              </tr>
-              <tr>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; font-weight: bold; background-color: #F8FAFC;">Within Groups</td>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-family: 'Courier New', Courier, monospace;">${tab.ss_within?.toFixed(3)}</td>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right;">${tab.df_within?.toFixed(2).replace(/\.00$/, '')}</td>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-family: 'Courier New', Courier, monospace;">${tab.ms_within?.toFixed(3)}</td>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right;">-</td>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right;">-</td>
-              </tr>
-              <tr style="font-weight: bold; background-color: #F1F5F9;">
-                <td style="border: 1px solid #CBD5E1; padding: 10px;">Total</td>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-family: 'Courier New', Courier, monospace;">${tab.ss_total?.toFixed(3)}</td>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right;">${tab.df_total}</td>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right;"></td>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right;"></td>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right;"></td>
-              </tr>
-            </tbody>
-          </table>
-          </div>
-        `;
-      } else if (testType === 'rbd_oneway') {
-        anovaTableHTML = `
-          <div align="center">
-          <table align="center" style="margin-left: auto; margin-right: auto; border-collapse: collapse; width: 100%; font-family: Arial, sans-serif; font-size: 10pt; margin-bottom: 20px;">
-            <thead>
-              <tr style="background-color: #4F46E5; color: white;">
-                <th style="border: 1px solid #CBD5E1; padding: 10px; text-align: left; font-weight: bold;">Source of Variation</th>
-                <th style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-weight: bold;">SS</th>
-                <th style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-weight: bold;">df</th>
-                <th style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-weight: bold;">MS</th>
-                <th style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-weight: bold;">F-value</th>
-                <th style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-weight: bold;">p-value</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; font-weight: bold; background-color: #F8FAFC;">Replications</td>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-family: 'Courier New', Courier, monospace;">${tab.ss_rep?.toFixed(3)}</td>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right;">${tab.df_rep}</td>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-family: 'Courier New', Courier, monospace;">${tab.ms_rep?.toFixed(3)}</td>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-family: 'Courier New', Courier, monospace;">${tab.f_rep?.toFixed(3)}</td>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-family: 'Courier New', Courier, monospace; font-weight: bold;">${tab.p_rep < 0.001 ? 'p &lt; 0.001' : tab.p_rep?.toFixed(6)}</td>
-              </tr>
-              <tr>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; font-weight: bold; background-color: #F8FAFC;">Treatments</td>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-family: 'Courier New', Courier, monospace;">${tab.ss_between?.toFixed(3)}</td>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right;">${tab.df_between}</td>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-family: 'Courier New', Courier, monospace;">${tab.ms_between?.toFixed(3)}</td>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-family: 'Courier New', Courier, monospace;">${tab.f_statistic?.toFixed(3)}</td>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-family: 'Courier New', Courier, monospace; font-weight: bold;">${tab.p_value < 0.001 ? 'p &lt; 0.001' : tab.p_value?.toFixed(6)}</td>
-              </tr>
-              <tr>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; font-weight: bold; background-color: #F8FAFC;">Error</td>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-family: 'Courier New', Courier, monospace;">${tab.ss_within?.toFixed(3)}</td>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right;">${tab.df_within}</td>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-family: 'Courier New', Courier, monospace;">${tab.ms_within?.toFixed(3)}</td>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right;">-</td>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right;">-</td>
-              </tr>
-              <tr style="font-weight: bold; background-color: #F1F5F9;">
-                <td style="border: 1px solid #CBD5E1; padding: 10px;">Total</td>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-family: 'Courier New', Courier, monospace;">${tab.ss_total?.toFixed(3)}</td>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right;">${tab.df_total}</td>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right;"></td>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right;"></td>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right;"></td>
-              </tr>
-            </tbody>
-          </table>
-          </div>
-        `;
-      } else if (testType === 'lsd') {
-        anovaTableHTML = `
-          <div align="center">
-          <table align="center" style="margin-left: auto; margin-right: auto; border-collapse: collapse; width: 100%; font-family: Arial, sans-serif; font-size: 10pt; margin-bottom: 20px;">
-            <thead>
-              <tr style="background-color: #4F46E5; color: white;">
-                <th style="border: 1px solid #CBD5E1; padding: 10px; text-align: left; font-weight: bold;">Source of Variation</th>
-                <th style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-weight: bold;">SS</th>
-                <th style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-weight: bold;">df</th>
-                <th style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-weight: bold;">MS</th>
-                <th style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-weight: bold;">F-value</th>
-                <th style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-weight: bold;">p-value</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; font-weight: bold; background-color: #F8FAFC;">Rows</td>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-family: 'Courier New', Courier, monospace;">${tab.ss_row?.toFixed(3)}</td>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right;">${tab.df_row}</td>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-family: 'Courier New', Courier, monospace;">${tab.ms_row?.toFixed(3)}</td>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-family: 'Courier New', Courier, monospace;">${tab.f_row?.toFixed(3)}</td>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-family: 'Courier New', Courier, monospace; font-weight: bold;">${tab.p_row < 0.001 ? 'p &lt; 0.001' : tab.p_row?.toFixed(6)}</td>
-              </tr>
-              <tr>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; font-weight: bold; background-color: #F8FAFC;">Columns</td>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-family: 'Courier New', Courier, monospace;">${tab.ss_col?.toFixed(3)}</td>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right;">${tab.df_col}</td>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-family: 'Courier New', Courier, monospace;">${tab.ms_col?.toFixed(3)}</td>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-family: 'Courier New', Courier, monospace;">${tab.f_col?.toFixed(3)}</td>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-family: 'Courier New', Courier, monospace; font-weight: bold;">${tab.p_col < 0.001 ? 'p &lt; 0.001' : tab.p_col?.toFixed(6)}</td>
-              </tr>
-              <tr>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; font-weight: bold; background-color: #F8FAFC;">Treatments</td>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-family: 'Courier New', Courier, monospace;">${tab.ss_between?.toFixed(3)}</td>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right;">${tab.df_between}</td>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-family: 'Courier New', Courier, monospace;">${tab.ms_between?.toFixed(3)}</td>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-family: 'Courier New', Courier, monospace;">${tab.f_statistic?.toFixed(3)}</td>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-family: 'Courier New', Courier, monospace; font-weight: bold;">${tab.p_value < 0.001 ? 'p &lt; 0.001' : tab.p_value?.toFixed(6)}</td>
-              </tr>
-              <tr>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; font-weight: bold; background-color: #F8FAFC;">Error</td>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-family: 'Courier New', Courier, monospace;">${tab.ss_within?.toFixed(3)}</td>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right;">${tab.df_within}</td>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-family: 'Courier New', Courier, monospace;">${tab.ms_within?.toFixed(3)}</td>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right;">-</td>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right;">-</td>
-              </tr>
-              <tr style="font-weight: bold; background-color: #F1F5F9;">
-                <td style="border: 1px solid #CBD5E1; padding: 10px;">Total</td>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-family: 'Courier New', Courier, monospace;">${tab.ss_total?.toFixed(3)}</td>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right;">${tab.df_total}</td>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right;"></td>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right;"></td>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right;"></td>
-              </tr>
-            </tbody>
-          </table>
-          </div>
-        `;
-      } else if (testType === 'twoway') {
-        anovaTableHTML = `
-          <div align="center">
-          <table align="center" style="margin-left: auto; margin-right: auto; border-collapse: collapse; width: 100%; font-family: Arial, sans-serif; font-size: 10pt; margin-bottom: 20px;">
-            <thead>
-              <tr style="background-color: #4F46E5; color: white;">
-                <th style="border: 1px solid #CBD5E1; padding: 10px; text-align: left; font-weight: bold;">Source of Variation</th>
-                <th style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-weight: bold;">SS</th>
-                <th style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-weight: bold;">df</th>
-                <th style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-weight: bold;">MS</th>
-                <th style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-weight: bold;">F-value</th>
-                <th style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-weight: bold;">p-value</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; font-weight: bold; background-color: #F8FAFC;">${indVar1} (Factor A)</td>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-family: 'Courier New', Courier, monospace;">${tab.factorA?.ss.toFixed(3)}</td>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right;">${tab.factorA?.df}</td>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-family: 'Courier New', Courier, monospace;">${tab.factorA?.ms.toFixed(3)}</td>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-family: 'Courier New', Courier, monospace;">${tab.factorA?.f_statistic.toFixed(3)}</td>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-family: 'Courier New', Courier, monospace; font-weight: bold;">${tab.factorA?.p_value < 0.001 ? 'p &lt; 0.001' : tab.factorA?.p_value.toFixed(6)}</td>
-              </tr>
-              <tr>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; font-weight: bold; background-color: #F8FAFC;">${indVar2} (Factor B)</td>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-family: 'Courier New', Courier, monospace;">${tab.factorB?.ss.toFixed(3)}</td>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right;">${tab.factorB?.df}</td>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-family: 'Courier New', Courier, monospace;">${tab.factorB?.ms.toFixed(3)}</td>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-family: 'Courier New', Courier, monospace;">${tab.factorB?.f_statistic.toFixed(3)}</td>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-family: 'Courier New', Courier, monospace; font-weight: bold;">${tab.factorB?.p_value < 0.001 ? 'p &lt; 0.001' : tab.factorB?.p_value.toFixed(6)}</td>
-              </tr>
-              <tr>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; font-weight: bold; background-color: #F8FAFC;">Interaction (A x B)</td>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-family: 'Courier New', Courier, monospace;">${tab.interaction?.ss.toFixed(3)}</td>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right;">${tab.interaction?.df}</td>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-family: 'Courier New', Courier, monospace;">${tab.interaction?.ms.toFixed(3)}</td>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-family: 'Courier New', Courier, monospace;">${tab.interaction?.f_statistic.toFixed(3)}</td>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-family: 'Courier New', Courier, monospace; font-weight: bold;">${tab.interaction?.p_value < 0.001 ? 'p &lt; 0.001' : tab.interaction?.p_value.toFixed(6)}</td>
-              </tr>
-              <tr>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; font-weight: bold; background-color: #F8FAFC;">Error</td>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-family: 'Courier New', Courier, monospace;">${tab.error?.ss.toFixed(3)}</td>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right;">${tab.error?.df}</td>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-family: 'Courier New', Courier, monospace;">${tab.error?.ms.toFixed(3)}</td>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right;">-</td>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right;">-</td>
-              </tr>
-              <tr style="font-weight: bold; background-color: #F1F5F9;">
-                <td style="border: 1px solid #CBD5E1; padding: 10px;">Total</td>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-family: 'Courier New', Courier, monospace;">${tab.total?.ss.toFixed(3)}</td>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right;">${tab.total?.df}</td>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right;"></td>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right;"></td>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right;"></td>
-              </tr>
-            </tbody>
-          </table>
-          </div>
-        `;
-      } else if (testType === 'rbd_twoway') {
-        anovaTableHTML = `
-          <div align="center">
-          <table align="center" style="margin-left: auto; margin-right: auto; border-collapse: collapse; width: 100%; font-family: Arial, sans-serif; font-size: 10pt; margin-bottom: 20px;">
-            <thead>
-              <tr style="background-color: #4F46E5; color: white;">
-                <th style="border: 1px solid #CBD5E1; padding: 10px; text-align: left; font-weight: bold;">Source of Variation</th>
-                <th style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-weight: bold;">SS</th>
-                <th style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-weight: bold;">df</th>
-                <th style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-weight: bold;">MS</th>
-                <th style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-weight: bold;">F-value</th>
-                <th style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-weight: bold;">p-value</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; font-weight: bold; background-color: #F8FAFC;">Replications</td>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-family: 'Courier New', Courier, monospace;">${tab.ss_rep?.toFixed(3)}</td>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right;">${tab.df_rep}</td>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-family: 'Courier New', Courier, monospace;">${tab.ms_rep?.toFixed(3)}</td>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-family: 'Courier New', Courier, monospace;">${tab.f_rep?.toFixed(3)}</td>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-family: 'Courier New', Courier, monospace; font-weight: bold;">${tab.p_rep < 0.001 ? 'p &lt; 0.001' : tab.p_rep?.toFixed(6)}</td>
-              </tr>
-              <tr>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; font-weight: bold; background-color: #F8FAFC;">${indVar1} (Factor A)</td>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-family: 'Courier New', Courier, monospace;">${tab.factorA?.ss.toFixed(3)}</td>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right;">${tab.factorA?.df}</td>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-family: 'Courier New', Courier, monospace;">${tab.factorA?.ms.toFixed(3)}</td>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-family: 'Courier New', Courier, monospace;">${tab.factorA?.f_statistic.toFixed(3)}</td>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-family: 'Courier New', Courier, monospace; font-weight: bold;">${tab.factorA?.p_value < 0.001 ? 'p &lt; 0.001' : tab.factorA?.p_value.toFixed(6)}</td>
-              </tr>
-              <tr>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; font-weight: bold; background-color: #F8FAFC;">${indVar2} (Factor B)</td>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-family: 'Courier New', Courier, monospace;">${tab.factorB?.ss.toFixed(3)}</td>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right;">${tab.factorB?.df}</td>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-family: 'Courier New', Courier, monospace;">${tab.factorB?.ms.toFixed(3)}</td>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-family: 'Courier New', Courier, monospace;">${tab.factorB?.f_statistic.toFixed(3)}</td>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-family: 'Courier New', Courier, monospace; font-weight: bold;">${tab.factorB?.p_value < 0.001 ? 'p &lt; 0.001' : tab.factorB?.p_value.toFixed(6)}</td>
-              </tr>
-              <tr>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; font-weight: bold; background-color: #F8FAFC;">Interaction (A x B)</td>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-family: 'Courier New', Courier, monospace;">${tab.interaction?.ss.toFixed(3)}</td>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right;">${tab.interaction?.df}</td>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-family: 'Courier New', Courier, monospace;">${tab.interaction?.ms.toFixed(3)}</td>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-family: 'Courier New', Courier, monospace;">${tab.interaction?.f_statistic.toFixed(3)}</td>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-family: 'Courier New', Courier, monospace; font-weight: bold;">${tab.interaction?.p_value < 0.001 ? 'p &lt; 0.001' : tab.interaction?.p_value.toFixed(6)}</td>
-              </tr>
-              <tr>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; font-weight: bold; background-color: #F8FAFC;">Error</td>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-family: 'Courier New', Courier, monospace;">${tab.error?.ss.toFixed(3)}</td>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right;">${tab.error?.df}</td>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-family: 'Courier New', Courier, monospace;">${tab.error?.ms.toFixed(3)}</td>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right;">-</td>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right;">-</td>
-              </tr>
-              <tr style="font-weight: bold; background-color: #F1F5F9;">
-                <td style="border: 1px solid #CBD5E1; padding: 10px;">Total</td>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-family: 'Courier New', Courier, monospace;">${tab.total?.ss.toFixed(3)}</td>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right;">${tab.total?.df}</td>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right;"></td>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right;"></td>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right;"></td>
-              </tr>
-            </tbody>
-          </table>
-          </div>
-        `;
-      } else if (testType === 'splitplot') {
-        anovaTableHTML = `
-          <div align="center">
-          <table align="center" style="margin-left: auto; margin-right: auto; border-collapse: collapse; width: 100%; font-family: Arial, sans-serif; font-size: 10pt; margin-bottom: 20px;">
-            <thead>
-              <tr style="background-color: #4F46E5; color: white;">
-                <th style="border: 1px solid #CBD5E1; padding: 10px; text-align: left; font-weight: bold;">Source of Variation</th>
-                <th style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-weight: bold;">SS</th>
-                <th style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-weight: bold;">df</th>
-                <th style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-weight: bold;">MS</th>
-                <th style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-weight: bold;">F-value</th>
-                <th style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-weight: bold;">p-value</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; font-weight: bold; background-color: #F8FAFC;">Replications</td>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-family: 'Courier New', Courier, monospace;">${tab.ss_rep?.toFixed(3)}</td>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right;">${tab.df_rep}</td>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-family: 'Courier New', Courier, monospace;">${tab.ms_rep?.toFixed(3)}</td>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-family: 'Courier New', Courier, monospace;">${tab.f_rep?.toFixed(3)}</td>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-family: 'Courier New', Courier, monospace; font-weight: bold;">${tab.p_rep < 0.001 ? 'p &lt; 0.001' : tab.p_rep?.toFixed(6)}</td>
-              </tr>
-              <tr>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; font-weight: bold; background-color: #F8FAFC;">Main Plot (A)</td>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-family: 'Courier New', Courier, monospace;">${tab.factorA?.ss.toFixed(3)}</td>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right;">${tab.factorA?.df}</td>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-family: 'Courier New', Courier, monospace;">${tab.factorA?.ms.toFixed(3)}</td>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-family: 'Courier New', Courier, monospace;">${tab.factorA?.f_statistic.toFixed(3)}</td>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-family: 'Courier New', Courier, monospace; font-weight: bold;">${tab.factorA?.p_value < 0.001 ? 'p &lt; 0.001' : tab.factorA?.p_value.toFixed(6)}</td>
-              </tr>
-              <tr>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; font-weight: bold; background-color: #F8FAFC;">Error (a)</td>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-family: 'Courier New', Courier, monospace;">${tab.error_a?.ss.toFixed(3)}</td>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right;">${tab.error_a?.df}</td>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-family: 'Courier New', Courier, monospace;">${tab.error_a?.ms.toFixed(3)}</td>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right;">-</td>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right;">-</td>
-              </tr>
-              <tr>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; font-weight: bold; background-color: #F8FAFC;">Sub Plot (B)</td>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-family: 'Courier New', Courier, monospace;">${tab.factorB?.ss.toFixed(3)}</td>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right;">${tab.factorB?.df}</td>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-family: 'Courier New', Courier, monospace;">${tab.factorB?.ms.toFixed(3)}</td>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-family: 'Courier New', Courier, monospace;">${tab.factorB?.f_statistic.toFixed(3)}</td>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-family: 'Courier New', Courier, monospace; font-weight: bold;">${tab.factorB?.p_value < 0.001 ? 'p &lt; 0.001' : tab.factorB?.p_value.toFixed(6)}</td>
-              </tr>
-              <tr>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; font-weight: bold; background-color: #F8FAFC;">Interaction (A x B)</td>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-family: 'Courier New', Courier, monospace;">${tab.interaction?.ss.toFixed(3)}</td>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right;">${tab.interaction?.df}</td>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-family: 'Courier New', Courier, monospace;">${tab.interaction?.ms.toFixed(3)}</td>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-family: 'Courier New', Courier, monospace;">${tab.interaction?.f_statistic.toFixed(3)}</td>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-family: 'Courier New', Courier, monospace; font-weight: bold;">${tab.interaction?.p_value < 0.001 ? 'p &lt; 0.001' : tab.interaction?.p_value.toFixed(6)}</td>
-              </tr>
-              <tr>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; font-weight: bold; background-color: #F8FAFC;">Error (b)</td>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-family: 'Courier New', Courier, monospace;">${tab.error_b?.ss.toFixed(3)}</td>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right;">${tab.error_b?.df}</td>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-family: 'Courier New', Courier, monospace;">${tab.error_b?.ms.toFixed(3)}</td>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right;">-</td>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right;">-</td>
-              </tr>
-              <tr style="font-weight: bold; background-color: #F1F5F9;">
-                <td style="border: 1px solid #CBD5E1; padding: 10px;">Total</td>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-family: 'Courier New', Courier, monospace;">${tab.total?.ss.toFixed(3)}</td>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right;">${tab.total?.df}</td>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right;"></td>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right;"></td>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right;"></td>
-              </tr>
-            </tbody>
-          </table>
-          </div>
-        `;
-      }
-
-      const meansRows = Object.entries(results.descriptives || {}).map(([cell, stats]) => {
-        const seVal = stats.se !== undefined ? stats.se.toFixed(3) : '-';
-        return `
-          <tr>
-            <td style="border: 1px solid #CBD5E1; padding: 10px; font-weight: bold; background-color: #F8FAFC; color: #1E293B;">${cell}</td>
-            <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-family: 'Courier New', Courier, monospace; color: #334155;">${stats.mean.toFixed(3)}</td>
-            <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-family: 'Courier New', Courier, monospace; color: #334155;">${seVal}</td>
-          </tr>
-        `;
-      }).join('');
-
-      const designStatsTable = `
-        <div align="center">
-          <table align="center" style="margin-left: auto; margin-right: auto; border-collapse: collapse; width: 100%; font-family: Arial, sans-serif; font-size: 10pt; margin-bottom: 20px;">
-          <thead>
-            <tr style="background-color: #4F46E5; color: white;">
-              <th style="border: 1px solid #CBD5E1; padding: 10px; text-align: left; font-weight: bold;">Parameter</th>
-              <th style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-weight: bold;">Value</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td style="border: 1px solid #CBD5E1; padding: 10px; font-weight: bold; background-color: #F8FAFC;">Critical Difference (C.D.) 5%</td>
-              <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-family: 'Courier New', Courier, monospace; font-weight: bold; color: #F97316;">${getCD5Value()}</td>
-            </tr>
-            <tr>
-              <td style="border: 1px solid #CBD5E1; padding: 10px; font-weight: bold; background-color: #F8FAFC;">SE(m)</td>
-              <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-family: 'Courier New', Courier, monospace;">${getSEmValue()}</td>
-            </tr>
-            <tr>
-              <td style="border: 1px solid #CBD5E1; padding: 10px; font-weight: bold; background-color: #F8FAFC;">SE(d)</td>
-              <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-family: 'Courier New', Courier, monospace;">${getSEdValue()}</td>
-            </tr>
-            <tr>
-              <td style="border: 1px solid #CBD5E1; padding: 10px; font-weight: bold; background-color: #F8FAFC;">Coefficient of Variation (C.V. %)</td>
-              <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-family: 'Courier New', Courier, monospace;">${results.cv !== undefined ? results.cv.toFixed(3) + '%' : '-'}</td>
-            </tr>
-          </tbody>
-        </table>
-          </div>
-      `;
-
-      let postHocTable = '';
-      if (testType === 'oneway' && results.posthoc_results && results.posthoc_results.length > 0) {
-        postHocTable = `
-          <h2 style="color: #4F46E5; font-family: Arial, sans-serif; font-size: 14pt; margin-top: 20px;">Post-Hoc Pairwise Comparisons (${posthocMethod === 'games_howell' ? 'Games-Howell' : posthocMethod === 'duncan' ? "Duncan's DMRT" : 'Tukey HSD / LSD'})</h2>
-          <div align="center">
-          <table align="center" style="margin-left: auto; margin-right: auto; border-collapse: collapse; width: 100%; font-family: Arial, sans-serif; font-size: 10pt; margin-bottom: 20px;">
-            <thead>
-              <tr style="background-color: #4F46E5; color: white;">
-                <th style="border: 1px solid #CBD5E1; padding: 10px; text-align: left; font-weight: bold;">Group 1</th>
-                <th style="border: 1px solid #CBD5E1; padding: 10px; text-align: left; font-weight: bold;">Group 2</th>
-                <th style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-weight: bold;">Mean Diff</th>
-                <th style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-weight: bold;">p-value</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${results.posthoc_results.map(comp => `
-                <tr>
-                  <td style="border: 1px solid #CBD5E1; padding: 10px; font-weight: bold; background-color: #F8FAFC; color: #1E293B;">${comp.group1}</td>
-                  <td style="border: 1px solid #CBD5E1; padding: 10px; font-weight: bold; background-color: #F8FAFC; color: #1E293B;">${comp.group2}</td>
-                  <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-family: 'Courier New', Courier, monospace; color: #334155;">${comp.mean_diff.toFixed(3)}</td>
-                  <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-family: 'Courier New', Courier, monospace; font-weight: bold; color: ${comp.p_value < 0.05 ? '#EF4444' : '#1E293B'};">${comp.p_value < 0.001 ? 'p &lt; 0.001' : comp.p_value.toFixed(6)}</td>
-                </tr>
-              `).join('')}
-            </tbody>
-          </table>
-          </div>
-        `;
-      }
-
-      const shapiroRows = Object.entries(results.shapiro_results || {}).map(([column, meta]) => {
-        if (meta.error) {
-          return `
-            <tr>
-              <td style="border: 1px solid #CBD5E1; padding: 10px; font-weight: bold; background-color: #F8FAFC;">${column}</td>
-              <td colspan="3" style="border: 1px solid #CBD5E1; padding: 10px; color: #EF4444; font-style: italic;">${meta.error}</td>
-            </tr>
-          `;
-        }
-        const normalityStr = meta.normal ? 'Normally Distributed' : (column === 'Model Residuals' ? 'Not Normal' : 'Non-Normal Distribution');
-        return `
-          <tr>
-            <td style="border: 1px solid #CBD5E1; padding: 10px; font-weight: bold; background-color: #F8FAFC;">${column}</td>
-            <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-family: 'Courier New', Courier, monospace;">${meta.stat.toFixed(3)}</td>
-            <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-family: 'Courier New', Courier, monospace;">${meta.p_value < 0.001 ? 'p &lt; 0.001' : meta.p_value.toFixed(6)}</td>
-            <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: center; font-weight: bold; color: ${meta.normal ? '#10B981' : '#F59E0B'};">${normalityStr}</td>
-          </tr>
-        `;
-      }).join('');
-
-      let leveneRow = '';
-      if (results.levene_results) {
-        const lev = results.levene_results;
-        leveneRow = `
-          <h2 style="color: #4F46E5; font-family: Arial, sans-serif; font-size: 14pt; margin-top: 20px;">Levene's Equality of Variances Test</h2>
-          <div align="center">
-          <table align="center" style="margin-left: auto; margin-right: auto; border-collapse: collapse; width: 100%; font-family: Arial, sans-serif; font-size: 10pt; margin-bottom: 20px;">
-            <thead>
-              <tr style="background-color: #4F46E5; color: white;">
-                <th style="border: 1px solid #CBD5E1; padding: 10px; text-align: left; font-weight: bold;">Check</th>
-                <th style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-weight: bold;">Levene Statistic</th>
-                <th style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-weight: bold;">p-value</th>
-                <th style="border: 1px solid #CBD5E1; padding: 10px; text-align: center; font-weight: bold;">Result</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; font-weight: bold; background-color: #F8FAFC;">Equality of Variances</td>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-family: 'Courier New', Courier, monospace;">${lev.stat.toFixed(3)}</td>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-family: 'Courier New', Courier, monospace;">${lev.p_value < 0.001 ? 'p &lt; 0.001' : lev.p_value.toFixed(6)}</td>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: center; font-weight: bold; color: ${lev.equal_var ? '#10B981' : '#F59E0B'};">${lev.equal_var ? 'Equal Variances' : 'Unequal Variances'}</td>
-              </tr>
-            </tbody>
-          </table>
-          </div>
-        `;
-      }
-
-      const htmlContent = `
-        <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
-        <head>
-          <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
-          <title>${title}</title>
-          <!--[if gte mso 9]>
-          <xml>
-            <w:WordDocument>
-              <w:View>Print</w:View>
-              <w:Zoom>100</w:Zoom>
-            </w:WordDocument>
-          </xml>
-          <![endif]-->
-          <style>
-            body { font-family: Arial, sans-serif; font-size: 11pt; line-height: 1.6; color: #1E293B; margin: 1in; }
-            h1 { color: #4F46E5; font-size: 18pt; border-bottom: 2px solid #4F46E5; padding-bottom: 6px; margin-bottom: 20px; }
-            h2 { color: #1E293B; font-size: 14pt; margin-top: 25px; border-bottom: 1px solid #E2E8F0; padding-bottom: 4px; }
-            p { margin-bottom: 15px; }
-            .meta-table { border-collapse: collapse; width: 75%; margin-left: auto; margin-right: auto; margin-bottom: 25px; }
-            .meta-table td { padding: 8px; border: 1px solid #E2E8F0; }
-            .meta-label { font-weight: bold; background-color: #F8FAFC; width: 30%; }
-          </style>
-        </head>
-        <body>
-          ${getWordReportHeader({
-            title: 'Design of Experiments (ANOVA) Report',
-            testApplied: results.anova_table?.method || 'ANOVA Analysis',
-            fileName: file ? file.name : '',
-            curator: user ? user.full_name : 'Guest Researcher',
-            extraMeta: [
-              ['Dependent Variable', depVar],
-              ['Factor 1 (Treatment A)', indVar1],
-              ...(indVar2 ? [['Factor 2 (Factor B)', indVar2]] : []),
-              ...(repVar ? [['Replication/Block Factor', repVar]] : [])
-            ]
-          })}
-
-          <h2 style="color: #4F46E5; font-family: Arial, sans-serif; font-size: 14pt; margin-top: 20px;">1. ANOVA Table</h2>
-          ${anovaTableHTML}
-
-          <h2 style="color: #4F46E5; font-family: Arial, sans-serif; font-size: 14pt; margin-top: 20px;">2. Treatment Means Table</h2>
-          <div align="center">
-          <table align="center" style="margin-left: auto; margin-right: auto; border-collapse: collapse; width: 80%; font-family: Arial, sans-serif; font-size: 10pt; margin-bottom: 20px;">
-            <thead>
-              <tr style="background-color: #4F46E5; color: white;">
-                <th style="border: 1px solid #CBD5E1; padding: 10px; text-align: left; font-weight: bold;">Treatment Group</th>
-                <th style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-weight: bold;">Mean</th>
-                <th style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-weight: bold;">S.E.</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${meansRows}
-            </tbody>
-          </table>
-          </div>
-
-          <h2 style="color: #4F46E5; font-family: Arial, sans-serif; font-size: 14pt; margin-top: 20px;">3. Key Design Statistics</h2>
-          ${designStatsTable}
-
-          ${postHocTable}
-
-          <h2 style="color: #4F46E5; font-family: Arial, sans-serif; font-size: 14pt; margin-top: 20px;">4. Assumption Checks</h2>
-          <h3 style="color: #1E293B; font-family: Arial, sans-serif; font-size: 11pt; margin-top: 10px;">Normality Check (Shapiro-Wilk Test)</h3>
-          <div align="center">
-          <table align="center" style="margin-left: auto; margin-right: auto; border-collapse: collapse; width: 80%; font-family: Arial, sans-serif; font-size: 10pt; margin-bottom: 20px;">
-            <thead>
-              <tr style="background-color: #4F46E5; color: white;">
-                <th style="border: 1px solid #CBD5E1; padding: 10px; text-align: left; font-weight: bold;">Variable / Term</th>
-                <th style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-weight: bold;">W Statistic</th>
-                <th style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-weight: bold;">p-value</th>
-                <th style="border: 1px solid #CBD5E1; padding: 10px; text-align: center; font-weight: bold;">Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${shapiroRows}
-            </tbody>
-          </table>
-          </div>
-
-          ${leveneRow}
-
-          ${getWordReportFooter()}
-        </body>
-        </html>
-      `;
-      const centeredHtml = htmlContent
-        .replace(/width:\s*100%/gi, 'width: 80%')
-        .replace(/class="meta-table"/gi, 'class="meta-table" style="width: 75%;"')
-        .replace(/<table([^>]*)>/gi, (match, attrs) => {
-          let newAttrs = attrs;
-          if (/width:\s*100%/i.test(newAttrs)) {
-            newAttrs = newAttrs.replace(/width:\s*100%/i, 'width: 80%');
-          }
-          if (/style="/i.test(newAttrs)) {
-            newAttrs = newAttrs.replace(/style="/i, 'style="mso-table-align: center; margin-left: auto; margin-right: auto; ');
-          } else {
-            newAttrs = ' style="mso-table-align: center; margin-left: auto; margin-right: auto;"' + newAttrs;
-          }
-          if (!/align=/i.test(newAttrs)) {
-            newAttrs = ' align="center"' + newAttrs;
-          }
-          return `<center><table${newAttrs}>`;
-        })
-        .replace(/<\/table>/gi, '</table></center>');
-      const blob = new Blob(['\ufeff' + centeredHtml], { type: 'application/msword;charset=utf-8' });
-      const link = document.createElement('a');
-      link.href = URL.createObjectURL(blob);
-      link.download = `${fileName}.doc`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+      downloadDocxReport(token, buildDocxReport(fileName)).catch(err => setError(err.message));
     }
+  };
+  // Structured content for the server-side Word (.docx) reports
+  const designLabel = (type) => ({
+    oneway: 'Completely randomized design (CRD), one factor',
+    rbd_oneway: 'Randomized block design (RBD), one factor',
+    lsd: 'Latin square design',
+    twoway: 'Completely randomized design (CRD), two factors',
+    rbd_twoway: 'Randomized block design (RBD), two factors',
+    splitplot: 'Split-plot design',
+    crd_multifactor: 'Completely randomized design (CRD), multiple factors',
+    rbd_multifactor: 'Randomized block design (RBD), multiple factors'
+  })[type] || type;
+
+  const designParagraphs = () => [
+    `Dependent variable: ${depVar}.`,
+    ...(['crd_multifactor', 'rbd_multifactor'].includes(testType) ? [] : [`Factor A: ${indVar1}.`]),
+    ...(['twoway', 'rbd_twoway', 'splitplot'].includes(testType) && indVar2 ? [`Factor B: ${indVar2}.`] : []),
+    ...(['rbd_oneway', 'rbd_twoway', 'splitplot', 'lsd', 'rbd_multifactor'].includes(testType) && repVar ? [`Replication / block factor: ${repVar}.`] : [])
+  ];
+
+  const anovaDocxRows = () => {
+    const tab = results.anova_table || {};
+    const num = (v) => (v === null || v === undefined ? '–' : v.toFixed(3));
+    const dfText = (v) => (v === null || v === undefined ? '–' : Number.isInteger(v) ? String(v) : v.toFixed(2));
+    const row = (label, ss, df, ms, f, p) => [label, num(ss), dfText(df), num(ms), num(f), formatP(p)];
+    const term = (label, t, tested = true) => row(label, t?.ss, t?.df, t?.ms, tested ? t?.f_statistic : null, tested ? t?.p_value : null);
+    const replications = () => row('Replications', tab.ss_rep, tab.df_rep, tab.ms_rep, tab.f_rep, tab.p_rep);
+    const treatments = (label) => row(label, tab.ss_between, tab.df_between, tab.ms_between, tab.f_statistic, tab.p_value);
+    const residual = (label) => row(label, tab.ss_within, tab.df_within, tab.ms_within, null, null);
+    const total = () => row('Total', tab.ss_total, tab.df_total, null, null, null);
+    const factorial = [term(`${indVar1} (A)`, tab.factorA), term(`${indVar2} (B)`, tab.factorB), term('Interaction (A × B)', tab.interaction), term('Error', tab.error, false), term('Total', tab.total, false)];
+    switch (testType) {
+      case 'oneway': return [treatments('Between groups'), residual('Within groups'), total()];
+      case 'rbd_oneway': return [replications(), treatments('Treatments'), residual('Error'), total()];
+      case 'lsd': return [row('Rows', tab.ss_row, tab.df_row, tab.ms_row, tab.f_row, tab.p_row), row('Columns', tab.ss_col, tab.df_col, tab.ms_col, tab.f_col, tab.p_col), treatments('Treatments'), residual('Error'), total()];
+      case 'twoway': return factorial;
+      case 'rbd_twoway': return [replications(), ...factorial];
+      case 'splitplot': return [replications(), term(`Main plot: ${indVar1} (A)`, tab.factorA), term('Error (a)', tab.error_a, false), term(`Sub plot: ${indVar2} (B)`, tab.factorB), term('Interaction (A × B)', tab.interaction), term('Error (b)', tab.error_b, false), term('Total', tab.total, false)];
+      default: return [...(tab.effects || []).map(e => term(e.source, e)), term('Error', tab.error, false), term('Total', tab.total, false)];
+    }
+  };
+
+  const sortedDescriptiveEntries = () => Object.entries(results.descriptives || {})
+    .sort((a, b) => a[0].localeCompare(b[0], undefined, { numeric: true, sensitivity: 'base' }));
+
+  const cdDocxTable = () => (results.cd_results?.length ? [{
+    columns: ['Comparison', 'SE(d)', 'C.D. 5%', 'C.D. 1%'],
+    rows: results.cd_results.map(r => [r.parameter, r.se_d?.toFixed(3) ?? '–', r.cd_5?.toFixed(3) ?? '–', r.cd_1?.toFixed(3) ?? '–']),
+    caption: 'Standard errors of difference and critical differences'
+  }] : []);
+
+  const buildDocxReport = (fileName) => {
+    const letters = results.posthoc_letters && Object.keys(results.posthoc_letters).length > 0 ? results.posthoc_letters : null;
+    const methodLabel = results.posthoc_method_label || POSTHOC_LABELS[posthocMethod] || posthocMethod;
+    const sections = [{
+      heading: 'Design',
+      paragraphs: designParagraphs()
+    }, {
+      heading: '1. Analysis of Variance',
+      tables: [{ columns: ['Source of variation', 'SS', 'df', 'MS', 'F', 'p-value'], rows: anovaDocxRows() }]
+    }, {
+      heading: '2. Treatment Means',
+      tables: [{
+        columns: ['Treatment', 'Mean', 'S.E.', ...(letters ? ['Group'] : [])],
+        rows: sortedDescriptiveEntries().map(([cell, info]) => [cell, info.mean.toFixed(3), info.se !== undefined && info.se !== null ? info.se.toFixed(3) : '–', ...(letters ? [letters[cell] || '–'] : [])]),
+        note: letters ? `Means sharing a letter do not differ significantly at the 5% level (${methodLabel}).` : undefined
+      }]
+    }, {
+      heading: '3. Key Design Statistics',
+      tables: [{
+        columns: ['Statistic', 'Value'],
+        rows: [
+          ['C.D. (5%)', getCD5Value()],
+          ['SE(m)', getSEmValue()],
+          ['SE(d)', getSEdValue()],
+          ['C.V. (%)', results.cv !== undefined && results.cv !== null ? results.cv.toFixed(3) : '–'],
+          ...(results.grand_mean !== undefined && results.grand_mean !== null ? [['Grand mean', results.grand_mean.toFixed(3)]] : [])
+        ]
+      }, ...cdDocxTable()]
+    }];
+
+    if (results.posthoc_results?.length) {
+      sections.push({
+        heading: `4. Pairwise Comparisons (${methodLabel})`,
+        tables: [{
+          columns: ['Group 1', 'Group 2', 'Mean difference', 'SE', 'p-value', 'Significant'],
+          rows: results.posthoc_results.slice(0, 500).map(c => [c.group1, c.group2, c.mean_diff.toFixed(3), c.se_diff !== undefined ? c.se_diff.toFixed(3) : '–', formatP(c.p_value), (c.significant ?? c.p_value < 0.05) ? 'Yes' : 'No']),
+          note: results.posthoc_results.length > 500 ? `First 500 of ${results.posthoc_results.length} comparisons shown.` : undefined
+        }]
+      });
+    }
+
+    const assumptionTables = [];
+    const shapiro = Object.entries(results.shapiro_results || {});
+    if (shapiro.length > 0) {
+      assumptionTables.push({
+        columns: ['Variable / term', 'Shapiro-Wilk W', 'p-value', 'Status'],
+        rows: shapiro.map(([column, meta]) => (meta.error ? [column, 'N/A', 'N/A', meta.error] : [column, meta.stat.toFixed(3), formatP(meta.p_value), meta.normal ? 'Normal' : 'Not normal'])),
+        caption: 'Normality (Shapiro-Wilk)'
+      });
+    }
+    if (results.levene_results) {
+      const lev = results.levene_results;
+      assumptionTables.push({
+        columns: ['Check', 'Levene statistic', 'p-value', 'Result'],
+        rows: [['Equality of variances', lev.stat.toFixed(3), formatP(lev.p_value), lev.equal_var ? 'Equal variances' : 'Unequal variances']],
+        caption: "Levene's test"
+      });
+    }
+    if (assumptionTables.length > 0) sections.push({ heading: '5. Assumption Checks', tables: assumptionTables });
+    if (chartImage || results.plot) sections.push({ heading: 'Figure', images: [{ data: `data:image/png;base64,${chartImage || results.plot}`, caption: `Figure 1. ${depVar} by treatment` }] });
+
+    return {
+      title: 'Design of Experiments (ANOVA) Report',
+      test_applied: results.anova_table?.method || designLabel(testType),
+      dataset_name: file?.name,
+      filename: fileName,
+      sections
+    };
   };
 
   const getCD5Value = () => {
@@ -2466,7 +1804,7 @@ const AnovaModal = ({ isOpen, onClose }) => {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-xs animate-fade-in">
+    <div role="dialog" aria-modal="true" className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-xs animate-fade-in">
       <div className="relative flex h-full max-h-[640px] w-full max-w-4xl flex-col rounded-3xl border border-slate-100 bg-white shadow-2xl overflow-hidden">
         
         {/* Header */}
@@ -2479,7 +1817,7 @@ const AnovaModal = ({ isOpen, onClose }) => {
               Perform completely randomized (CRD), randomized block (RBD), and split-plot analyses with standard agricultural statistics.
             </p>
           </div>
-          <button
+          <button data-dialog-close aria-label="Close"
             onClick={onClose}
             className="rounded-full p-1.5 text-slate-400 hover:bg-slate-50 hover:text-slate-600 transition-colors"
           >
@@ -2496,158 +1834,18 @@ const AnovaModal = ({ isOpen, onClose }) => {
             </div>
           )}
 
-          {/* Step 1: File Upload */}
-          {!file && !loadingCols && (
-            <div className="space-y-4">
-              <div 
-                onDragEnter={handleDrag}
-                onDragOver={handleDrag}
-                onDragLeave={handleDrag}
-                onDrop={handleDrop}
-                onClick={() => fileInputRef.current.click()}
-                className={`flex flex-col items-center justify-center rounded-3xl border-2 border-dashed py-14 px-6 text-center cursor-pointer transition-all duration-200 ${
-                  dragActive ? 'border-brand-indigo bg-indigo-50/30' : 'border-slate-300 hover:border-brand-indigo hover:bg-slate-50/50'
-                }`}
-              >
-                <input
-                  type="file"
-                  ref={fileInputRef}
-                  onChange={handleChange}
-                  accept=".csv,.xlsx,.xls"
-                  className="hidden"
-                />
-                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-slate-100 text-slate-500 mb-4">
-                  <Upload className="h-6 w-6 text-slate-400" />
-                </div>
-                <p className="font-sans text-sm font-semibold text-slate-700">Select or drop dataset for ANOVA analysis</p>
-                <p className="font-sans text-xs text-slate-400 mt-1">Supports CSV, XLSX, and XLS formats</p>
-              </div>
-
-              {/* Expected Format Guide before Upload */}
-              <div className="rounded-3xl border border-slate-100 bg-slate-50/30 p-5 space-y-4 shadow-sm animate-fade-in">
-                <div className="flex justify-between items-center">
-                  <div>
-                    <h4 className="font-display text-sm font-bold text-slate-700">ANOVA Dataset Layout Assistant</h4>
-                    <p className="font-sans text-xs text-slate-400 mt-0.5">Select a layout design below to see sample CSV headers, rows, and structure.</p>
-                  </div>
-                  <HelpCircle className="h-5 w-5 text-brand-indigo" />
-                </div>
-                
-                <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2">
-                  {[
-                    { id: 'oneway', label: 'CRD (1 Factor)' },
-                    { id: 'rbd_oneway', label: 'RBD (1 Factor)' },
-                    { id: 'lsd', label: 'Latin Square (LSD)' },
-                    { id: 'twoway', label: 'CRD (2 Factors)' },
-                    { id: 'rbd_twoway', label: 'RBD (2 Factors)' },
-                    { id: 'crd_multifactor', label: 'CRD (Multi-Factor)' },
-                    { id: 'rbd_multifactor', label: 'RBD (Multi-Factor)' },
-                    { id: 'splitplot', label: 'Split-plot' },
-                  ].map(layout => (
-                    <button
-                      key={layout.id}
-                      type="button"
-                      onClick={() => {
-                        setTestType(layout.id);
-                        setShowFormatGuide(true);
-                      }}
-                      className={`rounded-xl py-2 px-3 text-center font-sans text-xs font-bold border transition-all ${
-                        showFormatGuide && testType === layout.id
-                          ? 'bg-brand-indigo text-white border-brand-indigo shadow-xs'
-                          : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-slate-800'
-                      }`}
-                    >
-                      {layout.label}
-                    </button>
-                  ))}
-                </div>
-
-                {showFormatGuide && (
-                  <div className="rounded-2xl border border-brand-indigo/10 bg-indigo-50/20 p-4 space-y-3 animate-fade-in">
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <h4 className="font-sans text-xs font-bold text-slate-850">
-                          {DATA_FORMAT_GUIDES[testType].title}
-                        </h4>
-                        <p className="font-sans text-[11px] text-slate-500 mt-0.5">
-                          {DATA_FORMAT_GUIDES[testType].description}
-                        </p>
-                      </div>
-                      <span className="rounded-full bg-brand-indigo/10 p-1 text-brand-indigo text-[10px] font-bold px-2.5">
-                        Required Columns
-                      </span>
-                    </div>
-
-                    {/* Sample Table */}
-                    <div className="overflow-x-auto rounded-xl border border-slate-200/60 bg-white shadow-xs">
-                      <table className="min-w-full divide-y divide-slate-100 text-left font-sans text-[11px]">
-                        <thead className="bg-slate-50 text-slate-500 font-bold uppercase tracking-wider text-[10px]">
-                          <tr>
-                            {DATA_FORMAT_GUIDES[testType].headers.map(hdr => (
-                              <th key={hdr} className="px-4 py-2 border-b border-slate-100">{hdr}</th>
-                            ))}
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-100 text-slate-700 font-medium">
-                          {DATA_FORMAT_GUIDES[testType].rows.map((row, rIdx) => (
-                            <tr key={rIdx} className="hover:bg-slate-50/50">
-                              {row.map((cell, cIdx) => (
-                                <td key={cIdx} className="px-4 py-2">{cell}</td>
-                              ))}
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-
-                    <div className="flex items-start space-x-1.5 text-[10px] text-slate-500 bg-amber-50/40 border border-amber-100/50 rounded-xl p-2.5">
-                      <Info className="h-3.5 w-3.5 text-brand-orange shrink-0 mt-0.5" />
-                      <span>
-                        <strong>Layout Tip:</strong> {DATA_FORMAT_GUIDES[testType].note}
-                      </span>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* Loading columns indicator */}
-          {loadingCols && (
-            <div className="flex flex-col items-center justify-center py-16 space-y-4">
-              <div className="h-10 w-10 animate-spin rounded-full border-4 border-brand-indigo border-t-transparent"></div>
-              <p className="font-sans text-sm font-medium text-slate-600 animate-pulse">Reading dataset columns...</p>
-            </div>
-          )}
-
           {/* Step 2: Configure Test Form */}
-          {file && !loadingCols && !results && !loadingAnalysis && (
-            <form onSubmit={runAnalysis} className="space-y-6">
-              <div className="rounded-2xl border border-slate-100 bg-slate-50 p-4 flex justify-between items-center">
-                <div className="truncate">
-                  <p className="font-sans text-xs font-bold text-slate-400 uppercase">Selected Dataset</p>
-                  <p className="font-sans text-sm font-semibold text-slate-700 truncate">{file.name}</p>
-                </div>
-                <div className="flex space-x-2">
-                  <button
-                    type="button"
-                    onClick={() => setViewerOpen(true)}
-                    className="rounded-xl border border-slate-200 bg-white p-2 text-slate-500 hover:bg-slate-50 hover:text-slate-800 transition-colors text-xs font-semibold flex items-center space-x-1"
-                  >
-                    <Eye className="h-3.5 w-3.5 text-brand-orange" />
-                    <span>View Data</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleReset}
-                    className="rounded-xl border border-slate-200 bg-white p-2 text-slate-500 hover:bg-slate-50 hover:text-slate-800 transition-colors text-xs font-semibold flex items-center space-x-1"
-                  >
-                    <RefreshCw className="h-3.5 w-3.5" />
-                    <span>Change File</span>
-                  </button>
-                </div>
-              </div>
+          {!results && !loadingAnalysis && (
+            <div className="space-y-6">
+              <DatasetPicker
+                dataset={dataset}
+                title="Select or drop a field-trial dataset"
+                hint="Long format: one row per plot, with the treatment factors, the replication/block and the measured trait (CSV or Excel)."
+                onViewData={() => setViewerOpen(true)}
+              />
 
+              {file && (
+              <form onSubmit={runAnalysis} className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {/* Select Design Type */}
                 <div className="space-y-1.5 col-span-1 md:col-span-2">
@@ -2664,7 +1862,11 @@ const AnovaModal = ({ isOpen, onClose }) => {
                   </div>
                   <select
                     value={testType}
-                    onChange={(e) => setTestType(e.target.value)}
+                    onChange={(e) => {
+                      setTestType(e.target.value);
+                      // Games-Howell is only valid for one-way CRD
+                      if (e.target.value !== 'oneway' && posthocMethod === 'games_howell') setPosthocMethod('tukey');
+                    }}
                     className="w-full rounded-xl border border-slate-200 bg-white py-3 px-4 font-sans text-sm outline-hidden focus:border-brand-indigo focus:ring-4 focus:ring-brand-indigo/10 transition-all"
                   >
                     <option value="oneway">One Factor (CRD) Analysis</option>
@@ -2830,9 +2032,13 @@ const AnovaModal = ({ isOpen, onClose }) => {
                     onChange={(e) => setPosthocMethod(e.target.value)}
                     className="w-full rounded-xl border border-slate-200 bg-white py-3 px-4 font-sans text-sm outline-hidden focus:border-brand-indigo focus:ring-4 focus:ring-brand-indigo/10 transition-all"
                   >
-                    <option value="tukey">Tukey's HSD / LSD (Critical Difference)</option>
-                    <option value="duncan">Duncan's Multiple Range Test (DMRT)</option>
-                    <option value="games_howell">Games-Howell (Assuming Unequal Variances)</option>
+                    <option value="tukey">{POSTHOC_LABELS.tukey}</option>
+                    <option value="lsd">{POSTHOC_LABELS.lsd}</option>
+                    <option value="duncan">{POSTHOC_LABELS.duncan}</option>
+                    <option value="bonferroni">{POSTHOC_LABELS.bonferroni}</option>
+                    {testType === 'oneway' && (
+                      <option value="games_howell">{POSTHOC_LABELS.games_howell}</option>
+                    )}
                   </select>
                 </div>
 
@@ -2841,7 +2047,7 @@ const AnovaModal = ({ isOpen, onClose }) => {
                   <label className="font-sans text-xs font-bold text-slate-500">Graph Color Palette</label>
                   <select
                     value={palette}
-                    onChange={(e) => setPalette(e.target.value)}
+                    onChange={(e) => { setPalette(e.target.value); setFigurePrefs({ palette: e.target.value }); }}
                     className="w-full rounded-xl border border-slate-200 bg-white py-3 px-4 font-sans text-sm outline-hidden focus:border-brand-indigo focus:ring-4 focus:ring-brand-indigo/10 transition-all"
                   >
                     {anovaPalettes.map(p => (
@@ -2857,7 +2063,9 @@ const AnovaModal = ({ isOpen, onClose }) => {
               >
                 Run Agricultural ANOVA
               </button>
-            </form>
+              </form>
+              )}
+            </div>
           )}
 
           {/* Running Analysis Loader */}
@@ -2869,6 +2077,8 @@ const AnovaModal = ({ isOpen, onClose }) => {
           )}
 
           {/* Step 3: Analysis Results Output */}
+          {reopened && <ReopenedBanner analysis={initialAnalysis} onRestore={restoreSaved} />}
+
           {results && !loadingAnalysis && (
             <div className="space-y-6 animate-fade-in">
               <div className="flex flex-col md:flex-row md:justify-between md:items-start gap-4">
@@ -2898,6 +2108,14 @@ const AnovaModal = ({ isOpen, onClose }) => {
                       Word
                     </button>
                   </div>
+                  <SaveToProjectButton
+                    module="anova"
+                    report={() => buildDocxReport('report')}
+                    source={dataset.source}
+                    defaultTitle={`ANOVA – ${depVar}`}
+                    parameters={{ design: testType, dependent: depVar, factor_a: indVar1, factor_b: indVar2 || null, block: repVar || null, posthoc: posthocMethod, dataset: file?.name }}
+                    result={results}
+                  />
                   <button
                     onClick={handleDownloadPlot}
                     className="flex items-center space-x-1.5 rounded-lg bg-brand-indigo p-1.5 px-3 hover:bg-indigo-700 text-white font-sans text-xs font-semibold transition-colors"
@@ -2926,7 +2144,7 @@ const AnovaModal = ({ isOpen, onClose }) => {
                 <span className="font-sans text-xs font-bold text-slate-500">Graph Palette:</span>
                 <select
                   value={palette}
-                  onChange={(e) => setPalette(e.target.value)}
+                  onChange={(e) => { setPalette(e.target.value); setFigurePrefs({ palette: e.target.value }); }}
                   className="rounded-lg border border-slate-200 bg-white py-1.5 px-3 font-sans text-xs focus:border-brand-indigo focus:ring-2 focus:ring-brand-indigo/10 outline-hidden transition-all"
                 >
                   {anovaPalettes.map(p => (
@@ -3558,6 +2776,16 @@ const AnovaModal = ({ isOpen, onClose }) => {
                 </div>
               </div>
 
+              {/* Analysis notes: assumption warnings, Welch's ANOVA, post-hoc details */}
+              {results.notes && results.notes.length > 0 && (
+                <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 animate-fade-in">
+                  <h5 className="font-display text-xs font-bold text-amber-800 mb-2">Analysis Notes</h5>
+                  <ul className="list-disc space-y-1 pl-5 font-sans text-xs text-amber-900">
+                    {results.notes.map((note, idx) => <li key={idx}>{note}</li>)}
+                  </ul>
+                </div>
+              )}
+
               {/* Critical Difference CD & SE(d) table */}
               {results.cd_results && results.cd_results.length > 0 && (
                 <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-xs animate-fade-in">
@@ -3647,7 +2875,7 @@ const AnovaModal = ({ isOpen, onClose }) => {
               {testType === 'oneway' && results.posthoc_results && results.posthoc_results.length > 0 && (
                 <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-xs animate-fade-in">
                   <h5 className="font-display text-xs font-bold text-slate-700 mb-3">
-                    Post-Hoc Pairwise Comparisons ({posthocMethod === 'games_howell' ? 'Games-Howell' : posthocMethod === 'duncan' ? "Duncan's DMRT" : "Tukey's HSD / LSD"})
+                    Post-Hoc Pairwise Comparisons ({results?.posthoc_method_label || POSTHOC_LABELS[posthocMethod]})
                   </h5>
                   <div className="overflow-x-auto">
                     <table className="w-full border-collapse font-sans text-xs text-left">
@@ -3742,23 +2970,26 @@ const AnovaModal = ({ isOpen, onClose }) => {
                 </div>
               </div>
 
-              {/* Base64 Plot View */}
+              {/* Result chart with alternative styles */}
               {results.plot && (
-                <div className="flex flex-col items-center justify-center bg-slate-50 rounded-3xl p-6 border border-slate-100 shadow-inner space-y-4">
-                  <img
-                    src={`data:image/png;base64,${results.plot}`}
-                    alt="ANOVA Plot Chart"
-                    className="max-h-[320px] w-auto object-contain rounded-2xl border border-slate-200/50 bg-white p-2 shadow-sm"
-                  />
-                  <button
-                    type="button"
-                    onClick={handleDownloadPlot}
-                    className="flex items-center space-x-1.5 rounded-xl bg-brand-orange hover:bg-orange-600 text-white font-sans text-xs font-bold px-4 py-2.5 transition-colors shadow-sm cursor-pointer"
-                  >
-                    <Download className="h-4 w-4" />
-                    <span>Download ANOVA Plot</span>
-                  </button>
-                </div>
+                <ResultChartPanel
+                  key={results.plot.slice(-32)}
+                  token={token}
+                  file={file}
+                  classicPlot={results.plot}
+                  options={anovaChartOptions(testType)}
+                  fields={{
+                    layout: 'long',
+                    x_var: indVar1,
+                    y_var: depVar,
+                    hue_var: ['twoway', 'rbd_twoway', 'splitplot'].includes(testType) ? indVar2 : undefined,
+                    letters_json: ['oneway', 'rbd_oneway', 'lsd'].includes(testType) ? results.posthoc_letters : undefined,
+                    test_label: results.anova_table?.method,
+                    palette
+                  }}
+                  filenameBase={`anova_${testType}_${depVar}`}
+                  onImageChange={setChartImage}
+                />
               )}
 
               {/* Post-Hoc Mean Separation Action */}
@@ -3806,19 +3037,19 @@ const AnovaModal = ({ isOpen, onClose }) => {
 
       {/* Post-Hoc Mean Separation Modal */}
       {postHocModalOpen && results && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-xs animate-fade-in">
+        <div role="dialog" aria-modal="true" className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-xs animate-fade-in">
           <div className="relative flex h-full max-h-[600px] w-full max-w-4xl flex-col rounded-3xl border border-slate-100 bg-white shadow-2xl overflow-hidden">
             {/* Header */}
             <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4">
               <div>
                 <h3 className="font-display text-lg font-bold text-slate-800">
-                  Post-Hoc Mean Separation Analysis ({posthocMethod === 'games_howell' ? 'Games-Howell' : posthocMethod === 'duncan' ? "Duncan's DMRT" : "Tukey's HSD / LSD"})
+                  Post-Hoc Mean Separation Analysis ({results?.posthoc_method_label || POSTHOC_LABELS[posthocMethod]})
                 </h3>
                 <p className="font-sans text-xs text-slate-400">
                   Pairwise comparison of treatment means with significance groupings at the 5% level.
                 </p>
               </div>
-              <button
+              <button data-dialog-close aria-label="Close"
                 onClick={() => setPostHocModalOpen(false)}
                 className="rounded-full p-1.5 text-slate-400 hover:bg-slate-50 hover:text-slate-600 transition-colors"
               >
@@ -3902,17 +3133,12 @@ const AnovaModal = ({ isOpen, onClose }) => {
                         <label className="font-sans text-[9px] font-bold text-slate-400 uppercase">Color Scheme</label>
                         <select
                           value={palette}
-                          onChange={(e) => setPalette(e.target.value)}
+                          onChange={(e) => { setPalette(e.target.value); setFigurePrefs({ palette: e.target.value }); }}
                           className="w-full rounded-xl border border-slate-200 bg-white py-1.5 px-3 font-sans text-xs outline-hidden focus:border-brand-indigo focus:ring-4 focus:ring-brand-indigo/10 transition-all"
                         >
-                          <option value="Oranges">Agricultural Orange</option>
-                          <option value="Blues">Ocean Blue</option>
-                          <option value="Greens">Forest Green</option>
-                          <option value="coolwarm">Divergent Coolwarm</option>
-                          <option value="Purples">Deep Purple</option>
-                          <option value="magma">Magma Pink-Black</option>
-                          <option value="sunset">Sunset Glow</option>
-                          <option value="crest">Crest Teal</option>
+                          {anovaPalettes.map(p => (
+                            <option key={p.value} value={p.value}>{p.label}</option>
+                          ))}
                         </select>
                       </div>
                       {/* Bar Color */}
@@ -3992,6 +3218,7 @@ const AnovaModal = ({ isOpen, onClose }) => {
                             </button>
                           ))}
                         </div>
+                        <FigurePresetSelect value={figurePrefs.preset} onChange={(preset) => setFigurePrefs({ preset })} />
                         <div className="h-4 w-px bg-slate-200" />
                         <button
                           onClick={() => handleDownloadPostHocChart('png')}

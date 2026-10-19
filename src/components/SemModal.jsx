@@ -1,31 +1,42 @@
-import React, { useState, useRef, useEffect } from 'react';
+import { apiFetch } from '../utils/apiFetch';
+import { useState, useRef, useEffect } from 'react';
 import { useAuth, API_URL } from '../context/AuthContext';
-import { X, Upload, Check, AlertCircle, Download, RefreshCw, Eye, Info, Layers, Play, Plus, Trash2, HelpCircle } from 'lucide-react';
+import { X, AlertCircle, RefreshCw, Eye, Layers, Play, Plus, Trash2, HelpCircle } from 'lucide-react';
 import DatasetViewerModal from './DatasetViewerModal';
-import { getWordReportHeader, getWordReportFooter } from '../utils/reportHeader';
+import DatasetPicker from './DatasetPicker';
+import { useDataset } from '../hooks/useDataset';
+import { downloadDocxReport, formatP } from '../utils/reportApi';
+import SaveToProjectButton from './SaveToProjectButton';
+import ReopenedBanner from './ReopenedBanner';
+import SemModeSwitch from './SemModeSwitch';
 
-const SemModal = ({ isOpen, onClose }) => {
-  const { token, user } = useAuth();
+const SemModal = ({ isOpen, onClose, onModeChange, initialAnalysis = null }) => {
+  const saved = initialAnalysis?.parameters || {};
+  const { token } = useAuth();
 
   // Wizard state
-  const [wizardStep, setWizardStep] = useState(true); // true = show wizard, false = show canvas workspace
-  const [semType, setSemType] = useState(''); // 'pls' (Prediction) or 'cb' (Theory Testing)
+  const [wizardStep, setWizardStep] = useState(!initialAnalysis?.result); // true = show wizard, false = show canvas workspace
+  const [semType, setSemType] = useState(saved.type || ''); // 'pls' (Prediction) or 'cb' (Theory Testing)
 
-  // Dataset states
-  const [file, setFile] = useState(null);
-
-
-
-
-  const [columns, setColumns] = useState([]);
-  const [numericColumns, setNumericColumns] = useState([]);
-  const [loadingCols, setLoadingCols] = useState(false);
-  const [dragActive, setDragActive] = useState(false);
-  const fileInputRef = useRef(null);
+  // Dataset state
+  const dataset = useDataset({
+    active: isOpen && !initialAnalysis,
+    onLoaded: () => {
+      setLatents([]);
+      setPaths([]);
+      setResults(null);
+    },
+    onCleared: () => {
+      setLatents([]);
+      setPaths([]);
+      setResults(null);
+    },
+  });
+  const { file, numericColumns } = dataset;
 
   // Path Builder States
-  const [latents, setLatents] = useState([]); // Array of { id, name, x, y, indicators: [] }
-  const [paths, setPaths] = useState([]); // Array of { from, to }
+  const [latents, setLatents] = useState(saved.latents || []); // Array of { id, name, x, y, indicators: [] }
+  const [paths, setPaths] = useState(saved.paths || []); // Array of { from, to }
   const [selectedLatentId, setSelectedLatentId] = useState(null);
   const [canvasMode, setCanvasMode] = useState('select'); // 'select' or 'draw_path'
   const [pathSourceId, setPathSourceId] = useState(null);
@@ -41,7 +52,21 @@ const SemModal = ({ isOpen, onClose }) => {
 
   // Results & UI states
   const [loadingAnalysis, setLoadingAnalysis] = useState(false);
-  const [results, setResults] = useState(null);
+  const [results, setResults] = useState(initialAnalysis?.result || null);
+  const [reopened, setReopened] = useState(Boolean(initialAnalysis?.result));
+
+  // Fetch the dataset this model was fitted on, so the indicators can be bound and it can be run again
+  const restoreSaved = async () => {
+    setReopened(false);
+    setResults(null);
+    const loaded = await dataset.selectProjectDataset(initialAnalysis.dataset, initialAnalysis.projectName);
+    if (loaded) {
+      setSemType(saved.type || 'pls');
+      setLatents(saved.latents || []);
+      setPaths(saved.paths || []);
+      setWizardStep(false);
+    }
+  };
   const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState('paths'); // 'paths', 'loadings', 'reliability', 'validity', 'fit'
   const [viewerOpen, setViewerOpen] = useState(false);
@@ -75,67 +100,11 @@ const SemModal = ({ isOpen, onClose }) => {
     setWizardStep(false);
   };
 
-  // Uploader Drag & Drop
-  const handleDrag = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (e.type === "dragenter" || e.type === "dragover") setDragActive(true);
-    else if (e.type === "dragleave") setDragActive(false);
-  };
-
-  const handleDrop = async (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setDragActive(false);
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      await processFile(e.dataTransfer.files[0]);
-    }
-  };
-
-  const handleFileChange = async (e) => {
-    if (e.target.files && e.target.files[0]) {
-      await processFile(e.target.files[0]);
-    }
-  };
-
   const handleSaveEditedData = async (editedFile) => {
     setResults(null);
     setError(null);
     if (editedFile) {
-      await processFile(editedFile);
-    }
-  };
-
-  const processFile = async (selectedFile) => {
-    setFile(selectedFile);
-    setColumns([]);
-    setNumericColumns([]);
-    setLatents([]);
-    setPaths([]);
-    setResults(null);
-    setError(null);
-    setLoadingCols(true);
-
-    const formData = new FormData();
-    formData.append('file', selectedFile);
-
-    try {
-      const response = await fetch(`${API_URL}/analyze/columns`, {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${token}` },
-        body: formData
-      });
-
-      if (!response.ok) throw new Error('Failed to parse columns from dataset.');
-
-      const data = await response.json();
-      setColumns(data.columns || []);
-      setNumericColumns(data.numeric_columns || []);
-    } catch (err) {
-      setError(err.message || 'An error occurred while loading the dataset.');
-      setFile(null);
-    } finally {
-      setLoadingCols(false);
+      await dataset.selectFile(editedFile);
     }
   };
 
@@ -277,7 +246,7 @@ const SemModal = ({ isOpen, onClose }) => {
     formData.append('specification', JSON.stringify(spec));
 
     try {
-      const response = await fetch(`${API_URL}/analyze/sem`, {
+      const response = await apiFetch(`${API_URL}/analyze/sem`, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}` },
         body: formData
@@ -300,7 +269,6 @@ const SemModal = ({ isOpen, onClose }) => {
     if (!results) return;
 
     const fileName = `StatSathi_SEM_Report_${file.name.split('.')[0]}`;
-    const title = `Stat Sathi SEM Report (${semType === 'pls' ? 'PLS-SEM' : 'CB-SEM'})`;
 
     let report = `================================================================================\n`;
     report += `                     STAT SATHI STRUCTURAL EQUATION MODELING                    \n`;
@@ -336,9 +304,9 @@ const SemModal = ({ isOpen, onClose }) => {
     report += `Latent Variable         Observed Indicator      Loading                 Weight\n`;
     report += `--------------------------------------------------------------------------------\n`;
     results.outer_loadings.forEach(l => {
-      const name = latents.find(l => l.id === l.latent)?.name || l.latent;
-      const wVal = results.outer_weights?.find(w => w.latent === l.latent && w.indicator === l.indicator)?.weight || 0.0;
-      report += `${name.padEnd(24, ' ')}${l.indicator.padEnd(24, ' ')}${l.loading.toFixed(4).padEnd(24, ' ')}${wVal.toFixed(4)}\n`;
+      const name = latents.find(lv => lv.id === l.latent)?.name || l.latent;
+      const wVal = results.outer_weights?.find(w => w.latent === l.latent && w.indicator === l.indicator)?.weight;
+      report += `${name.padEnd(24, ' ')}${l.indicator.padEnd(24, ' ')}${l.loading.toFixed(4).padEnd(24, ' ')}${wVal === undefined ? 'n/a' : wVal.toFixed(4)}\n`;
     });
     report += `--------------------------------------------------------------------------------\n\n`;
 
@@ -362,213 +330,112 @@ const SemModal = ({ isOpen, onClose }) => {
       link.click();
       document.body.removeChild(link);
     } else if (format === 'doc') {
-      // Styled word tables
-      const pathRows = results.path_coefficients.map(p => {
-        const fromName = latents.find(l => l.id === p.from)?.name || p.from;
-        const toName = latents.find(l => l.id === p.to)?.name || p.to;
-        return `
-          <tr>
-            <td style="border: 1px solid #CBD5E1; padding: 8px; font-weight: bold; background-color: #F8FAFC; color: #1E293B;">${fromName}</td>
-            <td style="border: 1px solid #CBD5E1; padding: 8px; font-weight: bold; color: #1E293B;">${toName}</td>
-            <td style="border: 1px solid #CBD5E1; padding: 8px; text-align: right; font-family: 'Courier New', Courier, monospace; font-weight: bold; color: #4F46E5;">${p.coefficient.toFixed(4)}</td>
-            <td style="border: 1px solid #CBD5E1; padding: 8px; text-align: right; font-family: 'Courier New', Courier, monospace;">${p.p_value.toFixed(6)}</td>
-            <td style="border: 1px solid #CBD5E1; padding: 8px; text-align: center; font-weight: bold; color: ${p.significant ? '#10B981' : '#64748B'};">${p.significant ? 'Significant' : 'Not Significant'}</td>
-          </tr>
-        `;
-      }).join('');
-
-      const loadingRows = results.outer_loadings.map(l => {
-        const name = latents.find(l => l.id === l.latent)?.name || l.latent;
-        const wVal = results.outer_weights?.find(w => w.latent === l.latent && w.indicator === l.indicator)?.weight || 0.0;
-        return `
-          <tr>
-            <td style="border: 1px solid #CBD5E1; padding: 8px; font-weight: bold; background-color: #F8FAFC; color: #1E293B;">${name}</td>
-            <td style="border: 1px solid #CBD5E1; padding: 8px;">${l.indicator}</td>
-            <td style="border: 1px solid #CBD5E1; padding: 8px; text-align: right; font-family: 'Courier New', Courier, monospace;">${l.loading.toFixed(4)}</td>
-            <td style="border: 1px solid #CBD5E1; padding: 8px; text-align: right; font-family: 'Courier New', Courier, monospace;">${wVal.toFixed(4)}</td>
-          </tr>
-        `;
-      }).join('');
-
-      let reliabilityRows = '';
-      if (results.reliability_indices) {
-        reliabilityRows = results.reliability_indices.map(r => `
-          <tr>
-            <td style="border: 1px solid #CBD5E1; padding: 8px; font-weight: bold; background-color: #F8FAFC; color: #1E293B;">${r.latent_name}</td>
-            <td style="border: 1px solid #CBD5E1; padding: 8px; text-align: right; font-family: 'Courier New', Courier, monospace;">${r.cronbach_alpha.toFixed(4)}</td>
-            <td style="border: 1px solid #CBD5E1; padding: 8px; text-align: right; font-family: 'Courier New', Courier, monospace;">${r.composite_reliability.toFixed(4)}</td>
-            <td style="border: 1px solid #CBD5E1; padding: 8px; text-align: right; font-family: 'Courier New', Courier, monospace; font-weight: bold; color: #4F46E5;">${r.ave.toFixed(4)}</td>
-          </tr>
-        `).join('');
-      }
-
-      let fitRows = '';
-      if (results.fit_indices) {
-        const fit = results.fit_indices;
-        fitRows = `
-          <tr>
-            <td style="border: 1px solid #CBD5E1; padding: 8px; font-weight: bold; background-color: #F8FAFC; color: #1E293B;">Model Chi-Square (&chi;²)</td>
-            <td style="border: 1px solid #CBD5E1; padding: 8px; text-align: right; font-family: 'Courier New', Courier, monospace;">${fit.chi_square.toFixed(4)} (df = ${fit.df})</td>
-          </tr>
-          <tr>
-            <td style="border: 1px solid #CBD5E1; padding: 8px; font-weight: bold; background-color: #F8FAFC; color: #1E293B;">CFI (Comparative Fit Index)</td>
-            <td style="border: 1px solid #CBD5E1; padding: 8px; text-align: right; font-family: 'Courier New', Courier, monospace; font-weight: bold; color: ${fit.cfi >= 0.90 ? '#10B981' : '#F59E0B'}">${fit.cfi.toFixed(4)}</td>
-          </tr>
-          <tr>
-            <td style="border: 1px solid #CBD5E1; padding: 8px; font-weight: bold; background-color: #F8FAFC; color: #1E293B;">TLI (Tucker-Lewis Index)</td>
-            <td style="border: 1px solid #CBD5E1; padding: 8px; text-align: right; font-family: 'Courier New', Courier, monospace; font-weight: bold; color: ${fit.tli >= 0.90 ? '#10B981' : '#F59E0B'}">${fit.tli.toFixed(4)}</td>
-          </tr>
-          <tr>
-            <td style="border: 1px solid #CBD5E1; padding: 8px; font-weight: bold; background-color: #F8FAFC; color: #1E293B;">RMSEA</td>
-            <td style="border: 1px solid #CBD5E1; padding: 8px; text-align: right; font-family: 'Courier New', Courier, monospace; font-weight: bold; color: ${fit.rmsea <= 0.08 ? '#10B981' : '#EF4444'}">${fit.rmsea.toFixed(4)}</td>
-          </tr>
-          <tr>
-            <td style="border: 1px solid #CBD5E1; padding: 8px; font-weight: bold; background-color: #F8FAFC; color: #1E293B;">SRMR</td>
-            <td style="border: 1px solid #CBD5E1; padding: 8px; text-align: right; font-family: 'Courier New', Courier, monospace; font-weight: bold; color: ${fit.srmr <= 0.08 ? '#10B981' : '#EF4444'}">${fit.srmr.toFixed(4)}</td>
-          </tr>
-        `;
-      }
-
-      const htmlContent = `
-        <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
-        <head>
-          <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
-          <title>${title}</title>
-          <!--[if gte mso 9]>
-          <xml>
-            <w:WordDocument>
-              <w:View>Print</w:View>
-              <w:Zoom>100</w:Zoom>
-            </w:WordDocument>
-          </xml>
-          <![endif]-->
-          <style>
-            body { font-family: Arial, sans-serif; font-size: 11pt; line-height: 1.6; color: #1E293B; margin: 1in; }
-            h1 { color: #4F46E5; font-size: 18pt; border-bottom: 2px solid #4F46E5; padding-bottom: 6px; margin-bottom: 20px; }
-            h2 { color: #1E293B; font-size: 14pt; margin-top: 25px; border-bottom: 1px solid #E2E8F0; padding-bottom: 4px; }
-            p { margin-bottom: 15px; }
-            .meta-table { border-collapse: collapse; width: 75%; margin-left: auto; margin-right: auto; margin-bottom: 25px; }
-            .meta-table td { padding: 8px; border: 1px solid #E2E8F0; }
-            .meta-label { font-weight: bold; background-color: #F8FAFC; width: 30%; }
-          </style>
-        </head>
-        <body>
-          ${getWordReportHeader({
-            title: 'Structural Equation Modeling (SEM) Analysis Report',
-            testApplied: semType === 'pls' ? 'Partial Least Squares SEM (PLS-SEM)' : 'Covariance-Based SEM (CB-SEM)',
-            fileName: file ? file.name : '',
-            curator: user ? user.full_name : 'Guest Researcher',
-            extraMeta: [
-              ['Analysis Engine', results.engine || 'StatSathi SEM Engine']
-            ]
-          })}
-
-          <h2 style="color: #4F46E5; font-family: Arial, sans-serif; font-size: 14pt; margin-top: 20px;">1. Inner Structural Model (Path Coefficients)</h2>
-          <div align="center">
-          <table align="center" style="border-collapse: collapse; width: 95%; font-family: Arial, sans-serif; font-size: 10pt; margin-left: auto; margin-right: auto; margin-bottom: 25px;">
-            <thead>
-              <tr style="background-color: #4F46E5; color: white;">
-                <th style="border: 1px solid #CBD5E1; padding: 8px; text-align: left; font-weight: bold;">From Latent</th>
-                <th style="border: 1px solid #CBD5E1; padding: 8px; text-align: left; font-weight: bold;">To Latent</th>
-                <th style="border: 1px solid #CBD5E1; padding: 8px; text-align: right; font-weight: bold;">Path Coefficient</th>
-                <th style="border: 1px solid #CBD5E1; padding: 8px; text-align: right; font-weight: bold;">p-value</th>
-                <th style="border: 1px solid #CBD5E1; padding: 8px; text-align: center; font-weight: bold;">Result</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${pathRows}
-            </tbody>
-          </table>
-          </div>
-
-          <h2 style="color: #4F46E5; font-family: Arial, sans-serif; font-size: 14pt; margin-top: 20px;">2. Outer Measurement Model (Loadings & Weights)</h2>
-          <div align="center">
-          <table align="center" style="border-collapse: collapse; width: 95%; font-family: Arial, sans-serif; font-size: 10pt; margin-left: auto; margin-right: auto; margin-bottom: 25px;">
-            <thead>
-              <tr style="background-color: #4F46E5; color: white;">
-                <th style="border: 1px solid #CBD5E1; padding: 8px; text-align: left; font-weight: bold;">Latent Variable</th>
-                <th style="border: 1px solid #CBD5E1; padding: 8px; text-align: left; font-weight: bold;">Observed Indicator</th>
-                <th style="border: 1px solid #CBD5E1; padding: 8px; text-align: right; font-weight: bold;">Loading</th>
-                <th style="border: 1px solid #CBD5E1; padding: 8px; text-align: right; font-weight: bold;">Weight</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${loadingRows}
-            </tbody>
-          </table>
-          </div>
-
-          ${reliabilityRows ? `
-          <h2 style="color: #4F46E5; font-family: Arial, sans-serif; font-size: 14pt; margin-top: 20px;">3. Construct Reliability & Validity Summary</h2>
-          <div align="center">
-          <table align="center" style="border-collapse: collapse; width: 95%; font-family: Arial, sans-serif; font-size: 10pt; margin-left: auto; margin-right: auto; margin-bottom: 25px;">
-            <thead>
-              <tr style="background-color: #4F46E5; color: white;">
-                <th style="border: 1px solid #CBD5E1; padding: 8px; text-align: left; font-weight: bold;">Latent Construct</th>
-                <th style="border: 1px solid #CBD5E1; padding: 8px; text-align: right; font-weight: bold;">Cronbach's Alpha</th>
-                <th style="border: 1px solid #CBD5E1; padding: 8px; text-align: right; font-weight: bold;">Composite Reliability</th>
-                <th style="border: 1px solid #CBD5E1; padding: 8px; text-align: right; font-weight: bold;">AVE (Variance Extracted)</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${reliabilityRows}
-            </tbody>
-          </table>
-          </div>
-          ` : ''}
-
-          ${fitRows ? `
-          <h2 style="color: #4F46E5; font-family: Arial, sans-serif; font-size: 14pt; margin-top: 20px;">4. Goodness-of-Fit Model Fit Indices</h2>
-          <div align="center">
-          <table align="center" style="border-collapse: collapse; width: 95%; font-family: Arial, sans-serif; font-size: 10pt; margin-left: auto; margin-right: auto; margin-bottom: 25px;">
-            <thead>
-              <tr style="background-color: #4F46E5; color: white;">
-                <th style="border: 1px solid #CBD5E1; padding: 8px; text-align: left; font-weight: bold;">Fit Index</th>
-                <th style="border: 1px solid #CBD5E1; padding: 8px; text-align: right; font-weight: bold;">Model Value</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${fitRows}
-            </tbody>
-          </table>
-          </div>
-          ` : ''}
-
-          ${getWordReportFooter()}
-        </body>
-        </html>
-      `;
-      const centeredHtml = htmlContent
-        .replace(/width:\s*100%/gi, 'width: 80%')
-        .replace(/width:\s*95%/gi, 'width: 80%')
-        .replace(/class="meta-table"/gi, 'class="meta-table" style="width: 75%;"')
-        .replace(/<table([^>]*)>/gi, (match, attrs) => {
-          let newAttrs = attrs;
-          if (/width:\s*100%/i.test(newAttrs)) {
-            newAttrs = newAttrs.replace(/width:\s*100%/i, 'width: 80%');
-          }
-          if (/width:\s*95%/i.test(newAttrs)) {
-            newAttrs = newAttrs.replace(/width:\s*95%/i, 'width: 80%');
-          }
-          if (/style="/i.test(newAttrs)) {
-            newAttrs = newAttrs.replace(/style="/i, 'style="mso-table-align: center; margin-left: auto; margin-right: auto; ');
-          } else {
-            newAttrs = ' style="mso-table-align: center; margin-left: auto; margin-right: auto;"' + newAttrs;
-          }
-          if (!/align=/i.test(newAttrs)) {
-            newAttrs = ' align="center"' + newAttrs;
-          }
-          return `<center><table${newAttrs}>`;
-        })
-        .replace(/<\/table>/gi, '</table></center>');
-      const blob = new Blob(['\ufeff' + centeredHtml], { type: 'application/msword;charset=utf-8' });
-      const link = document.createElement('a');
-      link.href = URL.createObjectURL(blob);
-      link.download = `${fileName}.doc`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+      downloadDocxReport(token, buildDocxReport(fileName)).catch(err => setError(err.message));
     }
+  };
+  // Structured content for the server-side Word (.docx) report
+  const buildDocxReport = (fileName) => {
+    const nameOf = (id) => latents.find(l => l.id === id)?.name || id;
+    const fixed = (v, digits = 4) => (v === null || v === undefined ? 'N/A' : v.toFixed(digits));
+    const isPls = (results.sem_type || semType) === 'pls';
+    const sections = [{
+      heading: 'Model',
+      paragraphs: [
+        `Estimation: ${results.engine}.`,
+        ...(results.n_obs ? [`Observations used: ${results.n_obs}.`] : []),
+        ...(results.bootstrap ? [`Bootstrap: ${results.bootstrap.samples} successful resamples (seed ${results.bootstrap.seed}); standard errors, t values and confidence intervals come from the bootstrap distribution.`] : [])
+      ],
+      bullets: results.notes || []
+    }, {
+      heading: '1. Structural Model (Path Coefficients)',
+      tables: [{
+        columns: ['From', 'To', 'Standardized β', 'Std. error', isPls ? 't' : 'z', 'p-value', ...(isPls ? ['95% CI'] : []), 'Significant'],
+        rows: results.path_coefficients.map(p => [
+          nameOf(p.from), nameOf(p.to), fixed(p.coefficient), fixed(p.std_error), fixed(isPls ? p.t_value : p.z_value, 3), formatP(p.p_value),
+          ...(isPls ? [p.ci_lower !== undefined && p.ci_lower !== null ? `[${p.ci_lower.toFixed(3)}, ${p.ci_upper.toFixed(3)}]` : 'N/A'] : []),
+          p.significant ? 'Yes' : 'No'
+        ])
+      }]
+    }];
+
+    if (results.r2_values && Object.keys(results.r2_values).length > 0) {
+      const adjusted = results.adjusted_r2_values;
+      sections.push({
+        heading: '2. Explained Variance of Endogenous Constructs',
+        tables: [{
+          columns: ['Construct', 'R²', ...(adjusted ? ['Adjusted R²'] : [])],
+          rows: Object.entries(results.r2_values).map(([id, r2]) => [nameOf(id), fixed(r2), ...(adjusted ? [fixed(adjusted[id])] : [])])
+        }]
+      });
+    }
+
+    sections.push({
+      heading: '3. Measurement Model',
+      tables: [{
+        columns: ['Construct', 'Indicator', 'Standardized loading', ...(isPls ? ['Outer weight'] : ['p-value'])],
+        rows: results.outer_loadings.map(l => [nameOf(l.latent), l.indicator, fixed(l.loading),
+          isPls ? fixed(results.outer_weights?.find(w => w.latent === l.latent && w.indicator === l.indicator)?.weight) : formatP(l.p_value)]),
+        note: 'Loadings of 0.70 or higher are generally considered adequate.'
+      }, ...(results.reliability_indices ? [{
+        columns: ['Construct', "Cronbach's α", 'Composite reliability', 'AVE'],
+        rows: results.reliability_indices.map(r => [r.latent_name, fixed(r.cronbach_alpha), fixed(r.composite_reliability), fixed(r.ave)]),
+        caption: 'Construct reliability and convergent validity',
+        note: "Guides: Cronbach's α and composite reliability ≥ 0.70; AVE ≥ 0.50."
+      }] : [])]
+    });
+
+    const validity = results.discriminant_validity;
+    if (validity?.htmt?.length || validity?.fornell_larcker) {
+      const tables = [];
+      if (validity.htmt?.length) {
+        tables.push({
+          columns: ['Construct 1', 'Construct 2', 'HTMT', 'Discriminant validity'],
+          rows: validity.htmt.map(h => [nameOf(h.latent1), nameOf(h.latent2), fixed(h.htmt), h.htmt < 0.85 ? 'Established (< 0.85)' : 'At risk (≥ 0.85)']),
+          caption: 'Heterotrait-monotrait ratio (HTMT)'
+        });
+      }
+      const fl = validity.fornell_larcker;
+      if (fl) {
+        tables.push({
+          columns: ['Construct', ...fl.latents.map(nameOf)],
+          rows: fl.latents.map((id, i) => [nameOf(id), ...fl.matrix[i].map((v, j) => (j <= i ? v.toFixed(3) : ''))]),
+          caption: 'Fornell-Larcker criterion',
+          note: fl.violations.length > 0
+            ? `Diagonal = √AVE. Not established for: ${fl.violations.map(v => `${nameOf(v.latent1)} – ${nameOf(v.latent2)}`).join('; ')}.`
+            : 'Diagonal = √AVE; every √AVE exceeds the correlations in its row and column.'
+        });
+      }
+      sections.push({ heading: '4. Discriminant Validity', tables });
+    }
+
+    if (results.fit_indices) {
+      const fit = results.fit_indices;
+      sections.push({
+        heading: '5. Model Fit',
+        tables: [{
+          columns: ['Index', 'Value', 'Guide'],
+          rows: [
+            ['χ²', fit.chi_square === null || fit.chi_square === undefined ? 'N/A' : `${fit.chi_square.toFixed(3)} (df = ${fit.df}, p = ${formatP(fit.p_value)})`, 'Non-significant p suggests exact fit; sensitive to sample size'],
+            ['CFI', fixed(fit.cfi, 3), '≥ 0.90 acceptable, ≥ 0.95 good'],
+            ['TLI', fixed(fit.tli, 3), '≥ 0.90 acceptable, ≥ 0.95 good'],
+            ['RMSEA', fixed(fit.rmsea, 3), '≤ 0.08 acceptable, ≤ 0.05 good'],
+            ['SRMR', fixed(fit.srmr, 3), '≤ 0.08 acceptable'],
+            ['AIC', fixed(fit.aic, 2), 'Lower is better when comparing models'],
+            ['BIC', fixed(fit.bic, 2), 'Lower is better when comparing models']
+          ]
+        }]
+      });
+    } else if (results.fit_error) {
+      sections.push({ heading: '5. Model Fit', paragraphs: [results.fit_error] });
+    }
+
+    return {
+      title: 'Structural Equation Modeling (SEM) Report',
+      test_applied: isPls ? 'Partial least squares SEM (PLS-SEM)' : 'Covariance-based SEM (CB-SEM)',
+      dataset_name: file?.name,
+      filename: fileName,
+      sections
+    };
   };
 
   // Helper: calculate boundary coordinates for path arrow endings
@@ -589,7 +456,7 @@ const SemModal = ({ isOpen, onClose }) => {
   };
 
   return (
-    <div className="fixed inset-0 z-40 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-xs animate-fade-in">
+    <div role="dialog" aria-modal="true" className="fixed inset-0 z-40 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-xs animate-fade-in">
       <div className="flex h-[88vh] w-full max-w-5xl flex-col rounded-3xl border border-slate-100 bg-white shadow-2xl overflow-hidden">
         
         {/* Header */}
@@ -607,12 +474,15 @@ const SemModal = ({ isOpen, onClose }) => {
               </p>
             </div>
           </div>
-          <button
-            onClick={onClose}
-            className="rounded-full p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition-colors"
-          >
-            <X className="h-5 w-5" />
-          </button>
+          <div className="flex items-center space-x-3">
+            {onModeChange && <SemModeSwitch mode="canvas" onChange={onModeChange} />}
+            <button data-dialog-close aria-label="Close"
+              onClick={onClose}
+              className="rounded-full p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition-colors"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
         </div>
 
         {/* Wizard step guardrail */}
@@ -697,29 +567,14 @@ const SemModal = ({ isOpen, onClose }) => {
               <div className="w-[280px] border-r border-slate-100 flex flex-col bg-slate-50/30 overflow-y-auto p-4 space-y-4 shrink-0">
                 {/* Dataset uploader if not uploaded */}
                 {!file ? (
-                  <div
-                    onDragEnter={handleDrag}
-                    onDragOver={handleDrag}
-                    onDragLeave={handleDrag}
-                    onDrop={handleDrop}
-                    onClick={() => fileInputRef.current?.click()}
-                    className={`flex flex-col items-center justify-center rounded-2xl border-2 border-dashed py-8 px-4 text-center cursor-pointer transition-all ${
-                      dragActive ? 'border-brand-indigo bg-indigo-50/10' : 'border-slate-200 bg-white hover:bg-slate-50'
-                    }`}
-                  >
-                    <input
-                      type="file"
-                      ref={fileInputRef}
-                      onChange={handleFileChange}
-                      accept=".csv,.xlsx,.xls"
-                      className="hidden"
-                    />
-                    <Upload className="h-5 w-5 text-slate-400 mb-2" />
-                    <span className="font-display text-xs font-bold text-slate-700">Upload dataset first</span>
-                    <span className="text-[9px] text-slate-400 mt-1">Excel/CSV required to bind indicators.</span>
-                  </div>
+                  <DatasetPicker
+                    dataset={dataset}
+                    title="Select or drop a dataset"
+                    hint="Its columns become the indicators you bind to each latent construct."
+                  />
                 ) : (
                   <div className="space-y-4">
+                    <DatasetPicker dataset={dataset} onViewData={() => setViewerOpen(true)} />
                     
                     {/* Visual canvas controls card */}
                     <div className="bg-white border border-slate-100 rounded-2xl p-3 shadow-xs space-y-2.5">
@@ -1042,6 +897,12 @@ const SemModal = ({ isOpen, onClose }) => {
                   )}
                 </div>
 
+                {reopened && (
+                  <div className="border-t border-slate-100 bg-white px-4 py-3">
+                    <ReopenedBanner analysis={initialAnalysis} onRestore={restoreSaved} />
+                  </div>
+                )}
+
                 {/* Tabular Analysis Results at bottom of canvas */}
                 {results && (
                   <div className="h-[200px] border-t border-slate-100 bg-white flex flex-col">
@@ -1050,7 +911,7 @@ const SemModal = ({ isOpen, onClose }) => {
                         { id: 'paths', label: 'Path Coefficients' },
                         { id: 'loadings', label: 'Outer Loadings' },
                         { id: 'reliability', label: 'Reliability & AVE' },
-                        ...(semType === 'pls' ? [{ id: 'validity', label: 'HTMT Discriminant' }] : []),
+                        ...(results.discriminant_validity?.htmt?.length ? [{ id: 'validity', label: 'HTMT Discriminant' }] : []),
                         ...(results.fit_indices ? [{ id: 'fit', label: 'Model Fit Index' }] : [])
                       ].map(t => (
                         <button
@@ -1066,6 +927,16 @@ const SemModal = ({ isOpen, onClose }) => {
                     </div>
 
                     <div className="flex-1 overflow-y-auto p-3">
+                      {results.fit_error && (
+                        <div className="mb-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 font-sans text-[11px] text-amber-800">
+                          {results.fit_error}
+                        </div>
+                      )}
+                      {results.notes && results.notes.length > 0 && (
+                        <ul className="mb-2 list-disc space-y-0.5 rounded-lg border border-slate-200 bg-slate-50 py-2 pl-7 pr-3 font-sans text-[11px] text-slate-600">
+                          {results.notes.map((note, idx) => <li key={idx}>{note}</li>)}
+                        </ul>
+                      )}
                       {/* Paths Tab */}
                       {activeTab === 'paths' && (
                         <table className="w-full border-collapse font-sans text-[11px] text-left">
@@ -1073,7 +944,10 @@ const SemModal = ({ isOpen, onClose }) => {
                             <tr className="border-b border-slate-100 text-slate-400 font-bold">
                               <th className="pb-1.5">From Construct</th>
                               <th className="pb-1.5">To Construct</th>
-                              <th className="pb-1.5 text-right">Estimate</th>
+                              <th className="pb-1.5 text-right">{results.sem_type === 'cb' ? 'Std. Estimate' : 'Path Coefficient'}</th>
+                              <th className="pb-1.5 text-right">Std. Error</th>
+                              <th className="pb-1.5 text-right">{results.sem_type === 'cb' ? 'z' : 't'}</th>
+                              {results.sem_type === 'pls' && <th className="pb-1.5 text-right">95% CI</th>}
                               <th className="pb-1.5 text-right">p-value</th>
                               <th className="pb-1.5 text-center">Significant</th>
                             </tr>
@@ -1082,12 +956,18 @@ const SemModal = ({ isOpen, onClose }) => {
                             {results.path_coefficients.map((p, idx) => {
                               const fromName = latents.find(l => l.id === p.from)?.name || p.from;
                               const toName = latents.find(l => l.id === p.to)?.name || p.to;
+                              const fmt = (v, digits) => (v === null || v === undefined ? 'n/a' : v.toFixed(digits));
                               return (
                                 <tr key={idx} className="border-b border-slate-50 text-slate-700">
                                   <td className="py-1 font-bold text-slate-800">{fromName}</td>
                                   <td className="py-1 font-bold text-slate-800">{toName}</td>
-                                  <td className="py-1 text-right font-mono text-indigo-600 font-semibold">{p.coefficient.toFixed(4)}</td>
-                                  <td className="py-1 text-right font-mono">{p.p_value.toFixed(6)}</td>
+                                  <td className="py-1 text-right font-mono text-indigo-600 font-semibold">{fmt(p.coefficient, 4)}</td>
+                                  <td className="py-1 text-right font-mono">{fmt(p.std_error, 4)}</td>
+                                  <td className="py-1 text-right font-mono">{fmt(results.sem_type === 'cb' ? p.z_value : p.t_value, 3)}</td>
+                                  {results.sem_type === 'pls' && (
+                                    <td className="py-1 text-right font-mono">[{fmt(p.ci_lower, 3)}, {fmt(p.ci_upper, 3)}]</td>
+                                  )}
+                                  <td className="py-1 text-right font-mono">{p.p_value === null || p.p_value === undefined ? 'n/a' : p.p_value < 0.001 ? '< 0.001' : p.p_value.toFixed(4)}</td>
                                   <td className="py-1 text-center">
                                     <span className={`px-1.5 py-0.5 rounded-sm text-[9px] font-bold ${p.significant ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-50 text-slate-400'}`}>
                                       {p.significant ? 'Significant' : 'No'}
@@ -1114,13 +994,13 @@ const SemModal = ({ isOpen, onClose }) => {
                           <tbody>
                             {results.outer_loadings.map((l, idx) => {
                               const name = latents.find(lv => lv.id === l.latent)?.name || l.latent;
-                              const wVal = results.outer_weights?.find(w => w.latent === l.latent && w.indicator === l.indicator)?.weight || 0.0;
+                              const wVal = results.outer_weights?.find(w => w.latent === l.latent && w.indicator === l.indicator)?.weight;
                               return (
                                 <tr key={idx} className="border-b border-slate-50 text-slate-700">
                                   <td className="py-1 font-bold text-slate-800">{name}</td>
                                   <td className="py-1 text-slate-600">{l.indicator}</td>
                                   <td className="py-1 text-right font-mono font-semibold">{l.loading.toFixed(4)}</td>
-                                  <td className="py-1 text-right font-mono text-slate-400">{wVal.toFixed(4)}</td>
+                                  <td className="py-1 text-right font-mono text-slate-400">{wVal === undefined ? 'n/a' : wVal.toFixed(4)}</td>
                                 </tr>
                               );
                             })}
@@ -1184,6 +1064,45 @@ const SemModal = ({ isOpen, onClose }) => {
                           </tbody>
                         </table>
                       )}
+
+                      {/* Fornell-Larcker criterion: diagonal = sqrt(AVE), off-diagonal = construct correlations */}
+                      {activeTab === 'validity' && results.discriminant_validity?.fornell_larcker && (() => {
+                        const fl = results.discriminant_validity.fornell_larcker;
+                        const nameOf = (id) => latents.find(lv => lv.id === id)?.name || id;
+                        return (
+                          <div className="mt-3">
+                            <p className="mb-1 font-sans text-[11px] font-bold text-slate-600">
+                              Fornell-Larcker Criterion <span className="font-normal text-slate-400">(diagonal = √AVE; each should exceed the correlations in its row and column)</span>
+                            </p>
+                            <table className="w-full border-collapse font-sans text-[11px] text-left">
+                              <thead>
+                                <tr className="border-b border-slate-100 text-slate-400 font-bold">
+                                  <th className="pb-1.5">Construct</th>
+                                  {fl.latents.map(id => <th key={id} className="pb-1.5 text-right">{nameOf(id)}</th>)}
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {fl.latents.map((rowId, i) => (
+                                  <tr key={rowId} className="border-b border-slate-50 text-slate-700">
+                                    <td className="py-1 font-bold text-slate-800">{nameOf(rowId)}</td>
+                                    {fl.matrix[i].map((val, j) => {
+                                      const violated = i !== j && fl.violations.some(v => (v.latent1 === rowId && v.latent2 === fl.latents[j]) || (v.latent2 === rowId && v.latent1 === fl.latents[j]));
+                                      return (
+                                        <td key={j} className={`py-1 text-right font-mono ${i === j ? 'font-bold text-indigo-600' : violated ? 'font-bold text-red-600' : ''}`}>
+                                          {j <= i ? val.toFixed(3) : ''}
+                                        </td>
+                                      );
+                                    })}
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                            {fl.violations.length > 0 && (
+                              <p className="mt-1 font-sans text-[10px] text-red-600">Red values: correlation is not below √AVE, so discriminant validity is not established for that pair.</p>
+                            )}
+                          </div>
+                        );
+                      })()}
 
                       {/* Fit Tab */}
                       {activeTab === 'fit' && results.fit_indices && (
@@ -1256,6 +1175,14 @@ const SemModal = ({ isOpen, onClose }) => {
                   Word
                 </button>
               </div>
+              <SaveToProjectButton
+                module="sem"
+                report={() => buildDocxReport('report')}
+                source={dataset.source}
+                defaultTitle={`SEM (${semType === 'pls' ? 'PLS' : 'CB'}) – ${file?.name || 'dataset'}`}
+                parameters={{ type: semType, latents, paths, dataset: file?.name }}
+                result={results}
+              />
               <button
                 onClick={() => setViewerOpen(true)}
                 className="inline-flex items-center space-x-1.5 rounded-xl border border-slate-200 bg-white px-4 py-2.5 font-sans text-xs font-semibold text-slate-600 hover:bg-slate-50 hover:text-slate-800 transition-colors cursor-pointer"

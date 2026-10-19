@@ -1,5 +1,7 @@
-import React, { useState, useRef, useEffect } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { X, Grid, Download, RefreshCw } from 'lucide-react';
+import { newSeed } from '../utils/seededRandom';
+import { buildLayout } from '../utils/fieldLayout';
 
 const LayoutGeneratorModal = ({ isOpen, onClose }) => {
   // Parameters
@@ -16,152 +18,14 @@ const LayoutGeneratorModal = ({ isOpen, onClose }) => {
   const [colorStyle, setColorStyle] = useState('sunset'); // 'sunset', 'emerald', 'ocean', 'grey', 'nocolor'
 
   // Generated layout state
-  const [layoutGrid, setLayoutGrid] = useState(null);
+  // The randomization seed: the same seed with the same design settings always gives the same layout
+  const [seed, setSeed] = useState(() => newSeed());
+  const layoutGrid = useMemo(
+    () => buildLayout({ designType, replications, treatments, factorB, factorC, seed }),
+    [designType, replications, treatments, factorB, factorC, seed],
+  );
   const svgRef = useRef(null);
 
-  // Helper to shuffle an array
-  const shuffle = (array) => {
-    const copy = [...array];
-    for (let i = copy.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [copy[i], copy[j]] = [copy[j], copy[i]];
-    }
-    return copy;
-  };
-
-  // Generate randomized Latin Square
-  const generateLatinSquare = (t) => {
-    let base = Array.from({ length: t }, (_, i) => i);
-    let square = [];
-    for (let r = 0; r < t; r++) {
-      let row = [];
-      for (let c = 0; c < t; c++) {
-        row.push(`T${base[(r + c) % t] + 1}`);
-      }
-      square.push(row);
-    }
-    // Randomize rows and columns to randomize square
-    let rowIndices = shuffle(Array.from({ length: t }, (_, i) => i));
-    let colIndices = shuffle(Array.from({ length: t }, (_, i) => i));
-    
-    let randomizedSquare = [];
-    for (let r = 0; r < t; r++) {
-      let row = [];
-      for (let c = 0; c < t; c++) {
-        row.push(square[rowIndices[r]][colIndices[c]]);
-      }
-      randomizedSquare.push(row);
-    }
-    return randomizedSquare;
-  };
-
-  // Generate Layout
-  const generateLayout = () => {
-    if (designType === 'crd_oneway') {
-      const total = treatments * replications;
-      const list = [];
-      for (let t = 1; t <= treatments; t++) {
-        for (let r = 1; r <= replications; r++) {
-          list.push(`T${t} (R${r})`);
-        }
-      }
-      const shuffled = shuffle(list);
-      // Arrange in grid
-      const cols = Math.ceil(Math.sqrt(total));
-      const grid = [];
-      for (let i = 0; i < shuffled.length; i += cols) {
-        grid.push(shuffled.slice(i, i + cols));
-      }
-      setLayoutGrid({ type: 'crd', grid });
-    } 
-    else if (designType === 'crd_twoway') {
-      const total = treatments * factorB * replications;
-      const list = [];
-      for (let a = 1; a <= treatments; a++) {
-        for (let b = 1; b <= factorB; b++) {
-          for (let r = 1; r <= replications; r++) {
-            list.push(`A${a}B${b} (R${r})`);
-          }
-        }
-      }
-      const shuffled = shuffle(list);
-      const cols = Math.ceil(Math.sqrt(total));
-      const grid = [];
-      for (let i = 0; i < shuffled.length; i += cols) {
-        grid.push(shuffled.slice(i, i + cols));
-      }
-      setLayoutGrid({ type: 'crd', grid });
-    } 
-    else if (designType === 'rbd_oneway') {
-      // blocks horizontally, plots stacked vertically
-      const blocksList = [];
-      for (let r = 1; r <= replications; r++) {
-        const treats = Array.from({ length: treatments }, (_, idx) => `T${idx + 1}`);
-        const shuffled = shuffle(treats);
-        blocksList.push({ blockNum: r, plots: shuffled });
-      }
-      setLayoutGrid({ type: 'rbd', blocks: blocksList });
-    } 
-    else if (designType === 'rbd_twoway') {
-      const blocksList = [];
-      for (let r = 1; r <= replications; r++) {
-        const treats = [];
-        for (let a = 1; a <= treatments; a++) {
-          for (let b = 1; b <= factorB; b++) {
-            treats.push(`A${a}B${b}`);
-          }
-        }
-        const shuffled = shuffle(treats);
-        blocksList.push({ blockNum: r, plots: shuffled });
-      }
-      setLayoutGrid({ type: 'rbd', blocks: blocksList });
-    } 
-    else if (designType === 'lsd') {
-      const square = generateLatinSquare(treatments);
-      setLayoutGrid({ type: 'lsd', square });
-    } 
-    else if (designType === 'splitplot') {
-      const blocksList = [];
-      for (let r = 1; r <= replications; r++) {
-        const mainTreats = Array.from({ length: treatments }, (_, idx) => `A${idx + 1}`);
-        const shuffledMain = shuffle(mainTreats);
-        
-        const mainPlots = shuffledMain.map(mainName => {
-          const subTreats = Array.from({ length: factorB }, (_, idx) => `B${idx + 1}`);
-          const shuffledSub = shuffle(subTreats);
-          return { mainName, subplots: shuffledSub };
-        });
-        blocksList.push({ blockNum: r, mainPlots });
-      }
-      setLayoutGrid({ type: 'splitplot', blocks: blocksList });
-    } 
-    else if (designType === 'subsubplot') {
-      const blocksList = [];
-      for (let r = 1; r <= replications; r++) {
-        const mainTreats = Array.from({ length: treatments }, (_, idx) => `A${idx + 1}`);
-        const shuffledMain = shuffle(mainTreats);
-        
-        const mainPlots = shuffledMain.map(mainName => {
-          const subTreats = Array.from({ length: factorB }, (_, idx) => `B${idx + 1}`);
-          const shuffledSub = shuffle(subTreats);
-          
-          const subplots = shuffledSub.map(subName => {
-            const subSubTreats = Array.from({ length: factorC }, (_, idx) => `C${idx + 1}`);
-            const shuffledSubSub = shuffle(subSubTreats);
-            return { subName, subSubplots: shuffledSubSub };
-          });
-          
-          return { mainName, subplots };
-        });
-        blocksList.push({ blockNum: r, mainPlots });
-      }
-      setLayoutGrid({ type: 'subsubplot', blocks: blocksList });
-    }
-  };
-
-  useEffect(() => {
-    generateLayout();
-  }, [designType, replications, treatments, factorB, factorC]);
 
   // Handle download SVG
   const downloadSVG = () => {
@@ -170,7 +34,7 @@ const LayoutGeneratorModal = ({ isOpen, onClose }) => {
     const blob = new Blob([svgContent], { type: 'image/svg+xml;charset=utf-8' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
-    link.download = `StatSathi_Field_Layout_${designType}.svg`;
+    link.download = `StatSathi_Field_Layout_${designType}_seed${seed}.svg`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -182,7 +46,7 @@ const LayoutGeneratorModal = ({ isOpen, onClose }) => {
     
     // Get SVG string with XML namespace if not present
     let svgString = new XMLSerializer().serializeToString(svgRef.current);
-    if (!svgString.match(/^<svg[^>]+xmlns="http\:\/\/www\.w3\.org\/2000\/svg"/)) {
+    if (!svgString.match(/^<svg[^>]+xmlns="http:\/\/www\.w3\.org\/2000\/svg"/)) {
       svgString = svgString.replace(/^<svg/, '<svg xmlns="http://www.w3.org/2000/svg"');
     }
     
@@ -212,7 +76,7 @@ const LayoutGeneratorModal = ({ isOpen, onClose }) => {
       const pngUrl = canvas.toDataURL('image/png');
       const link = document.createElement('a');
       link.href = pngUrl;
-      link.download = `StatSathi_Field_Layout_${designType}.png`;
+      link.download = `StatSathi_Field_Layout_${designType}_seed${seed}.png`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -621,6 +485,9 @@ const LayoutGeneratorModal = ({ isOpen, onClose }) => {
         style={{ background: '#ffffff', border: colorStyle === 'nocolor' ? '1px solid #000' : 'none' }}
       >
         {contents}
+        <text x={svgWidth - 8} y={svgHeight - 6} textAnchor="end" fontSize="9" fill="#94A3B8" fontFamily="sans-serif">
+          Randomization seed {seed}
+        </text>
       </svg>
     );
   };
@@ -628,7 +495,7 @@ const LayoutGeneratorModal = ({ isOpen, onClose }) => {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-xs animate-fade-in">
+    <div role="dialog" aria-modal="true" className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-xs animate-fade-in">
       <div className="relative flex h-full max-h-[680px] w-full max-w-5xl flex-col rounded-3xl border border-slate-100 bg-white shadow-2xl overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4">
@@ -645,7 +512,7 @@ const LayoutGeneratorModal = ({ isOpen, onClose }) => {
               </p>
             </div>
           </div>
-          <button
+          <button data-dialog-close aria-label="Close"
             onClick={onClose}
             className="rounded-full p-1.5 text-slate-400 hover:bg-slate-50 hover:text-slate-600 transition-colors"
           >
@@ -804,10 +671,20 @@ const LayoutGeneratorModal = ({ isOpen, onClose }) => {
             <div className="flex justify-between items-center mb-4">
               <h3 className="font-display text-xs font-bold text-slate-600">Generated Field Map Preview</h3>
               <div className="flex space-x-2">
+                <label className="flex items-center space-x-1 rounded-xl border border-slate-200 bg-white px-2 py-1 text-[10px] font-bold text-slate-500" title="Enter a seed to regenerate a layout exactly">
+                  <span>Seed</span>
+                  <input
+                    type="number"
+                    value={seed}
+                    min={1}
+                    onChange={(e) => setSeed(Math.max(1, parseInt(e.target.value, 10) || 1))}
+                    className="w-20 border-0 bg-transparent p-0 font-mono text-[11px] text-slate-700 focus:outline-none"
+                  />
+                </label>
                 <button
-                  onClick={generateLayout}
+                  onClick={() => setSeed(newSeed())}
                   className="rounded-xl border border-slate-200 bg-white px-2.5 py-1.5 text-slate-600 hover:bg-slate-50 text-[10px] font-bold flex items-center space-x-1 cursor-pointer"
-                  title="Reshuffle Randomization"
+                  title="Reshuffle with a new seed"
                 >
                   <RefreshCw className="h-3 w-3" />
                   <span>Reshuffle</span>
@@ -838,7 +715,8 @@ const LayoutGeneratorModal = ({ isOpen, onClose }) => {
 
             {/* Info notice */}
             <div className="mt-4 rounded-xl bg-slate-50 border border-slate-100/50 p-3 text-[10px] text-slate-400 font-sans leading-relaxed">
-              <strong>Randomization rule:</strong> Agronomic layout plots are randomized independently for each block to protect against spatial gradients. The "Plain (No Color)" option is pre-formatted for grayscale publications.
+              <strong>Randomization rule:</strong> Agronomic layout plots are randomized independently for each block to protect against spatial gradients.
+              {' '}<strong>Reproducibility:</strong> this layout was drawn with seed <span className="font-mono text-slate-600">{seed}</span>; entering the same seed with the same design settings regenerates it exactly. The seed is printed on the map and in the file name. The "Plain (No Color)" option is pre-formatted for grayscale publications.
             </div>
           </div>
         </div>

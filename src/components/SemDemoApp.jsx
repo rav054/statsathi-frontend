@@ -1,21 +1,17 @@
+import { apiFetch } from '../utils/apiFetch';
 import React, { useState, useEffect, useRef } from 'react';
 import { X, Network } from 'lucide-react';
-import { API_URL } from '../context/AuthContext';
+import { API_URL, useAuth } from '../context/AuthContext';
+import SemModeSwitch from './SemModeSwitch';
 
 const API_BASE_URL = API_URL;
 
-export default function SemDemoApp({ isOpen, onClose, initialFile = null }) {
+export default function SemDemoApp({ isOpen, onClose, initialFile = null, onModeChange }) {
+  const { token } = useAuth();
   const [file, setFile] = useState(null);
   const [fileName, setFileName] = useState('');
   const [columns, setColumns] = useState([]);
 
-  useEffect(() => {
-    if (initialFile && (!file || file !== initialFile)) {
-      setFile(initialFile);
-      setFileName(initialFile.name);
-      parseCSVHeaders(initialFile);
-    }
-  }, [initialFile]);
   
   // Builder Mode: 'interactive' or 'syntax'
   const [builderMode, setBuilderMode] = useState('interactive');
@@ -70,7 +66,7 @@ export default function SemDemoApp({ isOpen, onClose, initialFile = null }) {
       .catch(() => {});
   }, []);
 
-  const parseCSVHeaders = (fileObj) => {
+  function parseCSVHeaders(fileObj) {
     const reader = new FileReader();
     reader.onload = (evt) => {
       const text = evt.target.result;
@@ -95,7 +91,15 @@ export default function SemDemoApp({ isOpen, onClose, initialFile = null }) {
       }
     };
     reader.readAsText(fileObj);
-  };
+  }
+
+  useEffect(() => {
+    if (initialFile && (!file || file !== initialFile)) {
+      setFile(initialFile);
+      setFileName(initialFile.name);
+      parseCSVHeaders(initialFile);
+    }
+  }, [initialFile]);
 
   const handleFileChange = (e) => {
     if (e.target.files && e.target.files[0]) {
@@ -202,8 +206,9 @@ export default function SemDemoApp({ isOpen, onClose, initialFile = null }) {
       formData.append('file', file);
       formData.append('model', modelSyntax);
 
-      const fitRes = await fetch(`${API_BASE_URL}/api/sem/fit`, {
+      const fitRes = await apiFetch(`${API_BASE_URL}/api/sem/fit`, {
         method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` },
         body: formData,
       });
 
@@ -787,7 +792,7 @@ export default function SemDemoApp({ isOpen, onClose, initialFile = null }) {
         const labelX = px + nx * perpDistance;
         const labelY = py + ny * perpDistance;
 
-        const isSig = p['p-value'] < 0.05;
+        const isSig = p['p-value'] !== null && p['p-value'] < 0.05;
         const isNegative = p.Estimate !== null && p.Estimate < 0;
 
         let strokeColor = currentTheme.nonSigPath;
@@ -1252,7 +1257,7 @@ export default function SemDemoApp({ isOpen, onClose, initialFile = null }) {
                 </thead>
                 <tbody>
                   {sortedParameters.map((param, index) => {
-                    const isSig = param['p-value'] < 0.05;
+                    const isSig = param['p-value'] !== null && param['p-value'] < 0.05;
                     const stars = getSigStars(param['p-value']);
                     return (
                       <tr
@@ -1663,7 +1668,7 @@ export default function SemDemoApp({ isOpen, onClose, initialFile = null }) {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-xs animate-fade-in overflow-y-auto">
+    <div role="dialog" aria-modal="true" className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-xs animate-fade-in overflow-y-auto">
       <div className="relative w-full max-w-6xl max-h-[92vh] flex flex-col rounded-3xl border border-slate-100 bg-white p-6 shadow-2xl overflow-y-auto">
         {/* StatSathi Modal Header */}
         <div className="flex items-center justify-between border-b border-slate-100 pb-4 mb-4">
@@ -1680,12 +1685,15 @@ export default function SemDemoApp({ isOpen, onClose, initialFile = null }) {
               </p>
             </div>
           </div>
-          <button
-            onClick={onClose}
-            className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-100 text-slate-500 hover:bg-slate-200 hover:text-slate-800 transition-colors cursor-pointer"
-          >
-            <X className="h-5 w-5" />
-          </button>
+          <div className="flex items-center space-x-3">
+            {onModeChange && <SemModeSwitch mode="syntax" onChange={onModeChange} />}
+            <button data-dialog-close aria-label="Close"
+              onClick={onClose}
+              className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-100 text-slate-500 hover:bg-slate-200 hover:text-slate-800 transition-colors cursor-pointer"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
         </div>
 
         {mainContent}

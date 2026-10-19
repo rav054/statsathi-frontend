@@ -1,10 +1,10 @@
-import React, { createContext, useState, useEffect, useContext } from 'react';
+import { createContext, useState, useEffect, useContext } from 'react';
+import { API_URL, apiFetch } from '../utils/apiFetch';
 
 const AuthContext = createContext(null);
 
-export const API_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
-  ? 'http://127.0.0.1:8000'
-  : 'https://statsathi-backend.onrender.com';
+// The backend location and a fetch that explains an unreachable server live in utils/apiFetch
+export { API_URL } from '../utils/apiFetch';
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
@@ -15,7 +15,7 @@ export const AuthProvider = ({ children }) => {
   // Fetch current user details
   const fetchProfile = async (currentToken) => {
     try {
-      const res = await fetch(`${API_URL}/auth/me`, {
+      const res = await apiFetch(`${API_URL}/auth/me`, {
         headers: {
           'Authorization': `Bearer ${currentToken}`
         }
@@ -54,7 +54,7 @@ export const AuthProvider = ({ children }) => {
       params.append('username', email);
       params.append('password', password);
 
-      const res = await fetch(`${API_URL}/auth/login`, {
+      const res = await apiFetch(`${API_URL}/auth/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded',
@@ -84,7 +84,7 @@ export const AuthProvider = ({ children }) => {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`${API_URL}/auth/signup`, {
+      const res = await apiFetch(`${API_URL}/auth/signup`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -117,19 +117,19 @@ export const AuthProvider = ({ children }) => {
   };
 
   // Logout handler
-  const logout = () => {
+  function logout() {
     localStorage.removeItem('token');
     setToken(null);
     setUser(null);
     setError(null);
     setLoading(false);
-  };
+  }
 
   // Update profile handler
   const updateProfile = async (fullName, institution, occupation) => {
     setError(null);
     try {
-      const res = await fetch(`${API_URL}/auth/me`, {
+      const res = await apiFetch(`${API_URL}/auth/me`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -159,8 +159,19 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  // A new session from a password reset or change: the previous session no longer works
+  const adoptSession = async (newToken) => {
+    localStorage.setItem('token', newToken);
+    setToken(newToken);
+    await fetchProfile(newToken);
+  };
+
+  const refreshUser = async () => {
+    if (token) await fetchProfile(token);
+  };
+
   return (
-    <AuthContext.Provider value={{ user, token, loading, error, login, signup, logout, updateProfile, setError }}>
+    <AuthContext.Provider value={{ user, token, loading, error, login, signup, logout, updateProfile, setError, adoptSession, refreshUser }}>
       {children}
     </AuthContext.Provider>
   );

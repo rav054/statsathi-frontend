@@ -1,23 +1,54 @@
-import React, { useState, useRef, useEffect } from 'react';
+import { apiFetch } from '../utils/apiFetch';
+import { useState, useEffect, useCallback } from 'react';
 import { useAuth, API_URL } from '../context/AuthContext';
-import { X, Upload, Check, AlertCircle, Download, RefreshCw, Info, Eye } from 'lucide-react';
+import { X, AlertCircle, Download, RefreshCw, Info, Eye } from 'lucide-react';
 import DatasetViewerModal from './DatasetViewerModal';
-import { getWordReportHeader, getWordReportFooter } from '../utils/reportHeader';
+import DatasetPicker from './DatasetPicker';
+import { useDataset } from '../hooks/useDataset';
+import { downloadDocxReport, formatP } from '../utils/reportApi';
+import SaveToProjectButton from './SaveToProjectButton';
+import ReopenedBanner from './ReopenedBanner';
+import ResultChartPanel from './ResultChartPanel';
 
-const NonParametricModal = ({ isOpen, onClose }) => {
+// Chart styles offered under the results (drawn by /analyze/result-chart)
+const nonParametricChartOptions = (testType, selectedCols) => {
+  const classic = { value: 'classic', label: 'Classic' };
+  if (testType === 'wilcoxon') {
+    return [classic, {
+      value: 'paired', label: 'Paired lines', hint: 'One line per pair from the first to the second measurement.',
+      fields: { layout: 'long', x_var: selectedCols[0], y_var: selectedCols[1] }
+    }];
+  }
+  if (testType === 'chi_square') {
+    return [classic, {
+      value: 'mosaic', label: 'Mosaic plot', hint: 'Tile areas show the cross-tabulation; colour shows standardized residuals.',
+      fields: { layout: 'long', x_var: selectedCols[0], hue_var: selectedCols[1] }
+    }];
+  }
+  return [
+    classic,
+    { value: 'raincloud', label: 'Raincloud', hint: 'Density, box plot and every observation.' },
+    { value: 'boxswarm', label: 'Box + beeswarm', hint: 'Box plots with every observation.' }
+  ];
+};
+
+const NonParametricModal = ({ isOpen, onClose, initialAnalysis = null }) => {
+  const saved = initialAnalysis?.parameters || {};
   const { token, user } = useAuth();
   
   // State for dataset selection
-  const [file, setFile] = useState(null);
-
-
-
-
-  const [columns, setColumns] = useState([]);
-  const [numericColumns, setNumericColumns] = useState([]);
-  const [loadingCols, setLoadingCols] = useState(false);
-  const [dragActive, setDragActive] = useState(false);
-  const fileInputRef = useRef(null);
+  const dataset = useDataset({
+    active: isOpen && !initialAnalysis,
+    onLoaded: ({ numericColumns: numeric }) => {
+      setCol1(numeric[0] || '');
+      setCol2(numeric[1] || '');
+      setSelectedCols(numeric.slice(0, 2));
+      setResults(null);
+    },
+    onCleared: () => setResults(null),
+  });
+  const { clear } = dataset;
+  const { file, columns, numericColumns } = dataset;
 
   // State for test configurations
   const [testType, setTestType] = useState('mann_whitney');
@@ -27,7 +58,22 @@ const NonParametricModal = ({ isOpen, onClose }) => {
   
   // State for results
   const [loadingAnalysis, setLoadingAnalysis] = useState(false);
-  const [results, setResults] = useState(null);
+  const [results, setResults] = useState(initialAnalysis?.result || null);
+  const [reopened, setReopened] = useState(Boolean(initialAnalysis?.result));
+
+  // Fetch the dataset this analysis was run on, then restore its settings so it can be run again
+  const restoreSaved = async () => {
+    setReopened(false);
+    setResults(null);
+    const loaded = await dataset.selectProjectDataset(initialAnalysis.dataset, initialAnalysis.projectName);
+    if (loaded) {
+      setTestType(saved.test || 'mann_whitney');
+      setSelectedCols(saved.variables || []);
+      setCol1(saved.variables?.[0] || '');
+      setCol2(saved.variables?.[1] || '');
+    }
+  };
+  const [chartImage, setChartImage] = useState(null); // chart style chosen below the results, used in reports
   const [error, setError] = useState(null);
   const [viewerOpen, setViewerOpen] = useState(false);
 
@@ -37,98 +83,33 @@ const NonParametricModal = ({ isOpen, onClose }) => {
     return `p = ${p.toFixed(4)}`;
   };
 
+  const handleReset = useCallback(() => {
+    clear();
+    setTestType('mann_whitney');
+    setCol1('');
+    setCol2('');
+    setSelectedCols([]);
+    setResults(null);
+    setError(null);
+  }, [clear]);
+
   useEffect(() => {
     if (!isOpen) {
       handleReset();
     }
-  }, [isOpen]);
+  }, [isOpen, handleReset]);
 
   if (!isOpen) return null;
-
-  const handleDrag = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (e.type === "dragenter" || e.type === "dragover") {
-      setDragActive(true);
-    } else if (e.type === "dragleave") {
-      setDragActive(false);
-    }
-  };
-
-  const handleDrop = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setDragActive(false);
-    
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      handleFileSelected(e.dataTransfer.files[0]);
-    }
-  };
-
-  const handleChange = (e) => {
-    e.preventDefault();
-    if (e.target.files && e.target.files[0]) {
-      handleFileSelected(e.target.files[0]);
-    }
-  };
 
   const handleSaveEditedData = async (editedFile) => {
     setResults(null);
     setError(null);
     if (editedFile) {
-      await handleFileSelected(editedFile);
+      await dataset.selectFile(editedFile);
     }
   };
 
   // Upload file to parse columns immediately
-  const handleFileSelected = async (selectedFile) => {
-    setError(null);
-    const ext = selectedFile.name.split('.').pop().toLowerCase();
-    if (!['csv', 'xlsx', 'xls'].includes(ext)) {
-      setError("Supported formats: CSV or Excel (.xlsx, .xls) only.");
-      return;
-    }
-
-    setFile(selectedFile);
-    setLoadingCols(true);
-
-    const formData = new FormData();
-    formData.append('file', selectedFile);
-
-    try {
-      const res = await fetch(`${API_URL}/analyze/columns`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        },
-        body: formData
-      });
-
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.detail || "Failed to read columns.");
-      }
-
-      setColumns(data.columns || []);
-      setNumericColumns(data.numeric_columns || []);
-
-      if (data.numeric_columns && data.numeric_columns.length > 0) {
-        setCol1(data.numeric_columns[0]);
-        const initialSelected = [data.numeric_columns[0]];
-        if (data.numeric_columns.length > 1) {
-          setCol2(data.numeric_columns[1]);
-          initialSelected.push(data.numeric_columns[1]);
-        }
-        setSelectedCols(initialSelected);
-      }
-    } catch (err) {
-      setError(err.message);
-      setFile(null);
-    } finally {
-      setLoadingCols(false);
-    }
-  };
-
   const runAnalysis = async (e) => {
     if (e && e.preventDefault) {
       e.preventDefault();
@@ -160,6 +141,7 @@ const NonParametricModal = ({ isOpen, onClose }) => {
     setLoadingAnalysis(true);
     setError(null);
     setResults(null);
+    setChartImage(null);
 
     // Smart Routing for Independent tests
     let routed_test_type = testType;
@@ -181,7 +163,7 @@ const NonParametricModal = ({ isOpen, onClose }) => {
     formData.append('cols_str', selectedCols.join(','));
 
     try {
-      const res = await fetch(`${API_URL}/analyze/nonparametric`, {
+      const res = await apiFetch(`${API_URL}/analyze/nonparametric`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -257,9 +239,8 @@ const NonParametricModal = ({ isOpen, onClose }) => {
     report += `Result: ${results.statistics.significant ? 'Statistically Significant (Reject H0)' : 'Not Statistically Significant (Fail to Reject H0)'}\n`;
     
     // Chi-Square contingency table
-    if (testType === 'chisquare' && results.statistics.contingency_table) {
+    if (testType === 'chi_square' && results.statistics.contingency_table) {
       report += `\nContingency Table (Counts):\n`;
-      const ct = results.statistics.contingency_table;
       report += `  Variables: ${selectedCols[0]} vs ${selectedCols[1]}\n`;
       report += `  Values formatted as category cross-counts. Inspect UI report for complete structure.\n`;
     }
@@ -274,7 +255,7 @@ const NonParametricModal = ({ isOpen, onClose }) => {
         const iqrStr = results.statistics.iqrs && results.statistics.iqrs[idx] ? ` (IQR: ${results.statistics.iqrs[idx].toFixed(2)})` : '';
         report += `${cName}: Median = ${m.toFixed(4)}${iqrStr}\n`;
       });
-    } else if (testType === 'chisquare') {
+    } else if (testType === 'chi_square') {
       report += `Categorical distributions mapped. Inspect UI summaries.\n`;
     } else {
       const n1 = results.statistics.n1 !== undefined ? results.statistics.n1 : results.statistics.n;
@@ -313,7 +294,6 @@ const NonParametricModal = ({ isOpen, onClose }) => {
     report += `==================================================\n`;
 
     const fileName = `StatSathi_NonParametricReport_${testType}_${selectedCols.join('_')}`;
-    const title = `Stat Sathi ${results.statistics.test_name || 'Non-Parametric Test'} Report`;
 
     if (format === 'txt') {
       const blob = new Blob([report], { type: 'text/plain;charset=utf-8' });
@@ -324,328 +304,81 @@ const NonParametricModal = ({ isOpen, onClose }) => {
       link.click();
       document.body.removeChild(link);
     } else if (format === 'doc') {
-      const name = results.statistics.test_name || '';
-      const statSymbol = (() => {
-        if (name.includes("Mann-Whitney")) return "U";
-        if (name.includes("Wilcoxon")) return "W";
-        if (name.includes("Kruskal-Wallis")) return "H";
-        if (name.includes("Friedman")) return "Chi-Square";
-        if (name.includes("Chi-Square")) return "Chi-Square";
-        return "Statistic";
-      })();
-
-      let statsRows = `
-        <tr>
-          <td style="border: 1px solid #CBD5E1; padding: 10px; font-weight: bold; background-color: #F8FAFC;">Test Statistic (${statSymbol})</td>
-          <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-family: 'Courier New', Courier, monospace; font-weight: bold;">${results.statistics.statistic !== undefined ? results.statistics.statistic.toFixed(6) : 'N/A'}</td>
-        </tr>
-      `;
-      if (results.statistics.df !== undefined) {
-        statsRows += `
-          <tr>
-            <td style="border: 1px solid #CBD5E1; padding: 10px; font-weight: bold; background-color: #F8FAFC;">Degrees of Freedom (df)</td>
-            <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-family: 'Courier New', Courier, monospace;">${results.statistics.df}</td>
-          </tr>
-        `;
-      }
-      statsRows += `
-        <tr>
-          <td style="border: 1px solid #CBD5E1; padding: 10px; font-weight: bold; background-color: #F8FAFC;">p-value</td>
-          <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-family: 'Courier New', Courier, monospace; font-weight: bold; color: ${results.statistics.significant ? '#EF4444' : '#1E293B'};">${results.statistics.p_value < 0.001 ? 'p &lt; 0.001' : results.statistics.p_value.toFixed(6)}</td>
-        </tr>
-      `;
-      if (results.statistics.effect_size !== undefined && results.statistics.effect_size_name) {
-        statsRows += `
-          <tr>
-            <td style="border: 1px solid #CBD5E1; padding: 10px; font-weight: bold; background-color: #F8FAFC;">Effect Size (${results.statistics.effect_size_name})</td>
-            <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-family: 'Courier New', Courier, monospace;">${results.statistics.effect_size.toFixed(4)}</td>
-          </tr>
-        `;
-      }
-      statsRows += `
-        <tr>
-          <td style="border: 1px solid #CBD5E1; padding: 10px; font-weight: bold; background-color: #F8FAFC;">Conclusion</td>
-          <td style="border: 1px solid #CBD5E1; padding: 10px; font-weight: bold; color: ${results.statistics.significant ? '#10B981' : '#64748B'};">${results.statistics.significant ? 'Statistically Significant (Reject H₀)' : 'Not Statistically Significant (Fail to Reject H₀)'}</td>
-        </tr>
-      `;
-
-      let descriptivesTable = '';
-      if (testType === 'kruskal' || testType === 'friedman') {
-        descriptivesTable = `
-          <h2 style="color: #4F46E5; font-family: Arial, sans-serif; font-size: 14pt; margin-top: 20px;">Sample Group Medians</h2>
-          <div align="center">
-          <table align="center" style="margin-left: auto; margin-right: auto; border-collapse: collapse; width: 100%; font-family: Arial, sans-serif; font-size: 10pt; margin-bottom: 20px;">
-            <thead>
-              <tr style="background-color: #4F46E5; color: white;">
-                <th style="border: 1px solid #CBD5E1; padding: 10px; text-align: left; font-weight: bold;">Group Name</th>
-                <th style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-weight: bold;">Median</th>
-                <th style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-weight: bold;">IQR</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${results.statistics.medians.map((m, idx) => {
-                const cName = selectedCols[idx] || `Group ${idx + 1}`;
-                const iqrVal = results.statistics.iqrs && results.statistics.iqrs[idx] ? results.statistics.iqrs[idx].toFixed(4) : '-';
-                return `
-                  <tr>
-                    <td style="border: 1px solid #CBD5E1; padding: 10px; font-weight: bold; background-color: #F8FAFC; color: #1E293B;">${cName}</td>
-                    <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-family: 'Courier New', Courier, monospace; color: #334155;">${m.toFixed(4)}</td>
-                    <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-family: 'Courier New', Courier, monospace; color: #334155;">${iqrVal}</td>
-                  </tr>
-                `;
-              }).join('')}
-            </tbody>
-          </table>
-          </div>
-        `;
-      } else if (testType === 'chisquare') {
-        descriptivesTable = ''; 
-      } else {
-        const n1 = results.statistics.n1 !== undefined ? results.statistics.n1 : results.statistics.n;
-        const n2 = results.statistics.n2 !== undefined ? results.statistics.n2 : results.statistics.n;
-        const med1 = results.statistics.median1 !== undefined ? results.statistics.median1 : results.statistics.median_group1;
-        const med2 = results.statistics.median2 !== undefined ? results.statistics.median2 : results.statistics.median_group2;
-        const q25_1 = results.statistics.q25_group1;
-        const q75_1 = results.statistics.q75_group1;
-        const q25_2 = results.statistics.q25_group2;
-        const q75_2 = results.statistics.q75_group2;
-        
-        const iqrStr1 = (q25_1 !== undefined && q75_1 !== undefined) ? `${q25_1.toFixed(3)} - ${q75_1.toFixed(3)}` : 'N/A';
-        const iqrStr2 = (q25_2 !== undefined && q75_2 !== undefined) ? `${q25_2.toFixed(3)} - ${q75_2.toFixed(3)}` : 'N/A';
-
-        let diffRow = '';
-        if (results.statistics.median_difference !== undefined) {
-          const q25_diff = results.statistics.q25_difference;
-          const q75_diff = results.statistics.q75_difference;
-          const iqrDiffStr = (q25_diff !== undefined && q75_diff !== undefined) ? `${q25_diff.toFixed(3)} - ${q75_diff.toFixed(3)}` : 'N/A';
-          diffRow = `
-            <tr>
-              <td style="border: 1px solid #CBD5E1; padding: 10px; font-weight: bold; background-color: #F8FAFC; color: #4F46E5;">Paired Differences</td>
-              <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; color: #4F46E5;">${n1}</td>
-              <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-family: 'Courier New', Courier, monospace; font-weight: bold; color: #4F46E5;">${results.statistics.median_difference.toFixed(4)}</td>
-              <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-family: 'Courier New', Courier, monospace; color: #4F46E5;">${iqrDiffStr}</td>
-            </tr>
-          `;
-        }
-
-        descriptivesTable = `
-          <h2 style="color: #4F46E5; font-family: Arial, sans-serif; font-size: 14pt; margin-top: 20px;">Sample Group Descriptives</h2>
-          <div align="center">
-          <table align="center" style="margin-left: auto; margin-right: auto; border-collapse: collapse; width: 100%; font-family: Arial, sans-serif; font-size: 10pt; margin-bottom: 20px;">
-            <thead>
-              <tr style="background-color: #4F46E5; color: white;">
-                <th style="border: 1px solid #CBD5E1; padding: 10px; text-align: left; font-weight: bold;">Group Name</th>
-                <th style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-weight: bold;">Sample Size (n)</th>
-                <th style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-weight: bold;">Median</th>
-                <th style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-weight: bold;">IQR (Q1 - Q3)</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; font-weight: bold; background-color: #F8FAFC; color: #1E293B;">${selectedCols[0] || 'Group 1'}</td>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; color: #334155;">${n1}</td>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-family: 'Courier New', Courier, monospace; color: #334155;">${med1 !== undefined && med1 !== null ? med1.toFixed(4) : 'N/A'}</td>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-family: 'Courier New', Courier, monospace; color: #334155;">${iqrStr1}</td>
-              </tr>
-              <tr>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; font-weight: bold; background-color: #F8FAFC; color: #1E293B;">${selectedCols[1] || 'Group 2'}</td>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; color: #334155;">${n2}</td>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-family: 'Courier New', Courier, monospace; color: #334155;">${med2 !== undefined && med2 !== null ? med2.toFixed(4) : 'N/A'}</td>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-family: 'Courier New', Courier, monospace; color: #334155;">${iqrStr2}</td>
-              </tr>
-              ${diffRow}
-            </tbody>
-          </table>
-          </div>
-        `;
-      }
-
-      let contingencyTableMarkup = '';
-      if (testType === 'chisquare' && results.statistics.contingency_table) {
-        const ct = results.statistics.contingency_table;
-        contingencyTableMarkup = `
-          <h2 style="color: #4F46E5; font-family: Arial, sans-serif; font-size: 14pt; margin-top: 20px;">Contingency Frequencies Table</h2>
-          <div align="center">
-          <table align="center" style="margin-left: auto; margin-right: auto; border-collapse: collapse; width: 100%; font-family: Arial, sans-serif; font-size: 10pt; margin-bottom: 20px;">
-            <thead>
-              <tr style="background-color: #4F46E5; color: white;">
-                <th style="border: 1px solid #CBD5E1; padding: 10px; text-align: left; font-weight: bold;">${selectedCols[0] || 'Var 1'} \\ ${selectedCols[1] || 'Var 2'}</th>
-                ${ct.columns.map(colHeader => `<th style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-weight: bold;">${colHeader}</th>`).join('')}
-              </tr>
-            </thead>
-            <tbody>
-              ${ct.index.map((rowLabel, rowIndex) => `
-                <tr>
-                  <td style="border: 1px solid #CBD5E1; padding: 10px; font-weight: bold; background-color: #F8FAFC; color: #1E293B;">${rowLabel}</td>
-                  ${ct.values[rowIndex].map(cellValue => `<td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; color: #334155; font-family: 'Courier New', Courier, monospace;">${cellValue}</td>`).join('')}
-                </tr>
-              `).join('')}
-            </tbody>
-          </table>
-          </div>
-        `;
-      }
-
-      let normalityTableMarkup = '';
-      if (results.normality && Object.keys(results.normality).length > 0) {
-        let normalityRows = '';
-        if (testType === 'wilcoxon') {
-          const diffMeta = results.normality.differences;
-          if (diffMeta) {
-            normalityRows = `
-              <tr>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; font-weight: bold; background-color: #F8FAFC;">Paired Differences</td>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-family: 'Courier New', Courier, monospace;">${diffMeta.stat.toFixed(4)}</td>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-family: 'Courier New', Courier, monospace;">${diffMeta.p_value < 0.001 ? 'p &lt; 0.001' : diffMeta.p_value.toFixed(6)}</td>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: center; font-weight: bold; color: ${diffMeta.normal ? '#F59E0B' : '#10B981'};">${diffMeta.normal ? 'Normal (Parametric Preferred)' : 'Non-Normal (Non-Parametric Justified)'}</td>
-              </tr>
-            `;
-          }
-        } else {
-          normalityRows = Object.entries(results.normality).map(([column, meta]) => {
-            if (meta.error) {
-              return `
-                <tr>
-                  <td style="border: 1px solid #CBD5E1; padding: 10px; font-weight: bold; background-color: #F8FAFC;">${column}</td>
-                  <td colspan="3" style="border: 1px solid #CBD5E1; padding: 10px; color: #EF4444; font-style: italic;">${meta.error}</td>
-                </tr>
-              `;
-            }
-            return `
-              <tr>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; font-weight: bold; background-color: #F8FAFC;">${column}</td>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-family: 'Courier New', Courier, monospace;">${meta.stat.toFixed(4)}</td>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-family: 'Courier New', Courier, monospace;">${meta.p_value < 0.001 ? 'p &lt; 0.001' : meta.p_value.toFixed(6)}</td>
-                <td style="border: 1px solid #CBD5E1; padding: 10px; text-align: center; font-weight: bold; color: ${meta.normal ? '#F59E0B' : '#10B981'};">${meta.normal ? 'Normal (Parametric Preferred)' : 'Non-Normal (Non-Parametric Justified)'}</td>
-              </tr>
-            `;
-          }).join('');
-        }
-
-        normalityTableMarkup = `
-          <h2 style="color: #4F46E5; font-family: Arial, sans-serif; font-size: 14pt; margin-top: 20px;">Normality Check & Justification (Shapiro-Wilk Test)</h2>
-          <div align="center">
-          <table align="center" style="margin-left: auto; margin-right: auto; border-collapse: collapse; width: 100%; font-family: Arial, sans-serif; font-size: 10pt; margin-bottom: 20px;">
-            <thead>
-              <tr style="background-color: #4F46E5; color: white;">
-                <th style="border: 1px solid #CBD5E1; padding: 10px; text-align: left; font-weight: bold;">Variable</th>
-                <th style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-weight: bold;">W Statistic</th>
-                <th style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-weight: bold;">p-value</th>
-                <th style="border: 1px solid #CBD5E1; padding: 10px; text-align: center; font-weight: bold;">Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${normalityRows}
-            </tbody>
-          </table>
-          </div>
-        `;
-      }
-
-      const htmlContent = `
-        <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
-        <head>
-          <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
-          <title>${title}</title>
-          <!--[if gte mso 9]>
-          <xml>
-            <w:WordDocument>
-              <w:View>Print</w:View>
-              <w:Zoom>100</w:Zoom>
-            </w:WordDocument>
-          </xml>
-          <![endif]-->
-          <style>
-            body { font-family: Arial, sans-serif; font-size: 11pt; line-height: 1.6; color: #1E293B; margin: 1in; }
-            h1 { color: #4F46E5; font-size: 18pt; border-bottom: 2px solid #4F46E5; padding-bottom: 6px; margin-bottom: 20px; }
-            h2 { color: #1E293B; font-size: 14pt; margin-top: 25px; border-bottom: 1px solid #E2E8F0; padding-bottom: 4px; }
-            p { margin-bottom: 15px; }
-            .meta-table { border-collapse: collapse; width: 75%; margin-left: auto; margin-right: auto; margin-bottom: 25px; }
-            .meta-table td { padding: 8px; border: 1px solid #E2E8F0; }
-            .meta-label { font-weight: bold; background-color: #F8FAFC; width: 30%; }
-          </style>
-        </head>
-        <body>
-          ${getWordReportHeader({
-            title: 'Non-Parametric Hypothesis Test Report',
-            testApplied: results.statistics.test_name || 'Non-Parametric Test',
-            fileName: file ? file.name : '',
-            curator: user ? user.full_name : 'Guest Researcher'
-          })}
-
-          <h2 style="color: #4F46E5; font-family: Arial, sans-serif; font-size: 14pt; margin-top: 20px;">1. Test Statistics</h2>
-          <div align="center">
-          <table align="center" style="margin-left: auto; margin-right: auto; border-collapse: collapse; width: 100%; font-family: Arial, sans-serif; font-size: 10pt; margin-bottom: 20px;">
-            <thead>
-              <tr style="background-color: #4F46E5; color: white;">
-                <th style="border: 1px solid #CBD5E1; padding: 10px; text-align: left; font-weight: bold;">Parameter</th>
-                <th style="border: 1px solid #CBD5E1; padding: 10px; text-align: right; font-weight: bold;">Value</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${statsRows}
-            </tbody>
-          </table>
-          </div>
-
-          ${descriptivesTable}
-
-          ${contingencyTableMarkup}
-
-          ${normalityTableMarkup}
-
-          ${getWordReportFooter()}
-        </body>
-        </html>
-      `;
-      const centeredHtml = htmlContent
-        .replace(/width:\s*100%/gi, 'width: 80%')
-        .replace(/width:\s*95%/gi, 'width: 80%')
-        .replace(/class="meta-table"/gi, 'class="meta-table" style="width: 75%;"')
-        .replace(/<table([^>]*)>/gi, (match, attrs) => {
-          let newAttrs = attrs;
-          if (/width:\s*100%/i.test(newAttrs)) {
-            newAttrs = newAttrs.replace(/width:\s*100%/i, 'width: 80%');
-          }
-          if (/width:\s*95%/i.test(newAttrs)) {
-            newAttrs = newAttrs.replace(/width:\s*95%/i, 'width: 80%');
-          }
-          if (/style="/i.test(newAttrs)) {
-            newAttrs = newAttrs.replace(/style="/i, 'style="mso-table-align: center; margin-left: auto; margin-right: auto; ');
-          } else {
-            newAttrs = ' style="mso-table-align: center; margin-left: auto; margin-right: auto;"' + newAttrs;
-          }
-          if (!/align=/i.test(newAttrs)) {
-            newAttrs = ' align="center"' + newAttrs;
-          }
-          return `<center><table${newAttrs}>`;
-        })
-        .replace(/<\/table>/gi, '</table></center>');
-      const blob = new Blob(['\ufeff' + centeredHtml], { type: 'application/msword;charset=utf-8' });
-      const link = document.createElement('a');
-      link.href = URL.createObjectURL(blob);
-      link.download = `${fileName}.doc`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+      downloadDocxReport(token, buildDocxReport(fileName)).catch(err => setError(err.message));
     }
   };
+  // Structured content for the server-side Word (.docx) report
+  const buildDocxReport = (fileName) => {
+    const s = results.statistics;
+    const name = s.test_name || 'Non-parametric test';
+    const symbol = name.includes('Mann-Whitney') ? 'U' : name.includes('Wilcoxon') ? 'W' : name.includes('Kruskal') ? 'H' : 'χ²';
+    const fixed = (v, digits = 4) => (v === null || v === undefined ? 'N/A' : v.toFixed(digits));
 
-  function handleReset() {
-    setFile(null);
-    setColumns([]);
-    setNumericColumns([]);
-    setTestType('mann_whitney');
-    setCol1('');
-    setCol2('');
-    setSelectedCols([]);
-    setResults(null);
-    setError(null);
-    if (fileInputRef.current) fileInputRef.current.value = '';
-  }
+    const testRows = [[`Test statistic (${symbol})`, fixed(s.statistic)]];
+    if (s.degrees_of_freedom !== undefined) testRows.push(['Degrees of freedom', String(s.degrees_of_freedom)]);
+    testRows.push(['p-value', formatP(s.p_value)]);
+    if (s.effect_size !== undefined && s.effect_size !== null) testRows.push([`Effect size (${s.effect_size_name || 'effect size'})`, fixed(s.effect_size)]);
+    if (s.yates_corrected) testRows.push(['Yates-corrected χ²', `${fixed(s.yates_corrected.statistic)} (p = ${formatP(s.yates_corrected.p_value)})`]);
+    if (s.fisher_exact_p !== undefined && s.fisher_exact_p !== null) testRows.push(["Fisher's exact test p", formatP(s.fisher_exact_p)]);
+    testRows.push(['Conclusion', s.significant ? 'Statistically significant (reject H₀)' : 'Not statistically significant (fail to reject H₀)']);
+    const sections = [{ heading: '1. Test Statistics', tables: [{ columns: ['Parameter', 'Value'], rows: testRows }] }];
+
+    if (s.medians && typeof s.medians === 'object') {
+      const groups = Object.keys(s.medians);
+      sections.push({
+        heading: '2. Group Medians',
+        tables: [{ columns: ['Group', 'n', 'Median', 'Q1', 'Q3', 'IQR'], rows: groups.map(g => [g, s.sizes?.[g] ?? '–', fixed(s.medians[g]), fixed(s.q25?.[g]), fixed(s.q75?.[g]), fixed(s.iqr?.[g])]) }]
+      });
+    } else if (s.median_group1 !== undefined) {
+      const rows = [
+        [selectedCols[0] || 'Group 1', s.n_group1 ?? s.n ?? '–', fixed(s.median_group1), fixed(s.q25_group1), fixed(s.q75_group1)],
+        [selectedCols[1] || 'Group 2', s.n_group2 ?? s.n ?? '–', fixed(s.median_group2), fixed(s.q25_group2), fixed(s.q75_group2)]
+      ];
+      if (s.median_difference !== undefined) rows.push(['Paired differences', s.n ?? '–', fixed(s.median_difference), fixed(s.q25_difference), fixed(s.q75_difference)]);
+      sections.push({
+        heading: '2. Group Descriptives',
+        tables: [{
+          columns: ['Group', 'n', 'Median', 'Q1', 'Q3'],
+          rows,
+          note: s.n_nonzero !== undefined ? `${s.n_nonzero} of ${s.n} pairs had a non-zero difference; zero differences are excluded from the test.` : undefined
+        }]
+      });
+    }
+
+    if (s.contingency_table) {
+      const ct = s.contingency_table;
+      const corner = `${selectedCols[0] || 'Variable 1'} \\ ${selectedCols[1] || 'Variable 2'}`;
+      const tables = [{ columns: [corner, ...ct.columns], rows: ct.index.map((label, i) => [label, ...ct.values[i]]), caption: 'Observed counts' }];
+      if (ct.expected) tables.push({ columns: [corner, ...ct.columns], rows: ct.index.map((label, i) => [label, ...ct.expected[i].map(v => v.toFixed(2))]), caption: 'Expected counts under independence' });
+      sections.push({ heading: '3. Contingency Table', tables, bullets: s.notes || [] });
+    }
+
+    if (results.normality && Object.keys(results.normality).length > 0) {
+      sections.push({
+        heading: 'Normality Check (Shapiro-Wilk)',
+        paragraphs: ['A significant result (p < 0.05) indicates non-normal data, which supports using a non-parametric test.'],
+        tables: [{
+          columns: ['Variable', 'W', 'p-value', 'Status'],
+          rows: Object.entries(results.normality).map(([column, meta]) => (meta.error
+            ? [column, 'N/A', 'N/A', meta.error]
+            : [column === 'differences' ? 'Paired differences' : column, fixed(meta.stat), formatP(meta.p_value), meta.normal ? 'Normal' : 'Not normal']))
+        }]
+      });
+    }
+    if (chartImage || results.plot) sections.push({ heading: 'Figure', images: [{ data: `data:image/png;base64,${chartImage || results.plot}`, caption: `Figure 1. ${name}` }] });
+
+    return {
+      title: 'Non-Parametric Hypothesis Test Report',
+      test_applied: name,
+      dataset_name: file?.name,
+      filename: fileName,
+      sections
+    };
+  };
+
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-xs animate-fade-in">
+    <div role="dialog" aria-modal="true" className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-xs animate-fade-in">
       <div className="relative flex h-full max-h-[640px] w-full max-w-4xl flex-col rounded-3xl border border-slate-100 bg-white shadow-2xl overflow-hidden">
         
         {/* Header */}
@@ -658,7 +391,7 @@ const NonParametricModal = ({ isOpen, onClose }) => {
               Analyze data that doesn't follow normal distribution. Mann-Whitney U, Wilcoxon, Kruskal-Wallis.
             </p>
           </div>
-          <button
+          <button data-dialog-close aria-label="Close"
             onClick={onClose}
             className="rounded-full p-1.5 text-slate-400 hover:bg-slate-50 hover:text-slate-600 transition-colors"
           >
@@ -675,67 +408,18 @@ const NonParametricModal = ({ isOpen, onClose }) => {
             </div>
           )}
 
-          {/* Step 1: Upload */}
-          {!file && !loadingCols && (
-            <div 
-              onDragEnter={handleDrag}
-              onDragOver={handleDrag}
-              onDragLeave={handleDrag}
-              onDrop={handleDrop}
-              onClick={() => fileInputRef.current.click()}
-              className="flex flex-col items-center justify-center rounded-3xl border-2 border-dashed py-16 px-6 text-center cursor-pointer border-slate-300 hover:border-brand-indigo hover:bg-slate-50/50 transition-all"
-            >
-              <input
-                type="file"
-                ref={fileInputRef}
-                onChange={handleChange}
-                accept=".csv,.xlsx,.xls"
-                className="hidden"
-              />
-              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-slate-100 text-slate-500 mb-4">
-                <Upload className="h-6 w-6 text-slate-400" />
-              </div>
-              <p className="font-sans text-sm font-semibold text-slate-700">Select or drop dataset for Non-Parametric analysis</p>
-              <p className="font-sans text-xs text-slate-400 mt-1">Supports CSV, XLSX, and XLS formats</p>
-            </div>
-          )}
-
-          {/* Loading headers */}
-          {loadingCols && (
-            <div className="flex flex-col items-center justify-center py-16 space-y-4">
-              <div className="h-10 w-10 animate-spin rounded-full border-4 border-brand-indigo border-t-transparent"></div>
-              <p className="font-sans text-sm font-medium text-slate-600 animate-pulse">Reading dataset columns...</p>
-            </div>
-          )}
-
           {/* Step 2: Config Form */}
-          {file && !loadingCols && !results && !loadingAnalysis && (
-            <form onSubmit={runAnalysis} className="space-y-6">
-              <div className="rounded-2xl border border-slate-100 bg-slate-50 p-4 flex justify-between items-center">
-                <div className="truncate">
-                  <p className="font-sans text-xs font-bold text-slate-400 uppercase">Selected Dataset</p>
-                  <p className="font-sans text-sm font-semibold text-slate-700 truncate">{file.name}</p>
-                </div>
-                <div className="flex space-x-2">
-                  <button
-                    type="button"
-                    onClick={() => setViewerOpen(true)}
-                    className="rounded-xl border border-slate-200 bg-white p-2 text-slate-500 hover:bg-slate-50 hover:text-slate-800 transition-colors text-xs font-semibold flex items-center space-x-1"
-                  >
-                    <Eye className="h-3.5 w-3.5 text-brand-orange" />
-                    <span>View Data</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleReset}
-                    className="rounded-xl border border-slate-200 bg-white p-2 text-slate-500 hover:bg-slate-50 hover:text-slate-800 transition-colors text-xs font-semibold flex items-center space-x-1"
-                  >
-                    <RefreshCw className="h-3.5 w-3.5" />
-                    <span>Change File</span>
-                  </button>
-                </div>
-              </div>
+          {!results && !loadingAnalysis && (
+            <div className="space-y-6">
+              <DatasetPicker
+                dataset={dataset}
+                title="Select or drop a dataset for the test"
+                hint="Each group or measurement in its own column; for a chi-square test, two categorical columns (CSV or Excel)."
+                onViewData={() => setViewerOpen(true)}
+              />
 
+              {file && (
+              <form onSubmit={runAnalysis} className="space-y-6">
               <div className="grid grid-cols-1 gap-6">
                 {/* Select Test Type */}
                 <div className="space-y-1.5">
@@ -816,7 +500,9 @@ const NonParametricModal = ({ isOpen, onClose }) => {
               >
                 Run Non-Parametric Test
               </button>
-            </form>
+              </form>
+              )}
+            </div>
           )}
 
           {/* Running Analysis Loader */}
@@ -828,6 +514,8 @@ const NonParametricModal = ({ isOpen, onClose }) => {
           )}
 
           {/* Step 3: Analysis Results Output */}
+          {reopened && <ReopenedBanner analysis={initialAnalysis} onRestore={restoreSaved} />}
+
           {results && !loadingAnalysis && (
             <div className="space-y-6 animate-fade-in">
               <div className="flex justify-between items-start">
@@ -857,6 +545,14 @@ const NonParametricModal = ({ isOpen, onClose }) => {
                       Word
                     </button>
                   </div>
+                  <SaveToProjectButton
+                    module="nonparametric"
+                    report={() => buildDocxReport('report')}
+                    source={dataset.source}
+                    defaultTitle={`${results?.statistics?.test_name || 'Non-parametric test'} – ${selectedCols.join(', ')}`}
+                    parameters={{ test: testType, variables: selectedCols, dataset: file?.name }}
+                    result={results}
+                  />
                   <button
                     onClick={handleDownloadPlot}
                     className="flex items-center space-x-1.5 rounded-lg bg-brand-indigo p-1.5 px-3 hover:bg-indigo-700 text-white font-sans text-xs font-semibold transition-colors"
@@ -1041,6 +737,52 @@ const NonParametricModal = ({ isOpen, onClose }) => {
                       </tbody>
                     </table>
                   </div>
+
+                  {/* Expected counts, 2x2 alternatives and warnings */}
+                  {results.statistics.contingency_table.expected && (
+                    <div className="mt-4 pt-3 border-t border-dashed border-slate-100">
+                      <h6 className="font-display text-[11px] font-bold text-slate-600 mb-2">Expected Frequencies (under independence)</h6>
+                      <div className="overflow-x-auto">
+                        <table className="w-full border-collapse font-sans text-xs text-left">
+                          <tbody>
+                            {results.statistics.contingency_table.index.map((rowLabel, rowIndex) => (
+                              <tr key={rowLabel} className="border-b border-slate-50 text-slate-600">
+                                <td className="py-2 font-semibold">{rowLabel}</td>
+                                {results.statistics.contingency_table.expected[rowIndex].map((cellValue, colIndex) => (
+                                  <td key={colIndex} className={`py-2 text-right font-mono ${cellValue < 5 ? 'text-amber-600 font-bold' : ''}`}>{cellValue.toFixed(2)}</td>
+                                ))}
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
+                  {(results.statistics.yates_corrected || results.statistics.fisher_exact_p != null) && (
+                    <div className="mt-3 grid grid-cols-2 gap-3 text-xs font-sans">
+                      {results.statistics.yates_corrected && (
+                        <div className="rounded-xl bg-slate-50 p-2.5 border border-slate-100/50">
+                          <p className="text-[10px] font-bold text-slate-400 uppercase">Yates-Corrected χ²</p>
+                          <p className="font-semibold text-slate-700 mt-0.5">
+                            {results.statistics.yates_corrected.statistic.toFixed(4)} (p = {results.statistics.yates_corrected.p_value < 0.001 ? '< 0.001' : results.statistics.yates_corrected.p_value.toFixed(4)})
+                          </p>
+                        </div>
+                      )}
+                      {results.statistics.fisher_exact_p != null && (
+                        <div className="rounded-xl bg-slate-50 p-2.5 border border-slate-100/50">
+                          <p className="text-[10px] font-bold text-slate-400 uppercase">Fisher's Exact Test</p>
+                          <p className="font-semibold text-slate-700 mt-0.5">
+                            p = {results.statistics.fisher_exact_p < 0.001 ? '< 0.001' : results.statistics.fisher_exact_p.toFixed(4)}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  {results.statistics.notes?.length > 0 && (
+                    <ul className="mt-3 list-disc space-y-1 rounded-xl border border-amber-200 bg-amber-50 py-2 pl-6 pr-3 font-sans text-[11px] text-amber-800">
+                      {results.statistics.notes.map((note, idx) => <li key={idx}>{note}</li>)}
+                    </ul>
+                  )}
                 </div>
               )}
 
@@ -1100,15 +842,23 @@ const NonParametricModal = ({ isOpen, onClose }) => {
                 </div>
               )}
 
-              {/* Base64 Violin Plot View */}
+              {/* Result chart with alternative styles */}
               {results.plot && (
-                <div className="flex flex-col items-center justify-center bg-slate-50 rounded-3xl p-6 border border-slate-100 shadow-inner">
-                  <img
-                    src={`data:image/png;base64,${results.plot}`}
-                    alt="Non-Parametric Analysis Chart"
-                    className="max-h-[320px] w-auto object-contain rounded-2xl border border-slate-200/50 bg-white p-2 shadow-sm"
-                  />
-                </div>
+                <ResultChartPanel
+                  key={results.plot.slice(-32)}
+                  token={token}
+                  file={file}
+                  classicPlot={results.plot}
+                  options={nonParametricChartOptions(testType, selectedCols)}
+                  fields={{
+                    layout: testType === 'friedman' ? 'wide_complete' : 'wide',
+                    cols_str: selectedCols.join(','),
+                    p_value: results.statistics?.p_value,
+                    test_label: results.statistics?.test_name
+                  }}
+                  filenameBase={`nonparametric_${testType}`}
+                  onImageChange={setChartImage}
+                />
               )}
             </div>
           )}

@@ -20,9 +20,7 @@
 4. [Charts, Reports & Exports](#-4-charts-reports--exports)
 5. [Data Tools, Projects & Learning Hub](#-5-data-tools-projects--learning-hub)
 6. [Architecture & Tech Stack](#-6-architecture--tech-stack)
-7. [Local Development](#-7-local-development)
-8. [Known Limitations](#-8-known-limitations)
-9. [Author & Citation](#-9-author--citation)
+7. [Author & Citation](#-7-author--citation)
 
 ---
 
@@ -424,7 +422,7 @@ graph TD
     B --> F[statsmodels / scikit-learn]
     B --> G[semopy SEM]
     B --> H[Matplotlib / Seaborn charts]
-    B --> I[SQLAlchemy: SQLite locally, PostgreSQL in production]
+    B --> I[SQLAlchemy: PostgreSQL]
 ```
 
 **Frontend**
@@ -466,117 +464,7 @@ graph TD
 
 ---
 
-## 🚀 7. Local Development
-
-### Prerequisites
-Node.js 18+, Python 3.10+, and Graphviz (only needed for SEM path diagrams).
-
-### Backend
-```bash
-cd backend
-python -m venv venv
-venv\Scripts\activate
-pip install -r requirements.txt
-copy .env.example .env
-uvicorn app.main:app --reload --port 8000
-```
-
-`backend/.env` must define:
-- `DATABASE_URL`: e.g. `sqlite:///./statsathi_local.db` for local work.
-- `JWT_SECRET_KEY`: generate one with `python -c "import secrets; print(secrets.token_hex(32))"`.
-
-The server refuses to start without them. Never commit `.env`.
-
-Interactive API docs: `http://localhost:8000/docs`.
-
-### Frontend
-```bash
-cd frontend
-npm install
-npm run dev
-```
-
-By default the app calls `http://127.0.0.1:8000` on localhost and the hosted backend elsewhere. To use another backend address, set `VITE_API_URL` in `frontend/.env.development.local`, for example `VITE_API_URL=http://127.0.0.1:8001`.
-
-### Tests
-```bash
-cd backend
-venv\Scripts\python -m unittest discover -s tests -t .
-```
-
-The tests run the API in-process against a temporary SQLite database; no running server is needed.
-
-```bash
-cd frontend
-npm test
-```
-
-The frontend tests (dataset hook and picker, analysis handoff, data-preparation recipes) run in jsdom with Vitest and Testing Library; `npm run test:watch` reruns them as files change.
-
-### Production build
-```bash
-cd frontend
-npm run build
-```
-
-On the backend host, set `DATABASE_URL` and `JWT_SECRET_KEY` as environment variables. For account emails also set `FRONTEND_URL` (the web app's address, used in the links), `EMAIL_BACKEND=smtp` and the `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURITY`, `SMTP_USERNAME`, `SMTP_PASSWORD` and `SMTP_FROM` of your mail provider, and `TRUST_PROXY_HEADERS=true` behind a proxy such as Render so rate limits see each visitor's address. Without SMTP settings, emails are only written to the server log (see `backend/.env.example`). Set `CORS_ORIGINS` to the web app's address (the default also admits any `*.vercel.app` site; narrow `CORS_ORIGIN_REGEX` once the address is fixed), and point an uptime monitor at `GET /health`, which answers 503 when the database is unreachable. Requests are limited to 50 MB and analysis tables to 25 MB (`MAX_REQUEST_MB`, `MAX_TABLE_UPLOAD_MB`). Unexpected server errors return a short reference that is also written to the log with the full traceback, and the web app shows a recovery screen instead of a blank page if a screen crashes.
-
----
-
-## 🧭 8. Known Limitations
-
-- **ANOVA:**
-  - Missing-plot estimation is not supported: incomplete blocks are rejected.
-  - The ANOVA table has no tabulated F column (exact p-values are given instead).
-  - For unbalanced one-way data the CD row uses the average replication; the post-hoc letters use exact per-pair standard errors.
-- **PCA:** the biplot and component charts are PNG images (150 DPI) rather than size-preset exports.
-- **Result chart styles:** downloaded as PNG at screen resolution; journal formats (TIFF/PDF/EPS) are available for charts made in the Plots module.
-- **SEM:**
-  - Recursive models only.
-  - χ²/df and the RMSEA confidence interval are not reported.
-  - The PLS-SEM bootstrap uses 1,000 resamples; the number cannot yet be changed on screen.
-- **Clustering:** cluster profiles show means but not standard deviations; the circular tree and the heatmap are drawn for up to 1,500 observations, and dendrogram leaf labels are hidden beyond 150.
-- **Trend analysis:**
-  - Series must be evenly ordered in time; gaps are not filled and irregular spacing is not modelled.
-  - Pettitt p-values use the usual large-sample approximation; SNHT, Buishand and von Neumann p-values assume normally distributed homogeneous series.
-  - Forecasting and decomposition live in the separate Time Series module.
-- **G × E analysis:**
-  - Missing genotype × environment cells are not estimated: every genotype must be tested in every environment.
-  - One trait at a time; genotypes and environments are treated as fixed effects (no mixed-model BLUPs).
-  - Unreplicated trials get sums of squares without F-tests (no Cornelius F_R tests for IPCA terms).
-- **Time series:**
-  - One series at a time; there is no place yet for explanatory variables (rainfall, price) alongside the history.
-  - Observations must be evenly spaced; gaps above 10% of the series are rejected rather than filled.
-  - Prediction intervals assume the residuals behave like noise and are roughly normal, and they ignore the uncertainty in the estimated parameters.
-  - The SARIMA search covers p, q up to 2 and P, Q up to 1 by corrected AIC, which is narrower than a full stepwise search.
-  - Hierarchical or grouped forecasts, and automatic Box-Cox selection, are not included.
-- **Genetic divergence:**
-  - Tocher's method follows the common criterion (a genotype joins while its average D² to the cluster stays below the largest of the genotypes' smallest D² values); other software may group slightly differently.
-  - The contribution of each trait depends on the order in which the traits are selected, as in the classic pivotal-condensation method.
-  - Intra- and inter-cluster distances are averages over pairs of genotypes.
-- **Data preparation:**
-  - Only numeric columns can be imputed by a model; category columns used as predictors must have no gaps.
-  - Pooled analyses cover means, two-group comparisons, correlations, fixed-effects ANOVA with one or two factors and OLS regression. Non-parametric tests, split-plot error structures, PCA and the other modules are not pooled; every imputation can be downloaded for use elsewhere. The D1 test's denominator degrees of freedom are capped at the complete-data residual df. Multiple imputation is available for datasets up to 50,000 rows.
-  - Imputation assumes values are missing at random given the predictors; it cannot correct gaps caused by the value itself (for example plots that failed because yield was very low).
-  - One second file per join.
-  - Datasets up to 200,000 rows.
-- **Reports:** methods paragraphs describe what StatSathi did from the saved settings; they do not know about your sampling, field operations or measurement protocols, which still need writing. Results saved before this version have no stored tables, so they appear in project reports as a settings summary until saved again.
-- **Projects:**
-  - Reopening a saved analysis works in Trend, G × E, Genetic Divergence and Time Series; other modules still only download it as JSON.
-  - Saved results do not include charts or interactive figures: reopening shows the tables, and the charts are redrawn by running the analysis again.
-  - Choosing a stored dataset inside a module is available in seven modules so far; the rest take an upload.
-- **Figures:**
-  - Server figures use Arial when the server has it; Linux hosts without Arial fall back to DejaVu Sans.
-  - Interactive charts cannot be exported as TIFF, PDF or EPS yet (browser export supports PNG, JPEG and SVG).
-  - The size preset and palette are remembered per browser, not per account.
-- **Figure composer:**
-  - Panels are images, so a figure exported as PDF, SVG or EPS embeds those images rather than true vector artwork; for a fully vector panel, export the individual chart from the Plots module.
-  - Up to 12 panels, 15 MB per image; panels cannot be cropped, rotated or overlapped, and every panel in a row shares one baseline.
-- **Database migrations:** new tables are created on startup, but there is no migration tool (such as Alembic) for later schema changes.
-
----
-
-## 👨‍🔬 9. Author & Citation
+## 👨‍🔬 7. Author & Citation
 
 - **Curator & Lead Developer:** Ravi, PhD Scholar, ICAR-Indian Institute of Soil Science (IISS), Bhopal, India
   - Email: `pandeyravi170@gmail.com`

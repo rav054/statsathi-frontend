@@ -76,6 +76,59 @@ export const MiniBars = ({ summary, width = 266, height = 176, dark = true, comp
   );
 };
 
+// A contingency table drawn as stacked bars: bar height is the group's size, the segments are the
+// categories the test compares. Hues follow the shared figure palette, in its fixed order.
+const STACK_COLORS = ['#6366F1', '#D96C0C', '#EC4899', '#A855F7', '#16A34A', '#0C93D8'];
+
+export const MiniStack = ({ stack, width = 266, height = 176, dark = true, compact = false }) => {
+  const { categories, series, values } = stack;
+  const totals = values.map(row => row.reduce((sum, n) => sum + (Number(n) || 0), 0));
+  const max = Math.max(...totals) || 1;
+  // A thumbnail drops the labels and legend and gives the whole box to the bars
+  const plotTop = compact ? 2 : 8, baseline = compact ? height : height - 54;
+  const slot = width / categories.length;
+  const barWidth = Math.min(34, slot * 0.58);
+  const scale = (value) => (value / max) * (baseline - plotTop);
+  const axis = dark ? '#94A3B8' : '#64748B';
+  const label = (name, max_) => (name.length > max_ ? `${name.slice(0, max_ - 1)}\u2026` : name);
+
+  return (
+    <svg width="100%" viewBox={`0 0 ${width} ${height}`} role="img"
+      aria-label={`Counts for ${categories.join(', ')} split by ${series.join(', ')}`}>
+      {!compact && <line x1={0} y1={baseline} x2={width} y2={baseline} stroke={dark ? '#334155' : '#CBD5E1'} />}
+      {categories.map((category, row) => {
+        const cx = slot * row + slot / 2;
+        let cursor = baseline;
+        return (
+          <g key={category}>
+            {series.map((name, col) => {
+              const h = scale(Number(values[row]?.[col]) || 0);
+              cursor -= h;
+              // a hairline of the card behind each segment, so neighbouring counts stay countable
+              return h > 0 ? (
+                <rect key={name} x={cx - barWidth / 2} y={cursor} width={barWidth} height={Math.max(h - 1.5, 1)}
+                  rx="1.5" fill={STACK_COLORS[col % STACK_COLORS.length]} />
+              ) : null;
+            })}
+            {!compact && (
+              <text x={cx} y={baseline + 14} fill={axis} fontSize="9.5" textAnchor="middle"
+                fontFamily="JetBrains Mono, monospace">{label(category, 7)}</text>
+            )}
+          </g>
+        );
+      })}
+      {!compact && series.slice(0, 4).map((name, col) => (
+        <g key={name} transform={`translate(2, ${height - 26 + Math.floor(col / 2) * 13})`}>
+          <rect x={(col % 2) * 128} y={0} width="8" height="8" rx="2" fill={STACK_COLORS[col % STACK_COLORS.length]} />
+          <text x={(col % 2) * 128 + 12} y={8} fill={axis} fontSize="9.5" fontFamily="Instrument Sans, sans-serif">
+            {label(name, 14)}
+          </text>
+        </g>
+      ))}
+    </svg>
+  );
+};
+
 const Card = ({ className = '', children, ...rest }) => (
   <section {...rest} className={`rounded-2xl border border-line bg-surface dark:border-night-line dark:bg-night-surface ${className}`}>{children}</section>
 );
@@ -252,10 +305,12 @@ const Home = ({ onSignIn, onOpenProject, onNewProject, focusStep }) => {
               </>
             )}
           </div>
-          {summary?.bars && (
+          {(summary?.bars || summary?.stack) && (
             <div className="relative flex w-full shrink-0 flex-col gap-2 rounded-[14px] border border-[#1E293B] bg-white/[0.04] p-4 md:w-[300px]">
-              <span className="font-sans text-[14.5px] text-faint">{latest.result.parameters?.dependent || 'Response'} · group means</span>
-              <MiniBars summary={summary} />
+              <span className="font-sans text-[14.5px] text-faint">
+                {summary.chartLabel || `${latest.result.parameters?.dependent || 'Response'} · group means`}
+              </span>
+              {summary.stack ? <MiniStack stack={summary.stack} /> : <MiniBars summary={summary} />}
             </div>
           )}
         </section>

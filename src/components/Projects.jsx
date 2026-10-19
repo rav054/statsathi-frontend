@@ -7,7 +7,7 @@ import { formatStat, moduleName, relativeTime, summariseResult } from '../utils/
 import ProjectReportPanel from './ProjectReportPanel';
 import ProjectSharingPanel from './ProjectSharingPanel';
 import ProjectInvitations from './ProjectInvitations';
-import { MiniBars } from './Home';
+import { MiniBars, MiniStack } from './Home';
 import { ChevronRightIcon, DatabaseIcon, DocumentIcon, DownloadIcon, FolderIcon, PlusIcon, ShareIcon, UploadIcon } from './shell/Icons';
 
 const LEGACY_KEY = 'statsathi_projects';
@@ -610,7 +610,9 @@ const Projects = ({ onAuthClick, onOpenDashboard, request = null }) => {
                     ? 'border-[#C7CCF9] shadow-[0_10px_24px_-20px_rgba(79,70,229,0.6)] dark:border-brand-indigo/50'
                     : 'border-line dark:border-night-line'}`}>
                     <div className="hidden h-14 w-[92px] shrink-0 items-center justify-center md:flex">
-                      {summary?.bars ? (
+                      {summary?.stack ? (
+                        <MiniStack stack={summary.stack} width={92} height={56} compact />
+                      ) : summary?.bars ? (
                         <MiniBars summary={summary} width={92} height={56} compact />
                       ) : (
                         <span className="flex h-14 w-[92px] items-center justify-center rounded-lg bg-soft font-mono text-[14px] font-semibold text-brand-indigo dark:bg-night-soft dark:text-brand-periwinkle">

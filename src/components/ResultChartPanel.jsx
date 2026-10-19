@@ -61,7 +61,7 @@ const ResultChartPanel = ({ token, file, classicPlot, options, fields = {}, init
   return (
     <div className="flex flex-col items-center bg-slate-50 rounded-3xl p-6 border border-slate-100 shadow-inner space-y-3">
       {options.length > 1 && !file && (
-        <p className="font-sans text-[11px] text-slate-400">
+        <p className="font-sans text-[14px] text-slate-400">
           Other chart styles are drawn from the dataset - load it to switch styles.
         </p>
       )}
@@ -69,13 +69,13 @@ const ResultChartPanel = ({ token, file, classicPlot, options, fields = {}, init
       {options.length > 1 && file && (
         <div className="w-full space-y-1.5">
           <div className="flex flex-wrap items-center justify-center gap-1.5">
-            <span className="font-sans text-[10px] font-bold uppercase text-slate-400 mr-1">Chart style:</span>
+            <span className="font-sans text-[13px] font-bold uppercase text-slate-400 mr-1">Chart style:</span>
             {options.map(option => (
               <button
                 key={option.value}
                 type="button"
                 onClick={() => selectChart(option.value)}
-                className={`rounded-full border px-3 py-1 font-sans text-[11px] font-semibold transition-colors cursor-pointer ${
+                className={`rounded-full border px-3 py-1 font-sans text-[14px] font-semibold transition-colors cursor-pointer ${
                   chart === option.value
                     ? 'border-brand-indigo bg-brand-indigo text-white'
                     : 'border-slate-200 bg-white text-slate-600 hover:border-brand-indigo hover:text-brand-indigo'
@@ -85,7 +85,7 @@ const ResultChartPanel = ({ token, file, classicPlot, options, fields = {}, init
               </button>
             ))}
           </div>
-          {selected?.hint && <p className="text-center font-sans text-[11px] text-slate-400">{selected.hint}</p>}
+          {selected?.hint && <p className="text-center font-sans text-[14px] text-slate-400">{selected.hint}</p>}
         </div>
       )}
 

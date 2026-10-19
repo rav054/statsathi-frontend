@@ -51,7 +51,7 @@ const ChangePasswordForm = () => {
       </p>
       {message && (
         <p role={message.tone === 'error' ? 'alert' : 'status'}
-          className={`flex items-start space-x-1.5 font-sans text-[11px] ${message.tone === 'error' ? 'text-rose-600' : 'text-emerald-600'}`}>
+          className={`flex items-start space-x-1.5 font-sans text-[14px] ${message.tone === 'error' ? 'text-rose-600' : 'text-emerald-600'}`}>
           {message.tone === 'error' ? <AlertCircle className="h-3.5 w-3.5 shrink-0" /> : <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />}
           <span>{message.text}</span>
         </p>
@@ -62,14 +62,14 @@ const ChangePasswordForm = () => {
         className={inputClass} value={next} onChange={(e) => setNext(e.target.value)} minLength={PASSWORD_MIN_LENGTH} required />
       <input type="password" aria-label="Repeat the new password" placeholder="Repeat the new password" autoComplete="new-password"
         className={inputClass} value={confirmation} onChange={(e) => setConfirmation(e.target.value)} required />
-      {next && problem && <p className="font-sans text-[11px] text-amber-600">{problem}</p>}
+      {next && problem && <p className="font-sans text-[14px] text-amber-600">{problem}</p>}
       <div className="flex justify-end gap-2">
         <button type="button" onClick={() => { setOpen(false); setMessage(null); }}
-          className="rounded-lg border border-slate-200 px-3 py-1.5 font-sans text-[11px] font-semibold text-slate-600 dark:border-slate-700 dark:text-slate-300 cursor-pointer">
+          className="rounded-lg border border-slate-200 px-3 py-1.5 font-sans text-[14px] font-semibold text-slate-600 dark:border-slate-700 dark:text-slate-300 cursor-pointer">
           Cancel
         </button>
         <button type="submit" disabled={saving || Boolean(problem) || !current}
-          className="rounded-lg bg-brand-indigo px-3 py-1.5 font-sans text-[11px] font-bold text-white disabled:opacity-50 cursor-pointer">
+          className="rounded-lg bg-brand-indigo px-3 py-1.5 font-sans text-[14px] font-bold text-white disabled:opacity-50 cursor-pointer">
           {saving ? 'Saving…' : 'Change password'}
         </button>
       </div>

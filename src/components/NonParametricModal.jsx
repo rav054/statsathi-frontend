@@ -482,7 +482,7 @@ const NonParametricModal = ({ isOpen, onClose, initialAnalysis = null }) => {
                       </label>
                     ))}
                   </div>
-                  <p className="font-sans text-[10px] text-slate-400 mt-1 italic">
+                  <p className="font-sans text-[13px] text-slate-400 mt-1 italic">
                     {testType === 'mann_whitney' || testType === 'kruskal_wallis' 
                       ? "Select 2 columns for Mann-Whitney U, or 3+ columns for Kruskal-Wallis (auto-routed)." 
                       : testType === 'wilcoxon' 
@@ -529,17 +529,17 @@ const NonParametricModal = ({ isOpen, onClose, initialAnalysis = null }) => {
                 </div>
                 <div className="flex space-x-2">
                   <div className="flex items-center space-x-1 bg-emerald-50/50 p-1 rounded-xl border border-emerald-100">
-                    <span className="font-sans text-[9px] font-bold text-emerald-600 px-2 uppercase shrink-0">Report:</span>
+                    <span className="font-sans text-[12px] font-bold text-emerald-600 px-2 uppercase shrink-0">Report:</span>
                     <button
                       onClick={() => handleDownloadReport('txt')}
-                      className="rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-sans text-[10px] font-bold px-2.5 py-1.5 transition-colors cursor-pointer"
+                      className="rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-sans text-[13px] font-bold px-2.5 py-1.5 transition-colors cursor-pointer"
                       title="Save as Text"
                     >
                       TXT
                     </button>
                     <button
                       onClick={() => handleDownloadReport('doc')}
-                      className="rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-sans text-[10px] font-bold px-2.5 py-1.5 transition-colors cursor-pointer"
+                      className="rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-sans text-[13px] font-bold px-2.5 py-1.5 transition-colors cursor-pointer"
                       title="Export to Word"
                     >
                       Word
@@ -581,7 +581,7 @@ const NonParametricModal = ({ isOpen, onClose, initialAnalysis = null }) => {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm relative">
                   <div className="flex items-center justify-between">
-                    <p className="font-sans text-[10px] font-bold text-slate-400 uppercase">
+                    <p className="font-sans text-[13px] font-bold text-slate-400 uppercase">
                       {results.statistics.test_name || 'Test Statistic'}
                     </p>
                   </div>
@@ -597,12 +597,12 @@ const NonParametricModal = ({ isOpen, onClose, initialAnalysis = null }) => {
                     })()} = {results.statistics.statistic.toFixed(4)}
                   </p>
                   {results.statistics.degrees_of_freedom !== undefined && (
-                    <p className="font-sans text-[10px] text-slate-400 mt-0.5 font-sans">df = {results.statistics.degrees_of_freedom}</p>
+                    <p className="font-sans text-[13px] text-slate-400 mt-0.5 font-sans">df = {results.statistics.degrees_of_freedom}</p>
                   )}
                   {results.statistics.effect_size !== undefined && (
-                    <p className="font-sans text-[10px] text-brand-orange font-bold mt-1.5 font-sans">
+                    <p className="font-sans text-[13px] text-brand-orange font-bold mt-1.5 font-sans">
                       Effect Size = {results.statistics.effect_size.toFixed(4)}
-                      <span className="text-[9px] font-normal text-slate-400 ml-1 font-sans">
+                      <span className="text-[12px] font-normal text-slate-400 ml-1 font-sans">
                         {(() => {
                           const name = results.statistics.test_name;
                           if (name.includes("Chi-Square")) return "(Cramer's V)";
@@ -616,11 +616,11 @@ const NonParametricModal = ({ isOpen, onClose, initialAnalysis = null }) => {
                 </div>
 
                 <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
-                  <p className="font-sans text-[10px] font-bold text-slate-400 uppercase">Probability Value</p>
+                  <p className="font-sans text-[13px] font-bold text-slate-400 uppercase">Probability Value</p>
                   <p className="font-display text-lg font-bold text-slate-800 mt-1">
                     {formatPValue(results.statistics.p_value)}
                   </p>
-                  <span className={`inline-block mt-1.5 rounded px-1.5 py-0.5 font-sans text-[9px] font-bold ${
+                  <span className={`inline-block mt-1.5 rounded px-1.5 py-0.5 font-sans text-[12px] font-bold ${
                     results.statistics.significant ? 'bg-orange-50 text-brand-orange border border-orange-100' : 'bg-slate-50 text-slate-400'
                   }`}>
                     {results.statistics.significant ? 'p < 0.05 (Significant)' : 'p ≥ 0.05 (Not Significant)'}
@@ -628,7 +628,7 @@ const NonParametricModal = ({ isOpen, onClose, initialAnalysis = null }) => {
                 </div>
 
                 <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
-                  <p className="font-sans text-[10px] font-bold text-slate-400 uppercase">Null Hypothesis (H₀)</p>
+                  <p className="font-sans text-[13px] font-bold text-slate-400 uppercase">Null Hypothesis (H₀)</p>
                   <p className={`font-sans text-xs font-semibold mt-2 leading-snug ${
                     results.statistics.significant ? 'text-brand-orange' : 'text-slate-600'
                   }`}>
@@ -741,7 +741,7 @@ const NonParametricModal = ({ isOpen, onClose, initialAnalysis = null }) => {
                   {/* Expected counts, 2x2 alternatives and warnings */}
                   {results.statistics.contingency_table.expected && (
                     <div className="mt-4 pt-3 border-t border-dashed border-slate-100">
-                      <h6 className="font-display text-[11px] font-bold text-slate-600 mb-2">Expected Frequencies (under independence)</h6>
+                      <h6 className="font-display text-[14px] font-bold text-slate-600 mb-2">Expected Frequencies (under independence)</h6>
                       <div className="overflow-x-auto">
                         <table className="w-full border-collapse font-sans text-xs text-left">
                           <tbody>
@@ -762,7 +762,7 @@ const NonParametricModal = ({ isOpen, onClose, initialAnalysis = null }) => {
                     <div className="mt-3 grid grid-cols-2 gap-3 text-xs font-sans">
                       {results.statistics.yates_corrected && (
                         <div className="rounded-xl bg-slate-50 p-2.5 border border-slate-100/50">
-                          <p className="text-[10px] font-bold text-slate-400 uppercase">Yates-Corrected χ²</p>
+                          <p className="text-[13px] font-bold text-slate-400 uppercase">Yates-Corrected χ²</p>
                           <p className="font-semibold text-slate-700 mt-0.5">
                             {results.statistics.yates_corrected.statistic.toFixed(4)} (p = {results.statistics.yates_corrected.p_value < 0.001 ? '< 0.001' : results.statistics.yates_corrected.p_value.toFixed(4)})
                           </p>
@@ -770,7 +770,7 @@ const NonParametricModal = ({ isOpen, onClose, initialAnalysis = null }) => {
                       )}
                       {results.statistics.fisher_exact_p != null && (
                         <div className="rounded-xl bg-slate-50 p-2.5 border border-slate-100/50">
-                          <p className="text-[10px] font-bold text-slate-400 uppercase">Fisher's Exact Test</p>
+                          <p className="text-[13px] font-bold text-slate-400 uppercase">Fisher's Exact Test</p>
                           <p className="font-semibold text-slate-700 mt-0.5">
                             p = {results.statistics.fisher_exact_p < 0.001 ? '< 0.001' : results.statistics.fisher_exact_p.toFixed(4)}
                           </p>
@@ -779,7 +779,7 @@ const NonParametricModal = ({ isOpen, onClose, initialAnalysis = null }) => {
                     </div>
                   )}
                   {results.statistics.notes?.length > 0 && (
-                    <ul className="mt-3 list-disc space-y-1 rounded-xl border border-amber-200 bg-amber-50 py-2 pl-6 pr-3 font-sans text-[11px] text-amber-800">
+                    <ul className="mt-3 list-disc space-y-1 rounded-xl border border-amber-200 bg-amber-50 py-2 pl-6 pr-3 font-sans text-[14px] text-amber-800">
                       {results.statistics.notes.map((note, idx) => <li key={idx}>{note}</li>)}
                     </ul>
                   )}
@@ -793,7 +793,7 @@ const NonParametricModal = ({ isOpen, onClose, initialAnalysis = null }) => {
                     <Info className="h-4 w-4 text-brand-orange" />
                     <h5 className="font-display text-xs font-bold text-slate-700">Normality Check & Choice Justification</h5>
                   </div>
-                  <p className="font-sans text-[10px] text-slate-400 mb-3 leading-normal">
+                  <p className="font-sans text-[13px] text-slate-400 mb-3 leading-normal">
                     If Shapiro-Wilk p &lt; 0.05, the data is **not normally distributed**, which justifies using these distribution-free non-parametric checks.
                   </p>
                   <div className="space-y-2">
@@ -807,7 +807,7 @@ const NonParametricModal = ({ isOpen, onClose, initialAnalysis = null }) => {
                             <div className="flex space-x-4 items-center">
                               <span className="text-slate-500 font-sans">W = {results.normality.differences.stat.toFixed(4)}</span>
                               <span className="text-slate-500 font-sans">{formatPValue(results.normality.differences.p_value)}</span>
-                              <span className={`font-bold px-1.5 py-0.5 rounded text-[10px] ${
+                              <span className={`font-bold px-1.5 py-0.5 rounded text-[13px] ${
                                 results.normality.differences.normal ? 'bg-amber-50 text-amber-600' : 'bg-emerald-50 text-emerald-600'
                               }`}>
                                 {results.normality.differences.normal ? 'Normal (Parametric Preferred)' : 'Non-Normal (Non-Parametric Justified)'}
@@ -828,7 +828,7 @@ const NonParametricModal = ({ isOpen, onClose, initialAnalysis = null }) => {
                             <div className="flex space-x-4 items-center">
                               <span className="text-slate-500 font-sans">W = {meta.stat.toFixed(4)}</span>
                               <span className="text-slate-500 font-sans">{formatPValue(meta.p_value)}</span>
-                              <span className={`font-bold px-1.5 py-0.5 rounded text-[10px] ${
+                              <span className={`font-bold px-1.5 py-0.5 rounded text-[13px] ${
                                 meta.normal ? 'bg-amber-50 text-amber-600' : 'bg-emerald-50 text-emerald-600'
                               }`}>
                                 {meta.normal ? 'Normal (Parametric Preferred)' : 'Non-Normal (Non-Parametric Justified)'}

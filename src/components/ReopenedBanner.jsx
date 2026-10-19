@@ -6,7 +6,7 @@
  */
 const ReopenedBanner = ({ analysis, onRestore }) => (
   <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-indigo-100 bg-indigo-50/60 p-3">
-    <p className="font-sans text-[11px] text-indigo-900">
+    <p className="font-sans text-[14px] text-indigo-900">
       Opened from project <span className="font-bold">{analysis.projectName}</span>
       {analysis.savedAt ? ` · saved ${new Date(analysis.savedAt).toLocaleDateString()}` : ''}.
       The tables come from the saved result; charts are not stored with it.
@@ -15,7 +15,7 @@ const ReopenedBanner = ({ analysis, onRestore }) => (
       <button
         type="button"
         onClick={onRestore}
-        className="rounded-lg bg-brand-indigo px-3 py-1.5 font-sans text-[11px] font-bold text-white hover:bg-indigo-700 cursor-pointer"
+        className="rounded-lg bg-brand-indigo px-3 py-1.5 font-sans text-[14px] font-bold text-white hover:bg-indigo-700 cursor-pointer"
       >
         Load the dataset &amp; restore settings
       </button>

@@ -469,7 +469,7 @@ const SemModal = ({ isOpen, onClose, onModeChange, initialAnalysis = null }) => 
               <h2 className="font-display text-base font-extrabold text-slate-800">
                 SEM Structural Equation Modeling Workspace
               </h2>
-              <p className="font-sans text-[10px] text-slate-400 mt-0.5">
+              <p className="font-sans text-[13px] text-slate-400 mt-0.5">
                 Visually construct and analyze complex statistical path pathways using CB-SEM or PLS-SEM engines.
               </p>
             </div>
@@ -507,11 +507,11 @@ const SemModal = ({ isOpen, onClose, onModeChange, initialAnalysis = null }) => 
                   <div>
                     <span className="font-display text-xs font-bold text-brand-indigo uppercase">Theory Testing & Confirmation</span>
                     <h4 className="font-display text-sm font-bold text-slate-800 mt-1">Covariance-Based SEM (CB-SEM)</h4>
-                    <p className="font-sans text-[11px] text-slate-400 mt-2 leading-normal">
+                    <p className="font-sans text-[14px] text-slate-400 mt-2 leading-normal">
                       Best for confirming established theories, testing prior structural hypotheses, and validating model fit indices (CFI, TLI, RMSEA). Powered by lavaan.
                     </p>
                   </div>
-                  <span className="mt-4 text-[10px] font-bold text-brand-indigo group-hover:translate-x-1 transition-transform inline-flex items-center space-x-1">
+                  <span className="mt-4 text-[13px] font-bold text-brand-indigo group-hover:translate-x-1 transition-transform inline-flex items-center space-x-1">
                     <span>Select CB-SEM</span> <span>&rarr;</span>
                   </span>
                 </button>
@@ -523,11 +523,11 @@ const SemModal = ({ isOpen, onClose, onModeChange, initialAnalysis = null }) => 
                   <div>
                     <span className="font-display text-xs font-bold text-brand-orange uppercase">Prediction & Exploratory Modeling</span>
                     <h4 className="font-display text-sm font-bold text-slate-800 mt-1">Partial Least Squares (PLS-SEM)</h4>
-                    <p className="font-sans text-[11px] text-slate-400 mt-2 leading-normal">
+                    <p className="font-sans text-[14px] text-slate-400 mt-2 leading-normal">
                       Best for predictive modeling, exploratory analysis, environmental risk zoning, and handling complex indicators with non-normal data. Powered by seminr.
                     </p>
                   </div>
-                  <span className="mt-4 text-[10px] font-bold text-brand-orange group-hover:translate-x-1 transition-transform inline-flex items-center space-x-1">
+                  <span className="mt-4 text-[13px] font-bold text-brand-orange group-hover:translate-x-1 transition-transform inline-flex items-center space-x-1">
                     <span>Select PLS-SEM</span> <span>&rarr;</span>
                   </span>
                 </button>
@@ -578,11 +578,11 @@ const SemModal = ({ isOpen, onClose, onModeChange, initialAnalysis = null }) => 
                     
                     {/* Visual canvas controls card */}
                     <div className="bg-white border border-slate-100 rounded-2xl p-3 shadow-xs space-y-2.5">
-                      <h4 className="font-display text-[10px] font-bold text-slate-400 uppercase tracking-wider">Canvas Tools</h4>
+                      <h4 className="font-display text-[13px] font-bold text-slate-400 uppercase tracking-wider">Canvas Tools</h4>
                       <div className="grid grid-cols-2 gap-2">
                         <button
                           onClick={handleAddLatent}
-                          className="p-2 bg-indigo-50 border border-indigo-100 text-brand-indigo rounded-xl flex items-center justify-center space-x-1 font-sans text-[10px] font-bold hover:bg-indigo-100 transition-colors cursor-pointer"
+                          className="p-2 bg-indigo-50 border border-indigo-100 text-brand-indigo rounded-xl flex items-center justify-center space-x-1 font-sans text-[13px] font-bold hover:bg-indigo-100 transition-colors cursor-pointer"
                         >
                           <Plus className="h-3 w-3" />
                           <span>Add Latent</span>
@@ -592,7 +592,7 @@ const SemModal = ({ isOpen, onClose, onModeChange, initialAnalysis = null }) => 
                             setCanvasMode(canvasMode === 'draw_path' ? 'select' : 'draw_path');
                             setPathSourceId(null);
                           }}
-                          className={`p-2 border rounded-xl flex items-center justify-center space-x-1 font-sans text-[10px] font-bold transition-all cursor-pointer ${
+                          className={`p-2 border rounded-xl flex items-center justify-center space-x-1 font-sans text-[13px] font-bold transition-all cursor-pointer ${
                             canvasMode === 'draw_path'
                               ? 'bg-brand-orange border-brand-orange text-white shadow-xs'
                               : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
@@ -621,7 +621,7 @@ const SemModal = ({ isOpen, onClose, onModeChange, initialAnalysis = null }) => 
                           return (
                             <>
                               <div className="flex justify-between items-center pb-2 border-b border-slate-50">
-                                <span className="font-display text-[10px] font-bold text-slate-400 uppercase tracking-wider">Active Variable</span>
+                                <span className="font-display text-[13px] font-bold text-slate-400 uppercase tracking-wider">Active Variable</span>
                                 <button
                                   onClick={() => handleDeleteLatent(node.id)}
                                   className="text-red-500 hover:text-red-700 p-0.5 rounded-md hover:bg-red-50 transition-colors"
@@ -641,7 +641,7 @@ const SemModal = ({ isOpen, onClose, onModeChange, initialAnalysis = null }) => 
                                   />
                                   <button
                                     onClick={handleSaveNodeName}
-                                    className="px-2.5 py-1 bg-brand-indigo text-white text-[9px] font-bold rounded-md"
+                                    className="px-2.5 py-1 bg-brand-indigo text-white text-[12px] font-bold rounded-md"
                                   >
                                     Save Name
                                   </button>
@@ -651,7 +651,7 @@ const SemModal = ({ isOpen, onClose, onModeChange, initialAnalysis = null }) => 
                                   <p className="font-display text-xs font-bold text-slate-800">{node.name}</p>
                                   <button
                                     onClick={() => handleOpenEditNode(node)}
-                                    className="text-[9px] text-brand-indigo font-bold underline mt-0.5"
+                                    className="text-[12px] text-brand-indigo font-bold underline mt-0.5"
                                   >
                                     Rename Variable
                                   </button>
@@ -660,16 +660,16 @@ const SemModal = ({ isOpen, onClose, onModeChange, initialAnalysis = null }) => 
 
                               {/* Indicators binding list */}
                               <div className="space-y-1.5 pt-2 border-t border-slate-50">
-                                <label className="font-sans text-[10px] font-bold text-slate-500 block">Bind Indicators</label>
+                                <label className="font-sans text-[13px] font-bold text-slate-500 block">Bind Indicators</label>
                                 {numericColumns.length === 0 ? (
-                                  <span className="text-[10px] text-slate-400">No numeric variables.</span>
+                                  <span className="text-[13px] text-slate-400">No numeric variables.</span>
                                 ) : (
                                   <div className="space-y-1.5 max-h-[140px] overflow-y-auto pr-1">
                                     {numericColumns.map(col => {
                                       const isBound = node.indicators.includes(col);
                                       const isBoundElsewhere = latents.some(l => l.id !== node.id && l.indicators.includes(col));
                                       return (
-                                        <label key={col} className={`flex items-center space-x-2.5 cursor-pointer font-sans text-[10px] py-0.5 ${isBoundElsewhere ? 'opacity-40 pointer-events-none' : ''}`}>
+                                        <label key={col} className={`flex items-center space-x-2.5 cursor-pointer font-sans text-[13px] py-0.5 ${isBoundElsewhere ? 'opacity-40 pointer-events-none' : ''}`}>
                                           <input
                                             type="checkbox"
                                             checked={isBound}
@@ -769,7 +769,7 @@ const SemModal = ({ isOpen, onClose, onModeChange, initialAnalysis = null }) => 
                                 <text
                                   textAnchor="middle"
                                   y="3"
-                                  className="font-sans text-[9px] font-bold text-indigo-700"
+                                  className="font-sans text-[12px] font-bold text-indigo-700"
                                 >
                                   {resPath.coefficient.toFixed(3)}{resPath.significant ? '*' : ''}
                                 </text>
@@ -783,7 +783,7 @@ const SemModal = ({ isOpen, onClose, onModeChange, initialAnalysis = null }) => 
                                   onClick={() => handleDeletePath(p.from, p.to)}
                                 >
                                   <circle r="7" fill="#EF4444" />
-                                  <text textAnchor="middle" y="2" fill="#ffffff" className="font-sans text-[8px] font-bold">&times;</text>
+                                  <text textAnchor="middle" y="2" fill="#ffffff" className="font-sans text-[11px] font-bold">&times;</text>
                                 </g>
                               )
                             )}
@@ -830,7 +830,7 @@ const SemModal = ({ isOpen, onClose, onModeChange, initialAnalysis = null }) => 
                                 x={indX + 35}
                                 y={indY + 14}
                                 textAnchor="middle"
-                                className="font-sans text-[9px] text-slate-700 truncate"
+                                className="font-sans text-[12px] text-slate-700 truncate"
                                 style={{ width: '60px' }}
                               >
                                 {ind.length > 11 ? ind.slice(0, 10) + '..' : ind}
@@ -841,7 +841,7 @@ const SemModal = ({ isOpen, onClose, onModeChange, initialAnalysis = null }) => 
                                   x={indX + 85}
                                   y={indY + 10}
                                   textAnchor="middle"
-                                  className="font-sans text-[8px] font-bold text-slate-400"
+                                  className="font-sans text-[11px] font-bold text-slate-400"
                                 >
                                   {resLoad.loading.toFixed(2)}
                                 </text>
@@ -876,7 +876,7 @@ const SemModal = ({ isOpen, onClose, onModeChange, initialAnalysis = null }) => 
                             <text
                               textAnchor="middle"
                               y={r2Val ? -4 : 4}
-                              className="font-display text-[9px] font-bold text-slate-700"
+                              className="font-display text-[12px] font-bold text-slate-700"
                             >
                               {lv.name.length > 12 ? lv.name.slice(0, 10) + '..' : lv.name}
                             </text>
@@ -885,7 +885,7 @@ const SemModal = ({ isOpen, onClose, onModeChange, initialAnalysis = null }) => 
                               <text
                                 textAnchor="middle"
                                 y="10"
-                                className="font-sans text-[8px] font-bold text-brand-indigo"
+                                className="font-sans text-[11px] font-bold text-brand-indigo"
                               >
                                 R² = {r2Val.toFixed(3)}
                               </text>
@@ -917,7 +917,7 @@ const SemModal = ({ isOpen, onClose, onModeChange, initialAnalysis = null }) => 
                         <button
                           key={t.id}
                           onClick={() => setActiveTab(t.id)}
-                          className={`py-2 px-4 font-display text-[11px] font-bold border-b-2 -mb-px transition-colors cursor-pointer ${
+                          className={`py-2 px-4 font-display text-[14px] font-bold border-b-2 -mb-px transition-colors cursor-pointer ${
                             activeTab === t.id ? 'border-brand-indigo text-brand-indigo' : 'border-transparent text-slate-400 hover:text-slate-600'
                           }`}
                         >
@@ -928,18 +928,18 @@ const SemModal = ({ isOpen, onClose, onModeChange, initialAnalysis = null }) => 
 
                     <div className="flex-1 overflow-y-auto p-3">
                       {results.fit_error && (
-                        <div className="mb-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 font-sans text-[11px] text-amber-800">
+                        <div className="mb-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 font-sans text-[14px] text-amber-800">
                           {results.fit_error}
                         </div>
                       )}
                       {results.notes && results.notes.length > 0 && (
-                        <ul className="mb-2 list-disc space-y-0.5 rounded-lg border border-slate-200 bg-slate-50 py-2 pl-7 pr-3 font-sans text-[11px] text-slate-600">
+                        <ul className="mb-2 list-disc space-y-0.5 rounded-lg border border-slate-200 bg-slate-50 py-2 pl-7 pr-3 font-sans text-[14px] text-slate-600">
                           {results.notes.map((note, idx) => <li key={idx}>{note}</li>)}
                         </ul>
                       )}
                       {/* Paths Tab */}
                       {activeTab === 'paths' && (
-                        <table className="w-full border-collapse font-sans text-[11px] text-left">
+                        <table className="w-full border-collapse font-sans text-[14px] text-left">
                           <thead>
                             <tr className="border-b border-slate-100 text-slate-400 font-bold">
                               <th className="pb-1.5">From Construct</th>
@@ -969,7 +969,7 @@ const SemModal = ({ isOpen, onClose, onModeChange, initialAnalysis = null }) => 
                                   )}
                                   <td className="py-1 text-right font-mono">{p.p_value === null || p.p_value === undefined ? 'n/a' : p.p_value < 0.001 ? '< 0.001' : p.p_value.toFixed(4)}</td>
                                   <td className="py-1 text-center">
-                                    <span className={`px-1.5 py-0.5 rounded-sm text-[9px] font-bold ${p.significant ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-50 text-slate-400'}`}>
+                                    <span className={`px-1.5 py-0.5 rounded-sm text-[12px] font-bold ${p.significant ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-50 text-slate-400'}`}>
                                       {p.significant ? 'Significant' : 'No'}
                                     </span>
                                   </td>
@@ -982,7 +982,7 @@ const SemModal = ({ isOpen, onClose, onModeChange, initialAnalysis = null }) => 
 
                       {/* Loadings Tab */}
                       {activeTab === 'loadings' && (
-                        <table className="w-full border-collapse font-sans text-[11px] text-left">
+                        <table className="w-full border-collapse font-sans text-[14px] text-left">
                           <thead>
                             <tr className="border-b border-slate-100 text-slate-400 font-bold">
                               <th className="pb-1.5">Construct</th>
@@ -1010,7 +1010,7 @@ const SemModal = ({ isOpen, onClose, onModeChange, initialAnalysis = null }) => 
 
                       {/* Reliability Tab */}
                       {activeTab === 'reliability' && results.reliability_indices && (
-                        <table className="w-full border-collapse font-sans text-[11px] text-left">
+                        <table className="w-full border-collapse font-sans text-[14px] text-left">
                           <thead>
                             <tr className="border-b border-slate-100 text-slate-400 font-bold">
                               <th className="pb-1.5">Construct</th>
@@ -1034,7 +1034,7 @@ const SemModal = ({ isOpen, onClose, onModeChange, initialAnalysis = null }) => 
 
                       {/* Validity Tab */}
                       {activeTab === 'validity' && results.discriminant_validity && (
-                        <table className="w-full border-collapse font-sans text-[11px] text-left">
+                        <table className="w-full border-collapse font-sans text-[14px] text-left">
                           <thead>
                             <tr className="border-b border-slate-100 text-slate-400 font-bold">
                               <th className="pb-1.5">Construct 1</th>
@@ -1054,7 +1054,7 @@ const SemModal = ({ isOpen, onClose, onModeChange, initialAnalysis = null }) => 
                                   <td className="py-1 font-bold text-slate-800">{l2Name}</td>
                                   <td className="py-1 text-right font-mono font-semibold">{h.htmt.toFixed(4)}</td>
                                   <td className="py-1 text-center">
-                                    <span className={`px-1.5 py-0.5 rounded-sm text-[9px] font-bold ${valid ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-600'}`}>
+                                    <span className={`px-1.5 py-0.5 rounded-sm text-[12px] font-bold ${valid ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-600'}`}>
                                       {valid ? 'Established (HTMT < 0.85)' : 'Validity Risk (>= 0.85)'}
                                     </span>
                                   </td>
@@ -1071,10 +1071,10 @@ const SemModal = ({ isOpen, onClose, onModeChange, initialAnalysis = null }) => 
                         const nameOf = (id) => latents.find(lv => lv.id === id)?.name || id;
                         return (
                           <div className="mt-3">
-                            <p className="mb-1 font-sans text-[11px] font-bold text-slate-600">
+                            <p className="mb-1 font-sans text-[14px] font-bold text-slate-600">
                               Fornell-Larcker Criterion <span className="font-normal text-slate-400">(diagonal = √AVE; each should exceed the correlations in its row and column)</span>
                             </p>
-                            <table className="w-full border-collapse font-sans text-[11px] text-left">
+                            <table className="w-full border-collapse font-sans text-[14px] text-left">
                               <thead>
                                 <tr className="border-b border-slate-100 text-slate-400 font-bold">
                                   <th className="pb-1.5">Construct</th>
@@ -1098,7 +1098,7 @@ const SemModal = ({ isOpen, onClose, onModeChange, initialAnalysis = null }) => 
                               </tbody>
                             </table>
                             {fl.violations.length > 0 && (
-                              <p className="mt-1 font-sans text-[10px] text-red-600">Red values: correlation is not below √AVE, so discriminant validity is not established for that pair.</p>
+                              <p className="mt-1 font-sans text-[13px] text-red-600">Red values: correlation is not below √AVE, so discriminant validity is not established for that pair.</p>
                             )}
                           </div>
                         );
@@ -1106,7 +1106,7 @@ const SemModal = ({ isOpen, onClose, onModeChange, initialAnalysis = null }) => 
 
                       {/* Fit Tab */}
                       {activeTab === 'fit' && results.fit_indices && (
-                        <table className="w-full border-collapse font-sans text-[11px] text-left max-w-md">
+                        <table className="w-full border-collapse font-sans text-[14px] text-left max-w-md">
                           <thead>
                             <tr className="border-b border-slate-100 text-slate-400 font-bold">
                               <th className="pb-1.5">Goodness-of-Fit Metric</th>
@@ -1159,17 +1159,17 @@ const SemModal = ({ isOpen, onClose, onModeChange, initialAnalysis = null }) => 
           {results && !wizardStep ? (
             <div className="flex space-x-2">
               <div className="flex items-center space-x-1 bg-emerald-50/50 p-1 rounded-xl border border-emerald-100 mr-2">
-                <span className="font-sans text-[9px] font-bold text-emerald-600 px-2 uppercase shrink-0">Report:</span>
+                <span className="font-sans text-[12px] font-bold text-emerald-600 px-2 uppercase shrink-0">Report:</span>
                 <button
                   onClick={() => handleDownloadReport('txt')}
-                  className="rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-sans text-[10px] font-bold px-2.5 py-1.5 transition-colors cursor-pointer"
+                  className="rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-sans text-[13px] font-bold px-2.5 py-1.5 transition-colors cursor-pointer"
                   title="Save as Text"
                 >
                   TXT
                 </button>
                 <button
                   onClick={() => handleDownloadReport('doc')}
-                  className="rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-sans text-[10px] font-bold px-2.5 py-1.5 transition-colors cursor-pointer"
+                  className="rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-sans text-[13px] font-bold px-2.5 py-1.5 transition-colors cursor-pointer"
                   title="Export to Word"
                 >
                   Word

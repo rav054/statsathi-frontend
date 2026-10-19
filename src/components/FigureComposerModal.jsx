@@ -205,14 +205,14 @@ const FigureComposerModal = ({ isOpen, onClose }) => {
                     <div key={panel.id} className="flex items-start gap-3 rounded-2xl border border-slate-100 bg-white p-3 shadow-xs">
                       <img src={panel.url} alt={panel.file.name} className="h-16 w-20 shrink-0 rounded-lg border border-slate-100 object-contain bg-slate-50" />
                       <div className="min-w-0 flex-1 space-y-1.5">
-                        <p className="truncate font-sans text-[11px] font-semibold text-slate-600">
+                        <p className="truncate font-sans text-[14px] font-semibold text-slate-600">
                           <span className="mr-1 rounded bg-slate-100 px-1.5 py-0.5 font-bold text-slate-500">{info?.panels?.[index]?.label || String.fromCharCode(97 + index)}</span>
                           {panel.file.name}
                         </p>
                         <input value={panel.caption} onChange={(e) => update(panel.id, 'caption', e.target.value)}
-                          placeholder="Panel caption (optional)" className="w-full rounded-lg border border-slate-200 px-2 py-1 font-sans text-[11px] outline-hidden focus:border-brand-indigo" />
+                          placeholder="Panel caption (optional)" className="w-full rounded-lg border border-slate-200 px-2 py-1 font-sans text-[14px] outline-hidden focus:border-brand-indigo" />
                         <input value={panel.label} onChange={(e) => update(panel.id, 'label', e.target.value)}
-                          placeholder="Label override (optional)" className="w-full rounded-lg border border-slate-200 px-2 py-1 font-sans text-[11px] outline-hidden focus:border-brand-indigo" />
+                          placeholder="Label override (optional)" className="w-full rounded-lg border border-slate-200 px-2 py-1 font-sans text-[14px] outline-hidden focus:border-brand-indigo" />
                       </div>
                       <div className="flex shrink-0 flex-col gap-1">
                         <button type="button" onClick={() => move(index, -1)} disabled={index === 0} className="rounded-lg border border-slate-200 p-1 text-slate-500 hover:bg-slate-50 disabled:opacity-30 cursor-pointer"><ArrowUp className="h-3.5 w-3.5" /></button>
@@ -226,32 +226,32 @@ const FigureComposerModal = ({ isOpen, onClose }) => {
 
               <div className="grid grid-cols-2 gap-3">
                 <label className="space-y-1">
-                  <span className="font-sans text-[11px] font-semibold text-slate-500">Panels per row</span>
+                  <span className="font-sans text-[14px] font-semibold text-slate-500">Panels per row</span>
                   <select value={columns} onChange={(e) => setColumns(e.target.value)} className={selectClass}>
                     <option value="">Automatic</option>
                     {[1, 2, 3, 4].map(n => <option key={n} value={n}>{n}</option>)}
                   </select>
                 </label>
                 <label className="space-y-1">
-                  <span className="font-sans text-[11px] font-semibold text-slate-500">Panel fit</span>
+                  <span className="font-sans text-[14px] font-semibold text-slate-500">Panel fit</span>
                   <select value={fit} onChange={(e) => setFit(e.target.value)} className={selectClass}>
                     <option value="row">Fill each row (no gaps)</option>
                     <option value="width">Equal widths (aligned columns)</option>
                   </select>
                 </label>
                 <label className="space-y-1">
-                  <span className="font-sans text-[11px] font-semibold text-slate-500">Figure width</span>
+                  <span className="font-sans text-[14px] font-semibold text-slate-500">Figure width</span>
                   <select value={preset} onChange={(e) => setPreset(e.target.value)} className={selectClass}>
                     {PRESET_OPTIONS.map(p => <option key={p.value} value={p.value}>{p.label}</option>)}
                   </select>
                 </label>
                 <label className="space-y-1">
-                  <span className="font-sans text-[11px] font-semibold text-slate-500">Gap between panels: {spacing} mm</span>
+                  <span className="font-sans text-[14px] font-semibold text-slate-500">Gap between panels: {spacing} mm</span>
                   <input type="range" min="0" max="10" step="0.5" value={spacing} onChange={(e) => setSpacing(e.target.value)}
                     className="w-full h-1 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-brand-indigo" />
                 </label>
                 <label className="space-y-1">
-                  <span className="font-sans text-[11px] font-semibold text-slate-500">Panel labels</span>
+                  <span className="font-sans text-[14px] font-semibold text-slate-500">Panel labels</span>
                   <select value={labelStyle} onChange={(e) => setLabelStyle(e.target.value)} className={selectClass}>
                     <option value="lower_paren">(a), (b), (c)</option>
                     <option value="lower">a, b, c</option>
@@ -261,7 +261,7 @@ const FigureComposerModal = ({ isOpen, onClose }) => {
                   </select>
                 </label>
                 <label className="space-y-1">
-                  <span className="font-sans text-[11px] font-semibold text-slate-500">Label position</span>
+                  <span className="font-sans text-[14px] font-semibold text-slate-500">Label position</span>
                   <select value={labelPosition} onChange={(e) => setLabelPosition(e.target.value)} className={selectClass}>
                     <option value="outside">Above the panel</option>
                     <option value="inside">Inside the panel</option>
@@ -269,14 +269,14 @@ const FigureComposerModal = ({ isOpen, onClose }) => {
                   </select>
                 </label>
                 <label className="space-y-1">
-                  <span className="font-sans text-[11px] font-semibold text-slate-500">Background</span>
+                  <span className="font-sans text-[14px] font-semibold text-slate-500">Background</span>
                   <select value={background} onChange={(e) => setBackground(e.target.value)} className={selectClass}>
                     <option value="white">White</option>
                     <option value="transparent">Transparent</option>
                   </select>
                 </label>
                 <label className="space-y-1">
-                  <span className="font-sans text-[11px] font-semibold text-slate-500">Export</span>
+                  <span className="font-sans text-[14px] font-semibold text-slate-500">Export</span>
                   <div className="flex gap-2">
                     <select value={format} onChange={(e) => setFormat(e.target.value)} className={selectClass}>
                       {FORMATS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
@@ -289,7 +289,7 @@ const FigureComposerModal = ({ isOpen, onClose }) => {
               </div>
 
               <label className="block space-y-1">
-                <span className="font-sans text-[11px] font-semibold text-slate-500">Figure caption (optional)</span>
+                <span className="font-sans text-[14px] font-semibold text-slate-500">Figure caption (optional)</span>
                 <textarea value={figureCaption} onChange={(e) => setFigureCaption(e.target.value)} rows={2}
                   placeholder="Figure 1. Effect of nitrogen levels on grain yield..."
                   className="w-full rounded-xl border border-slate-200 px-3 py-2 font-sans text-xs outline-hidden focus:border-brand-indigo" />
@@ -309,7 +309,7 @@ const FigureComposerModal = ({ isOpen, onClose }) => {
                 )}
               </div>
               {ready && info && (
-                <div className="flex flex-wrap items-center gap-2 font-sans text-[11px]">
+                <div className="flex flex-wrap items-center gap-2 font-sans text-[14px]">
                   <span className="rounded-full bg-slate-100 px-3 py-1 text-slate-600">{info.rows} × {info.columns} panels</span>
                   <span className="rounded-full bg-slate-100 px-3 py-1 text-slate-600">{info.size_mm.width} × {info.size_mm.height} mm</span>
                   <span className="rounded-full bg-slate-100 px-3 py-1 text-slate-600">{info.preset.label}</span>
@@ -323,7 +323,7 @@ const FigureComposerModal = ({ isOpen, onClose }) => {
               >
                 {downloading ? <><RefreshCw className="h-4 w-4 animate-spin" /><span>Exporting...</span></> : <><Download className="h-4 w-4" /><span>Download figure</span></>}
               </button>
-              <p className="font-sans text-[10px] leading-relaxed text-slate-400">
+              <p className="font-sans text-[13px] leading-relaxed text-slate-400">
                 The figure is built at the chosen physical width, so a double-column figure really is 180 mm wide. TIFF, PDF and EPS are the formats journals usually ask for; 600 DPI suits most submissions. Panels keep their own proportions, so nothing is stretched.
               </p>
             </div>

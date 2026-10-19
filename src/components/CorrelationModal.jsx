@@ -451,7 +451,7 @@ const CorrelationModal = ({ isOpen, onClose, initialAnalysis = null }) => {
                         key={col}
                         type="button"
                         onClick={() => toggleColumn(col)}
-                        className={`rounded-full border px-2.5 py-1 font-sans text-[11px] font-semibold transition-colors cursor-pointer ${
+                        className={`rounded-full border px-2.5 py-1 font-sans text-[14px] font-semibold transition-colors cursor-pointer ${
                           selectedCols.includes(col)
                             ? 'border-brand-indigo bg-indigo-50 text-brand-indigo'
                             : 'border-slate-200 bg-white text-slate-400 hover:text-slate-600'
@@ -462,7 +462,7 @@ const CorrelationModal = ({ isOpen, onClose, initialAnalysis = null }) => {
                     ))}
                   </div>
                   {plotType === 'pairs' && selectedCols.length > MAX_PAIRS_VARIABLES && (
-                    <p className="mt-1.5 font-sans text-[11px] text-amber-600">
+                    <p className="mt-1.5 font-sans text-[14px] text-amber-600">
                       The scatter matrix shows at most {MAX_PAIRS_VARIABLES} variables. Deselect some, or use a heatmap or correlogram.
                     </p>
                   )}
@@ -512,12 +512,12 @@ const CorrelationModal = ({ isOpen, onClose, initialAnalysis = null }) => {
                   </button>
                 </div>
                 <div className="flex items-center space-x-1 bg-brand-indigo/10 p-1 rounded-xl border border-brand-indigo/20">
-                  <span className="font-sans text-[9px] font-bold text-brand-indigo px-2 uppercase shrink-0">DPI:</span>
+                  <span className="font-sans text-[12px] font-bold text-brand-indigo px-2 uppercase shrink-0">DPI:</span>
                   {[150, 300, 600].map(dpiVal => (
                     <button
                       key={dpiVal}
                       onClick={() => setDownloadDpi(dpiVal)}
-                      className={`px-1.5 py-0.5 font-sans text-[8px] font-bold rounded-md cursor-pointer transition-colors ${
+                      className={`px-1.5 py-0.5 font-sans text-[11px] font-bold rounded-md cursor-pointer transition-colors ${
                         downloadDpi === dpiVal ? 'bg-brand-indigo text-white shadow-xs' : 'bg-white border border-slate-200 text-slate-500 hover:bg-slate-50'
                       }`}
                     >
@@ -526,17 +526,17 @@ const CorrelationModal = ({ isOpen, onClose, initialAnalysis = null }) => {
                   ))}
                 </div>
                 <div className="flex items-center space-x-1 bg-emerald-50/50 p-1 rounded-xl border border-emerald-100">
-                  <span className="font-sans text-[9px] font-bold text-emerald-600 px-2 uppercase shrink-0">Report:</span>
+                  <span className="font-sans text-[12px] font-bold text-emerald-600 px-2 uppercase shrink-0">Report:</span>
                   <button
                     onClick={() => handleDownloadReport('txt')}
-                    className="rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-sans text-[10px] font-bold px-2.5 py-1.5 transition-colors cursor-pointer"
+                    className="rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-sans text-[13px] font-bold px-2.5 py-1.5 transition-colors cursor-pointer"
                     title="Save as Text"
                   >
                     TXT
                   </button>
                   <button
                     onClick={() => handleDownloadReport('doc')}
-                    className="rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-sans text-[10px] font-bold px-2.5 py-1.5 transition-colors cursor-pointer"
+                    className="rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-sans text-[13px] font-bold px-2.5 py-1.5 transition-colors cursor-pointer"
                     title="Export to Word"
                   >
                     Word
@@ -598,7 +598,7 @@ const CorrelationModal = ({ isOpen, onClose, initialAnalysis = null }) => {
                   <h5 className="font-display text-xs font-bold text-slate-700 mb-1">
                     {matrix.method === 'spearman' ? "Spearman's ρ" : "Pearson's r"} with significance
                   </h5>
-                  <p className="font-sans text-[10px] text-slate-400 mb-3">Two-tailed tests on pairwise-complete observations. * p &lt; 0.05, ** p &lt; 0.01, *** p &lt; 0.001</p>
+                  <p className="font-sans text-[13px] text-slate-400 mb-3">Two-tailed tests on pairwise-complete observations. * p &lt; 0.05, ** p &lt; 0.01, *** p &lt; 0.001</p>
                   <div className="max-h-[260px] overflow-auto">
                     <table className="w-full border-collapse font-sans text-xs text-left">
                       <thead className="sticky top-0 bg-white">

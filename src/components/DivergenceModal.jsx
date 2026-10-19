@@ -49,7 +49,7 @@ const Table = ({ columns, rows, note, minWidth = 620 }) => (
         ))}
       </tbody>
     </table>
-    {note && <p className="mt-3 font-sans text-[10px] leading-relaxed text-slate-400">{note}</p>}
+    {note && <p className="mt-3 font-sans text-[13px] leading-relaxed text-slate-400">{note}</p>}
   </div>
 );
 
@@ -252,7 +252,7 @@ const DivergenceModal = ({ isOpen, onClose, initialAnalysis = null }) => {
                     <option value="">Choose…</option>
                     {columns.map(c => <option key={c} value={c}>{c}</option>)}
                   </select>
-                  <p className="font-sans text-[10px] text-slate-400">At least 3 genotypes, varieties or accessions.</p>
+                  <p className="font-sans text-[13px] text-slate-400">At least 3 genotypes, varieties or accessions.</p>
                 </div>
                 <div className="space-y-1.5">
                   <label className="font-sans text-xs font-bold text-slate-500">Replicate / block column (optional)</label>
@@ -260,7 +260,7 @@ const DivergenceModal = ({ isOpen, onClose, initialAnalysis = null }) => {
                     <option value="">None</option>
                     {columns.filter(c => c !== genotypeCol).map(c => <option key={c} value={c}>{c}</option>)}
                   </select>
-                  <p className="font-sans text-[10px] text-slate-400">With replication, D² uses the error variance-covariance matrix (Rao&apos;s D²) and Wilks&apos; test is reported.</p>
+                  <p className="font-sans text-[13px] text-slate-400">With replication, D² uses the error variance-covariance matrix (Rao&apos;s D²) and Wilks&apos; test is reported.</p>
                 </div>
               </div>
 
@@ -280,7 +280,7 @@ const DivergenceModal = ({ isOpen, onClose, initialAnalysis = null }) => {
                     </button>
                   ))}
                 </div>
-                <p className="font-sans text-[10px] text-slate-400">The order of selection sets the order of the transformation used for the trait contributions.</p>
+                <p className="font-sans text-[13px] text-slate-400">The order of selection sets the order of the transformation used for the trait contributions.</p>
               </div>
 
               <button
@@ -328,7 +328,7 @@ const DivergenceModal = ({ isOpen, onClose, initialAnalysis = null }) => {
                 </div>
               </div>
 
-              <div className="flex flex-wrap gap-2 font-sans text-[11px]">
+              <div className="flex flex-wrap gap-2 font-sans text-[14px]">
                 <span className="rounded-full bg-slate-100 px-3 py-1 text-slate-600">{results.genotypes.length} genotypes × {results.traits.length} traits</span>
                 <span className="rounded-full bg-slate-100 px-3 py-1 text-slate-600">{results.clusters.length} Tocher clusters</span>
                 <span className="rounded-full bg-slate-100 px-3 py-1 text-slate-600">θ = {fmt(results.theta)}</span>
@@ -340,7 +340,7 @@ const DivergenceModal = ({ isOpen, onClose, initialAnalysis = null }) => {
               </div>
 
               {results.notes.length > 0 && (
-                <div className="rounded-xl border border-amber-100 bg-amber-50/60 p-3 font-sans text-[11px] text-amber-700">{results.notes.join(' ')}</div>
+                <div className="rounded-xl border border-amber-100 bg-amber-50/60 p-3 font-sans text-[14px] text-amber-700">{results.notes.join(' ')}</div>
               )}
 
               {activeTab === 'summary' && (
@@ -359,14 +359,14 @@ const DivergenceModal = ({ isOpen, onClose, initialAnalysis = null }) => {
                       <div key={c.name} className="rounded-2xl border border-slate-100 bg-white p-4 shadow-xs">
                         <div className="flex items-baseline justify-between">
                           <p className="font-display text-sm font-bold text-slate-800">{c.name}</p>
-                          <span className="font-sans text-[11px] text-slate-400">{c.size} genotype{c.size === 1 ? '' : 's'}</span>
+                          <span className="font-sans text-[14px] text-slate-400">{c.size} genotype{c.size === 1 ? '' : 's'}</span>
                         </div>
                         <p className="mt-1 font-sans text-xs text-slate-600">{c.members.join(', ')}</p>
-                        {c.size > 1 && <p className="mt-1.5 font-sans text-[11px] text-slate-400">Intra-cluster D² = <span className="font-mono">{fmt(c.intra_d2)}</span> (D = {fmt(c.intra_d)})</p>}
+                        {c.size > 1 && <p className="mt-1.5 font-sans text-[14px] text-slate-400">Intra-cluster D² = <span className="font-mono">{fmt(c.intra_d2)}</span> (D = {fmt(c.intra_d)})</p>}
                       </div>
                     ))}
                   </div>
-                  <p className="font-sans text-[10px] leading-relaxed text-slate-400">
+                  <p className="font-sans text-[13px] leading-relaxed text-slate-400">
                     Tocher&apos;s method (Rao 1952): each cluster starts with the closest pair of unclustered genotypes, and a genotype joins while its average D² to the members stays below θ = {fmt(results.theta)}, the largest of the genotypes&apos; smallest D² values. Genotypes that cannot join any cluster stand alone.
                   </p>
                 </div>

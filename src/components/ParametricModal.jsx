@@ -510,17 +510,17 @@ const ParametricModal = ({ isOpen, onClose, initialAnalysis = null }) => {
                 </div>
                 <div className="flex space-x-2">
                   <div className="flex items-center space-x-1 bg-emerald-50/50 p-1 rounded-xl border border-emerald-100">
-                    <span className="font-sans text-[9px] font-bold text-emerald-600 px-2 uppercase shrink-0">Report:</span>
+                    <span className="font-sans text-[12px] font-bold text-emerald-600 px-2 uppercase shrink-0">Report:</span>
                     <button
                       onClick={() => handleDownloadReport('txt')}
-                      className="rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-sans text-[10px] font-bold px-2.5 py-1.5 transition-colors cursor-pointer"
+                      className="rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-sans text-[13px] font-bold px-2.5 py-1.5 transition-colors cursor-pointer"
                       title="Save as Text"
                     >
                       TXT
                     </button>
                     <button
                       onClick={() => handleDownloadReport('doc')}
-                      className="rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-sans text-[10px] font-bold px-2.5 py-1.5 transition-colors cursor-pointer"
+                      className="rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-sans text-[13px] font-bold px-2.5 py-1.5 transition-colors cursor-pointer"
                       title="Export to Word"
                     >
                       Word
@@ -591,13 +591,13 @@ const ParametricModal = ({ isOpen, onClose, initialAnalysis = null }) => {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm relative">
                   <div className="flex items-center justify-between">
-                    <p className="font-sans text-[10px] font-bold text-slate-400 uppercase">
+                    <p className="font-sans text-[13px] font-bold text-slate-400 uppercase">
                       {results.test_used || 'Test Statistic'}
                     </p>
                     {testType === 'independent_t' && results.test_used === "Welch's t-Test" && (
                       <div className="group relative cursor-pointer text-amber-500 hover:text-amber-600">
                         <Info className="h-3.5 w-3.5" />
-                        <div className="absolute bottom-full right-0 mb-2 w-48 hidden group-hover:block bg-slate-800 text-white text-[10px] rounded-lg p-2 font-normal shadow-lg leading-normal z-10">
+                        <div className="absolute bottom-full right-0 mb-2 w-48 hidden group-hover:block bg-slate-800 text-white text-[13px] rounded-lg p-2 font-normal shadow-lg leading-normal z-10">
                           Welch's t-test was selected automatically because Levene's test indicated unequal variances between groups (p &lt; 0.05).
                         </div>
                       </div>
@@ -609,25 +609,25 @@ const ParametricModal = ({ isOpen, onClose, initialAnalysis = null }) => {
                       : `Z = ${results.statistics.z_statistic.toFixed(4)}`}
                   </p>
                   {results.statistics.degrees_of_freedom !== undefined && (
-                    <p className="font-sans text-[10px] text-slate-400 mt-0.5">
+                    <p className="font-sans text-[13px] text-slate-400 mt-0.5">
                       df = {typeof results.statistics.degrees_of_freedom === 'number' 
                         ? results.statistics.degrees_of_freedom.toFixed(2).replace(/\.00$/, '') 
                         : results.statistics.degrees_of_freedom}
                     </p>
                   )}
                   {results.statistics.hypothesized_mean !== undefined && (
-                    <p className="font-sans text-[10px] text-slate-500 mt-0.5">
+                    <p className="font-sans text-[13px] text-slate-500 mt-0.5">
                       μ₀ = {results.statistics.hypothesized_mean}
                     </p>
                   )}
                 </div>
 
                 <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
-                  <p className="font-sans text-[10px] font-bold text-slate-400 uppercase">Probability Value</p>
+                  <p className="font-sans text-[13px] font-bold text-slate-400 uppercase">Probability Value</p>
                   <p className="font-display text-lg font-bold text-slate-800 mt-1">
                     {formatPValue(results.statistics.p_value)}
                   </p>
-                  <span className={`inline-block mt-1.5 rounded px-1.5 py-0.5 font-sans text-[9px] font-bold ${
+                  <span className={`inline-block mt-1.5 rounded px-1.5 py-0.5 font-sans text-[12px] font-bold ${
                     results.statistics.significant ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-50 text-slate-400'
                   }`}>
                     {results.statistics.significant ? 'p < 0.05 (Significant)' : 'p ≥ 0.05 (Not Significant)'}
@@ -635,7 +635,7 @@ const ParametricModal = ({ isOpen, onClose, initialAnalysis = null }) => {
                 </div>
 
                 <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
-                  <p className="font-sans text-[10px] font-bold text-slate-400 uppercase">Null Hypothesis (H₀)</p>
+                  <p className="font-sans text-[13px] font-bold text-slate-400 uppercase">Null Hypothesis (H₀)</p>
                   <p className={`font-sans text-xs font-semibold mt-2 leading-snug ${
                     results.statistics.significant ? 'text-rose-600' : 'text-slate-600'
                   }`}>
@@ -694,11 +694,11 @@ const ParametricModal = ({ isOpen, onClose, initialAnalysis = null }) => {
                 {['paired_t', 'independent_t'].includes(testType) && results.statistics.mean_difference !== undefined && (
                   <div className="mt-4 pt-3 border-t border-dashed border-slate-100 grid grid-cols-3 gap-3 text-xs font-sans animate-fade-in">
                     <div className="rounded-xl bg-slate-50 p-2.5 border border-slate-100/50">
-                      <p className="text-[10px] font-bold text-slate-400 uppercase">Mean Difference</p>
+                      <p className="text-[13px] font-bold text-slate-400 uppercase">Mean Difference</p>
                       <p className="font-semibold text-slate-700 mt-0.5">{results.statistics.mean_difference.toFixed(4)}</p>
                     </div>
                     <div className="rounded-xl bg-slate-50 p-2.5 border border-slate-100/50">
-                      <p className="text-[10px] font-bold text-slate-400 uppercase">
+                      <p className="text-[13px] font-bold text-slate-400 uppercase">
                         {testType === 'paired_t' ? 'Standard Deviation of Diff' : 'Std. Error of Difference'}
                       </p>
                       <p className="font-semibold text-slate-700 mt-0.5">
@@ -706,7 +706,7 @@ const ParametricModal = ({ isOpen, onClose, initialAnalysis = null }) => {
                       </p>
                     </div>
                     <div className="rounded-xl bg-slate-50 p-2.5 border border-slate-100/50">
-                      <p className="text-[10px] font-bold text-slate-400 uppercase">95% CI [Lower, Upper]</p>
+                      <p className="text-[13px] font-bold text-slate-400 uppercase">95% CI [Lower, Upper]</p>
                       <p className="font-semibold text-slate-700 mt-0.5">
                         {`[${results.statistics.ci_difference[0]?.toFixed(4) ?? 'n/a'}, ${results.statistics.ci_difference[1]?.toFixed(4) ?? 'n/a'}]`}
                       </p>
@@ -718,12 +718,12 @@ const ParametricModal = ({ isOpen, onClose, initialAnalysis = null }) => {
                 {['one_sample_t', 'paired_t', 'independent_t'].includes(testType) && results.statistics.cohens_d !== undefined && results.statistics.cohens_d !== null && (
                   <div className="mt-4 pt-3 border-t border-dashed border-slate-100 grid grid-cols-2 gap-3 text-xs font-sans animate-fade-in">
                     <div className="rounded-xl bg-slate-50 p-2.5 border border-slate-100/50">
-                      <p className="text-[10px] font-bold text-slate-400 uppercase">
+                      <p className="text-[13px] font-bold text-slate-400 uppercase">
                         {testType === 'paired_t' ? "Cohen's d_z (Effect Size)" : testType === 'independent_t' ? "Cohen's d, pooled SD (Effect Size)" : "Cohen's d (Effect Size)"}
                       </p>
                       <p className="font-semibold text-slate-700 mt-0.5">
                         {results.statistics.cohens_d.toFixed(4)}
-                        <span className="text-[10px] text-slate-400 font-normal ml-1.5">
+                        <span className="text-[13px] text-slate-400 font-normal ml-1.5">
                           ({Math.abs(results.statistics.cohens_d) < 0.2 ? 'Negligible' :
                             Math.abs(results.statistics.cohens_d) < 0.5 ? 'Small' :
                             Math.abs(results.statistics.cohens_d) < 0.8 ? 'Medium' : 'Large'})
@@ -732,7 +732,7 @@ const ParametricModal = ({ isOpen, onClose, initialAnalysis = null }) => {
                     </div>
                     {results.statistics.ci && (
                       <div className="rounded-xl bg-slate-50 p-2.5 border border-slate-100/50">
-                        <p className="text-[10px] font-bold text-slate-400 uppercase">95% Confidence Interval of Mean</p>
+                        <p className="text-[13px] font-bold text-slate-400 uppercase">95% Confidence Interval of Mean</p>
                         <p className="font-semibold text-slate-700 mt-0.5">
                           {`[${results.statistics.ci[0].toFixed(4)}, ${results.statistics.ci[1].toFixed(4)}]`}
                         </p>
@@ -764,13 +764,13 @@ const ParametricModal = ({ isOpen, onClose, initialAnalysis = null }) => {
                   <Info className="h-4 w-4 text-brand-indigo" />
                   <h5 className="font-display text-xs font-bold text-slate-700">Assumption Checks</h5>
                 </div>
-                <p className="font-sans text-[10px] text-slate-400 mb-3 leading-normal">
+                <p className="font-sans text-[13px] text-slate-400 mb-3 leading-normal">
                   Parametric tests make specific assumptions about the distribution and variance of the data.
                 </p>
                 <div className="space-y-3">
                   {/* Shapiro-Wilk Normality Checks */}
                   <div className="space-y-2">
-                    <p className="font-sans text-[10px] font-bold text-slate-500 uppercase tracking-wider">Normality Check (Shapiro-Wilk)</p>
+                    <p className="font-sans text-[13px] font-bold text-slate-500 uppercase tracking-wider">Normality Check (Shapiro-Wilk)</p>
                     {testType === 'paired_t' ? (
                       results.shapiro_results?.differences ? (
                         <div className="flex justify-between items-center text-xs border-b border-slate-50 pb-2">
@@ -781,7 +781,7 @@ const ParametricModal = ({ isOpen, onClose, initialAnalysis = null }) => {
                             <div className="flex space-x-4 items-center">
                               <span className="text-slate-500">W = {results.shapiro_results.differences.stat.toFixed(4)}</span>
                               <span className="text-slate-500">{formatPValue(results.shapiro_results.differences.p_value)}</span>
-                              <span className={`font-bold px-1.5 py-0.5 rounded text-[10px] ${
+                              <span className={`font-bold px-1.5 py-0.5 rounded text-[13px] ${
                                 results.shapiro_results.differences.normal ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'
                               }`}>
                                 {results.shapiro_results.differences.normal ? 'Normally Distributed' : 'Non-Normal Distribution'}
@@ -802,7 +802,7 @@ const ParametricModal = ({ isOpen, onClose, initialAnalysis = null }) => {
                             <div className="flex space-x-4 items-center">
                               <span className="text-slate-500">W = {meta.stat.toFixed(4)}</span>
                               <span className="text-slate-500">{formatPValue(meta.p_value)}</span>
-                              <span className={`font-bold px-1.5 py-0.5 rounded text-[10px] ${
+                              <span className={`font-bold px-1.5 py-0.5 rounded text-[13px] ${
                                 meta.normal ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'
                               }`}>
                                 {meta.normal ? 'Normally Distributed' : 'Non-Normal Distribution'}
@@ -817,20 +817,20 @@ const ParametricModal = ({ isOpen, onClose, initialAnalysis = null }) => {
                   {/* Levene's Equality of Variances Check (Only for independent t-test) */}
                   {testType === 'independent_t' && results.levene_results && (
                     <div className="pt-2 border-t border-slate-100">
-                      <p className="font-sans text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">Equality of Variances Check (Levene's Test)</p>
+                      <p className="font-sans text-[13px] font-bold text-slate-500 uppercase tracking-wider mb-2">Equality of Variances Check (Levene's Test)</p>
                       <div className="flex justify-between items-center text-xs pb-1">
                         <span className="font-semibold text-slate-700">Levene's Test ({col1} vs {col2})</span>
                         <div className="flex space-x-4 items-center">
                           <span className="text-slate-500">Statistic = {results.levene_results.stat.toFixed(4)}</span>
                           <span className="text-slate-500">{formatPValue(results.levene_results.p_value)}</span>
-                          <span className={`font-bold px-1.5 py-0.5 rounded text-[10px] ${
+                          <span className={`font-bold px-1.5 py-0.5 rounded text-[13px] ${
                             results.levene_results.equal_var ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'
                           }`}>
                             {results.levene_results.equal_var ? 'Equal Variances' : 'Unequal Variances'}
                           </span>
                         </div>
                       </div>
-                      <p className="font-sans text-[9px] text-slate-400 mt-1 italic leading-normal">
+                      <p className="font-sans text-[12px] text-slate-400 mt-1 italic leading-normal">
                         * Levene's test p &ge; 0.05 indicates equal variances (Student's t-test used). p &lt; 0.05 indicates unequal variances (Welch's t-test used automatically).
                       </p>
                     </div>

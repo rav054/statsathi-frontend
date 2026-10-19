@@ -39,9 +39,9 @@ const selectClass = 'w-full rounded-xl border border-slate-200 bg-white px-3 py-
 
 const Card = ({ title, value, hint, tone = 'slate' }) => (
   <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-xs">
-    <p className="font-sans text-[10px] font-bold uppercase text-slate-400">{title}</p>
+    <p className="font-sans text-[13px] font-bold uppercase text-slate-400">{title}</p>
     <p className={`mt-0.5 font-mono text-sm font-bold ${tone === 'good' ? 'text-emerald-600' : tone === 'warn' ? 'text-amber-600' : 'text-slate-800'}`}>{value}</p>
-    {hint && <p className="mt-1 font-sans text-[10px] leading-snug text-slate-400">{hint}</p>}
+    {hint && <p className="mt-1 font-sans text-[13px] leading-snug text-slate-400">{hint}</p>}
   </div>
 );
 
@@ -256,7 +256,7 @@ const TimeSeriesModal = ({ isOpen, onClose, initialAnalysis = null }) => {
                     <option value="">Row order (no time column)</option>
                     {columns.filter(c => c !== valueCol).map(c => <option key={c} value={c}>{c}</option>)}
                   </select>
-                  <p className="font-sans text-[10px] text-slate-400">Dates give the seasonal period automatically; numbers (for example years) are treated as equally spaced.</p>
+                  <p className="font-sans text-[13px] text-slate-400">Dates give the seasonal period automatically; numbers (for example years) are treated as equally spaced.</p>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1.5">
@@ -289,7 +289,7 @@ const TimeSeriesModal = ({ isOpen, onClose, initialAnalysis = null }) => {
                   </div>
                 </div>
               </div>
-              <p className="font-sans text-[10px] text-slate-400">
+              <p className="font-sans text-[13px] text-slate-400">
                 The test period is held back from every model, so the models are compared on data they have not seen. The winner is then refitted on the whole series to produce the forecast.
               </p>
 
@@ -338,7 +338,7 @@ const TimeSeriesModal = ({ isOpen, onClose, initialAnalysis = null }) => {
                 </div>
               </div>
 
-              <div className="flex flex-wrap gap-2 font-sans text-[11px]">
+              <div className="flex flex-wrap gap-2 font-sans text-[14px]">
                 <span className="rounded-full bg-slate-100 px-3 py-1 text-slate-600">{results.series.n} {results.series.frequency} observations</span>
                 <span className="rounded-full bg-slate-100 px-3 py-1 text-slate-600">Season: {results.series.season_length > 1 ? `${results.series.season_length} periods` : 'none'}</span>
                 <span className="rounded-full bg-emerald-50 px-3 py-1 text-emerald-700">Chosen model: {results.forecast.model}</span>
@@ -346,7 +346,7 @@ const TimeSeriesModal = ({ isOpen, onClose, initialAnalysis = null }) => {
               </div>
 
               {results.notes.length > 0 && (
-                <div className="rounded-xl border border-amber-100 bg-amber-50/60 p-3 font-sans text-[11px] text-amber-700">{results.notes.join(' ')}</div>
+                <div className="rounded-xl border border-amber-100 bg-amber-50/60 p-3 font-sans text-[14px] text-amber-700">{results.notes.join(' ')}</div>
               )}
 
               {activeTab === 'forecast' && (
@@ -376,7 +376,7 @@ const TimeSeriesModal = ({ isOpen, onClose, initialAnalysis = null }) => {
                         ))}
                       </tbody>
                     </table>
-                    <p className="mt-3 font-sans text-[10px] leading-relaxed text-slate-400">
+                    <p className="mt-3 font-sans text-[13px] leading-relaxed text-slate-400">
                       Forecast from {results.forecast.model}. The 80% interval is the range the value should fall in 4 times out of 5 if the pattern continues; the 95% interval is wider and more cautious.
                     </p>
                   </div>
@@ -411,7 +411,7 @@ const TimeSeriesModal = ({ isOpen, onClose, initialAnalysis = null }) => {
                       ))}
                     </tbody>
                   </table>
-                  <p className="mt-3 font-sans text-[10px] leading-relaxed text-slate-400">
+                  <p className="mt-3 font-sans text-[13px] leading-relaxed text-slate-400">
                     {results.holdout
                       ? `Every model was fitted without the last ${results.holdout} observations and then asked to forecast them; the star marks the most accurate. MASE below 1 beats a seasonal naive forecast.`
                       : 'The series was too short to hold data back, so models were compared by corrected AIC (lower is better).'}

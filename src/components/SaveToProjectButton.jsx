@@ -61,7 +61,7 @@ const SaveToProjectButton = ({ module, defaultTitle, parameters = {}, result, so
       {open && (
         <div className="absolute right-0 z-50 mt-2 w-72 rounded-2xl border border-slate-100 bg-white p-4 text-left shadow-xl space-y-3">
           <div className="space-y-1">
-            <label className="font-sans text-[10px] font-bold uppercase text-slate-400">Project</label>
+            <label className="font-sans text-[13px] font-bold uppercase text-slate-400">Project</label>
             <select
               value={projectId}
               onChange={(e) => setProjectId(e.target.value)}
@@ -71,7 +71,7 @@ const SaveToProjectButton = ({ module, defaultTitle, parameters = {}, result, so
             </select>
           </div>
           <div className="space-y-1">
-            <label className="font-sans text-[10px] font-bold uppercase text-slate-400">Title</label>
+            <label className="font-sans text-[13px] font-bold uppercase text-slate-400">Title</label>
             <input
               type="text"
               maxLength={200}
@@ -81,7 +81,7 @@ const SaveToProjectButton = ({ module, defaultTitle, parameters = {}, result, so
             />
           </div>
           {message && (
-            <p className={`flex items-center space-x-1 font-sans text-[11px] ${message.type === 'ok' ? 'text-emerald-600' : 'text-rose-600'}`}>
+            <p className={`flex items-center space-x-1 font-sans text-[14px] ${message.type === 'ok' ? 'text-emerald-600' : 'text-rose-600'}`}>
               {message.type === 'ok' ? <Check className="h-3.5 w-3.5" /> : <AlertCircle className="h-3.5 w-3.5" />}
               <span>{message.text}</span>
             </p>

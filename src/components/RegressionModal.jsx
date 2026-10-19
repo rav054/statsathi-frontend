@@ -434,7 +434,7 @@ const RegressionModal = ({ isOpen, onClose, initialAnalysis = null }) => {
             </div>
             <div>
               <h2 className="font-display text-base font-bold text-slate-800">Regression Workspace</h2>
-              <p className="font-sans text-[10px] text-slate-400">Perform Simple, Multiple OLS, or Partial Least Squares Regression.</p>
+              <p className="font-sans text-[13px] text-slate-400">Perform Simple, Multiple OLS, or Partial Least Squares Regression.</p>
             </div>
           </div>
           <button data-dialog-close aria-label="Close" onClick={onClose} className="rounded-xl p-1.5 hover:bg-slate-50 text-slate-400 hover:text-slate-600 transition-colors cursor-pointer">
@@ -469,11 +469,11 @@ const RegressionModal = ({ isOpen, onClose, initialAnalysis = null }) => {
               <div className="space-y-4 bg-white p-5 rounded-2xl border border-slate-100 shadow-xs lg:col-span-1">
                 <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                   <span className="font-display text-xs font-bold text-slate-700">Model Configuration</span>
-                  <button type="button" onClick={handleReset} className="font-sans text-[10px] font-bold text-brand-orange hover:text-orange-600 transition-colors">Reset File</button>
+                  <button type="button" onClick={handleReset} className="font-sans text-[13px] font-bold text-brand-orange hover:text-orange-600 transition-colors">Reset File</button>
                 </div>
 
                 <div className="space-y-1">
-                  <label className="font-sans text-[10px] font-bold text-slate-400 uppercase">Regression Type</label>
+                  <label className="font-sans text-[13px] font-bold text-slate-400 uppercase">Regression Type</label>
                   <select
                     value={regressionType}
                     onChange={(e) => setRegressionType(e.target.value)}
@@ -487,7 +487,7 @@ const RegressionModal = ({ isOpen, onClose, initialAnalysis = null }) => {
 
                 {regressionType === 'plsr' && (
                   <div className="space-y-1">
-                    <label className="font-sans text-[10px] font-bold text-slate-400 uppercase">PLS Components</label>
+                    <label className="font-sans text-[13px] font-bold text-slate-400 uppercase">PLS Components</label>
                     <input
                       type="number"
                       min={1}
@@ -496,14 +496,14 @@ const RegressionModal = ({ isOpen, onClose, initialAnalysis = null }) => {
                       onChange={(e) => setNComponents(parseInt(e.target.value) || 2)}
                       className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 font-sans text-xs text-slate-700 outline-hidden focus:border-brand-indigo focus:ring-1 focus:ring-brand-indigo"
                     />
-                    <p className="font-sans text-[9px] text-slate-400">Maximum components cannot exceed the number of selected predictors.</p>
+                    <p className="font-sans text-[12px] text-slate-400">Maximum components cannot exceed the number of selected predictors.</p>
                   </div>
                 )}
 
                 <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-100/50 space-y-1">
-                  <span className="font-display text-[11px] font-bold text-slate-600">Dataset Loaded:</span>
-                  <div className="font-sans text-[10px] text-slate-400 truncate">{file.name}</div>
-                  <button type="button" onClick={() => setViewerOpen(true)} className="mt-2 text-brand-indigo hover:text-indigo-700 font-sans text-[10px] font-bold flex items-center space-x-1">
+                  <span className="font-display text-[14px] font-bold text-slate-600">Dataset Loaded:</span>
+                  <div className="font-sans text-[13px] text-slate-400 truncate">{file.name}</div>
+                  <button type="button" onClick={() => setViewerOpen(true)} className="mt-2 text-brand-indigo hover:text-indigo-700 font-sans text-[13px] font-bold flex items-center space-x-1">
                     <Eye className="h-3.5 w-3.5" />
                     <span>View Data Grid</span>
                   </button>
@@ -537,7 +537,7 @@ const RegressionModal = ({ isOpen, onClose, initialAnalysis = null }) => {
                   {regressionType !== 'plsr' ? (
                     /* Simple / Multiple: Single Y Dropdown */
                     <div className="space-y-1 max-w-xs">
-                      <label className="font-sans text-[10px] text-slate-400">Select target outcome</label>
+                      <label className="font-sans text-[13px] text-slate-400">Select target outcome</label>
                       <select
                         value={depVars[0] || ''}
                         onChange={(e) => setDepVars(e.target.value ? [e.target.value] : [])}
@@ -552,7 +552,7 @@ const RegressionModal = ({ isOpen, onClose, initialAnalysis = null }) => {
                   ) : (
                     /* PLSR: Multi-select Checkboxes */
                     <div className="space-y-2">
-                      <p className="font-sans text-[10px] text-slate-400 mb-2">Select one or more target outcomes (Y)</p>
+                      <p className="font-sans text-[13px] text-slate-400 mb-2">Select one or more target outcomes (Y)</p>
                       <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 max-h-[140px] overflow-y-auto pr-2">
                         {numericColumns.map(col => (
                           <label
@@ -585,7 +585,7 @@ const RegressionModal = ({ isOpen, onClose, initialAnalysis = null }) => {
                   {regressionType === 'simple' ? (
                     /* Simple: Single X Dropdown */
                     <div className="space-y-1 max-w-xs">
-                      <label className="font-sans text-[10px] text-slate-400">Select single predictor</label>
+                      <label className="font-sans text-[13px] text-slate-400">Select single predictor</label>
                       <select
                         value={indVars[0] || ''}
                         onChange={(e) => setIndVars(e.target.value ? [e.target.value] : [])}
@@ -600,7 +600,7 @@ const RegressionModal = ({ isOpen, onClose, initialAnalysis = null }) => {
                   ) : (
                     /* Multiple / PLSR: Multi-select Checkboxes */
                     <div className="space-y-2">
-                      <p className="font-sans text-[10px] text-slate-400 mb-2">Select predictor variables (X)</p>
+                      <p className="font-sans text-[13px] text-slate-400 mb-2">Select predictor variables (X)</p>
                       <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 max-h-[180px] overflow-y-auto pr-2">
                         {numericColumns.map(col => (
                           <label
@@ -700,7 +700,7 @@ const RegressionModal = ({ isOpen, onClose, initialAnalysis = null }) => {
                         <div className="py-2 space-y-1.5">
                           <span className="text-slate-400 block font-bold">Explained Variance (X):</span>
                           {results.explained_variance_x.map((val, idx) => (
-                            <div key={idx} className="flex justify-between text-[11px] text-slate-600 bg-slate-50 p-1.5 rounded-lg">
+                            <div key={idx} className="flex justify-between text-[14px] text-slate-600 bg-slate-50 p-1.5 rounded-lg">
                               <span>Component {idx + 1}</span>
                               <span className="font-mono font-bold">{(val * 100).toFixed(2)}%</span>
                             </div>
@@ -710,7 +710,7 @@ const RegressionModal = ({ isOpen, onClose, initialAnalysis = null }) => {
                           <div className="py-2 space-y-1.5">
                             <span className="text-slate-400 block font-bold">Explained Variance (Y):</span>
                             {results.explained_variance_y.map((val, idx) => (
-                              <div key={idx} className="flex justify-between text-[11px] text-slate-600 bg-slate-50 p-1.5 rounded-lg">
+                              <div key={idx} className="flex justify-between text-[14px] text-slate-600 bg-slate-50 p-1.5 rounded-lg">
                                 <span>Component {idx + 1}</span>
                                 <span className="font-mono font-bold">{(val * 100).toFixed(2)}%</span>
                               </div>
@@ -721,7 +721,7 @@ const RegressionModal = ({ isOpen, onClose, initialAnalysis = null }) => {
                           <div className="py-2 space-y-1.5">
                             <span className="text-slate-400 block font-bold">VIP Scores (VIP &gt; 1 = important):</span>
                             {[...results.vip].sort((a, b) => b.vip - a.vip).map(row => (
-                              <div key={row.variable} className={`flex justify-between text-[11px] p-1.5 rounded-lg ${row.vip > 1 ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-50 text-slate-600'}`}>
+                              <div key={row.variable} className={`flex justify-between text-[14px] p-1.5 rounded-lg ${row.vip > 1 ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-50 text-slate-600'}`}>
                                 <span>{row.variable}</span>
                                 <span className="font-mono font-bold">{row.vip.toFixed(3)}</span>
                               </div>
@@ -788,13 +788,13 @@ const RegressionModal = ({ isOpen, onClose, initialAnalysis = null }) => {
                       <div className="space-y-4">
                         <div className="bg-orange-50/20 border border-orange-100 rounded-xl p-3 flex items-start space-x-2.5">
                           <Info className="h-4.5 w-4.5 text-brand-orange shrink-0 mt-0.5" />
-                          <div className="font-sans text-[10px] text-slate-500 leading-relaxed">
+                          <div className="font-sans text-[13px] text-slate-500 leading-relaxed">
                             Partial Least Squares (PLS) Beta Coefficients represent regression weights for each independent variable across each outcome target. Target R&sup2; measures variance explained for each.
                           </div>
                         </div>
 
                         <div className="space-y-2">
-                          <h4 className="font-display text-[11px] font-bold text-slate-700">Target R-Squared (R&sup2;)</h4>
+                          <h4 className="font-display text-[14px] font-bold text-slate-700">Target R-Squared (R&sup2;)</h4>
                           <table className="w-full border-collapse font-sans text-xs text-slate-600 text-center">
                             <thead>
                               <tr className="bg-slate-50 text-slate-700">
@@ -816,7 +816,7 @@ const RegressionModal = ({ isOpen, onClose, initialAnalysis = null }) => {
                         </div>
 
                         <div className="space-y-2">
-                          <h4 className="font-display text-[11px] font-bold text-slate-700">Regression Coefficients Matrix</h4>
+                          <h4 className="font-display text-[14px] font-bold text-slate-700">Regression Coefficients Matrix</h4>
                           <table className="w-full border-collapse font-sans text-xs text-slate-600 text-center">
                             <thead>
                               <tr className="bg-slate-50 text-slate-700">
@@ -864,11 +864,11 @@ const RegressionModal = ({ isOpen, onClose, initialAnalysis = null }) => {
                     {results.regression_type === 'plsr' ? (
                       /* Pls target selector */
                       <div className="flex items-center space-x-1.5">
-                        <label className="font-sans text-[10px] font-bold text-slate-400 uppercase">Target Variable:</label>
+                        <label className="font-sans text-[13px] font-bold text-slate-400 uppercase">Target Variable:</label>
                         <select
                           value={selectedPlsTarget}
                           onChange={(e) => setSelectedPlsTarget(e.target.value)}
-                          className="rounded-lg border border-slate-200 bg-white px-2 py-1 font-sans text-[11px] text-slate-600 outline-hidden focus:border-brand-indigo focus:ring-1 focus:ring-brand-indigo"
+                          className="rounded-lg border border-slate-200 bg-white px-2 py-1 font-sans text-[14px] text-slate-600 outline-hidden focus:border-brand-indigo focus:ring-1 focus:ring-brand-indigo"
                         >
                           {depVars.map(v => (
                             <option key={v} value={v}>{v}</option>
@@ -882,12 +882,12 @@ const RegressionModal = ({ isOpen, onClose, initialAnalysis = null }) => {
                     <div className="flex items-center space-x-2">
                       <FigurePaletteSelect value={figurePrefs.palette} onChange={(palette) => setFigurePrefs({ palette })} className="mr-2" />
                       <FigurePresetSelect value={figurePrefs.preset} onChange={(preset) => setFigurePrefs({ preset })} className="mr-2" />
-                      <span className="font-sans text-[10px] font-bold text-slate-400 uppercase">Export Resolution:</span>
+                      <span className="font-sans text-[13px] font-bold text-slate-400 uppercase">Export Resolution:</span>
                       {[150, 300, 600].map(dpiVal => (
                         <button
                           key={dpiVal}
                           onClick={() => setDownloadDpi(dpiVal)}
-                          className={`px-2 py-1 font-sans text-[9px] font-bold rounded-lg cursor-pointer ${
+                          className={`px-2 py-1 font-sans text-[12px] font-bold rounded-lg cursor-pointer ${
                             downloadDpi === dpiVal ? 'bg-brand-indigo text-white shadow-xs' : 'bg-white border border-slate-200 text-slate-500 hover:bg-slate-50'
                           }`}
                         >
@@ -901,7 +901,7 @@ const RegressionModal = ({ isOpen, onClose, initialAnalysis = null }) => {
                         <button
                           key={fmt}
                           onClick={() => handleDownloadPlot(fmt)}
-                          className="px-2 py-1 bg-white border border-slate-200 hover:bg-slate-50 text-slate-600 rounded-lg font-sans text-[9px] font-bold uppercase transition-colors flex items-center space-x-1 cursor-pointer"
+                          className="px-2 py-1 bg-white border border-slate-200 hover:bg-slate-50 text-slate-600 rounded-lg font-sans text-[12px] font-bold uppercase transition-colors flex items-center space-x-1 cursor-pointer"
                         >
                           <Download className="h-3 w-3" />
                           <span>{fmt}</span>
@@ -1028,7 +1028,7 @@ const RegressionModal = ({ isOpen, onClose, initialAnalysis = null }) => {
                             <th key={dep} className="border border-slate-100 p-2" colspan="2">{dep}</th>
                           ))}
                         </tr>
-                        <tr className="bg-slate-100 text-slate-600 text-[10px]">
+                        <tr className="bg-slate-100 text-slate-600 text-[13px]">
                           {depVars.map(dep => (
                             <React.Fragment key={dep}>
                               <th className="border border-slate-100 p-1">Actual</th>
@@ -1056,7 +1056,7 @@ const RegressionModal = ({ isOpen, onClose, initialAnalysis = null }) => {
                   )}
 
                   {results.actual.length > 100 && (
-                    <div className="p-3 text-center text-slate-400 font-sans text-[10px]">
+                    <div className="p-3 text-center text-slate-400 font-sans text-[13px]">
                       Showing first 100 observations. Export to Word to download all.
                     </div>
                   )}
@@ -1069,7 +1069,7 @@ const RegressionModal = ({ isOpen, onClose, initialAnalysis = null }) => {
         </div>
 
         {/* Footer */}
-        <div className="border-t border-slate-200/50 bg-white px-6 py-4 flex justify-between items-center text-[10px] text-slate-400 font-sans">
+        <div className="border-t border-slate-200/50 bg-white px-6 py-4 flex justify-between items-center text-[13px] text-slate-400 font-sans">
           <span>Curated by ${user ? user.full_name : 'Guest Researcher'}</span>
           {file && (
             <div className="flex items-center space-x-1">

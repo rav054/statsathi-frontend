@@ -49,7 +49,7 @@ const StatCard = ({ title, rows, note }) => (
         ))}
       </tbody>
     </table>
-    {note && <p className="mt-2 font-sans text-[10px] leading-relaxed text-slate-400">{note}</p>}
+    {note && <p className="mt-2 font-sans text-[13px] leading-relaxed text-slate-400">{note}</p>}
   </div>
 );
 
@@ -266,7 +266,7 @@ const TrendModal = ({ isOpen, onClose, initialAnalysis = null }) => {
                     <option value="">Row order (no time column)</option>
                     {columns.map(c => <option key={c} value={c}>{c}</option>)}
                   </select>
-                  <p className="font-sans text-[10px] text-slate-400">Years, dates or any numeric time. Sen&apos;s slope is expressed per unit of this column.</p>
+                  <p className="font-sans text-[13px] text-slate-400">Years, dates or any numeric time. Sen&apos;s slope is expressed per unit of this column.</p>
                 </div>
                 <div className="space-y-1.5">
                   <label className="font-sans text-xs font-bold text-slate-500">Season column (optional)</label>
@@ -274,7 +274,7 @@ const TrendModal = ({ isOpen, onClose, initialAnalysis = null }) => {
                     <option value="">None</option>
                     {columns.filter(c => c !== timeCol).map(c => <option key={c} value={c}>{c}</option>)}
                   </select>
-                  <p className="font-sans text-[10px] text-slate-400">For monthly or seasonal data (for example Month): adds the seasonal Mann-Kendall test.</p>
+                  <p className="font-sans text-[13px] text-slate-400">For monthly or seasonal data (for example Month): adds the seasonal Mann-Kendall test.</p>
                 </div>
                 <div className="space-y-1.5">
                   <label className="font-sans text-xs font-bold text-slate-500">Significance level</label>
@@ -350,7 +350,7 @@ const TrendModal = ({ isOpen, onClose, initialAnalysis = null }) => {
               </div>
 
               {results.notes.length > 0 && (
-                <div className="rounded-xl border border-amber-100 bg-amber-50/60 p-3 font-sans text-[11px] text-amber-700">{results.notes.join(' ')}</div>
+                <div className="rounded-xl border border-amber-100 bg-amber-50/60 p-3 font-sans text-[14px] text-amber-700">{results.notes.join(' ')}</div>
               )}
 
               {activeTab === 'summary' && (
@@ -381,7 +381,7 @@ const TrendModal = ({ isOpen, onClose, initialAnalysis = null }) => {
                             <td className="py-2 pr-3 text-right font-mono">{row.n}</td>
                             <td className="py-2 pr-3 text-right font-mono">{row.mkZ}</td>
                             <td className="py-2 pr-3 text-right font-mono">{row.mkP}</td>
-                            <td className="py-2 pr-3"><span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${trendBadge(row.trend)}`}>{row.trend}</span></td>
+                            <td className="py-2 pr-3"><span className={`rounded-full px-2 py-0.5 text-[13px] font-bold ${trendBadge(row.trend)}`}>{row.trend}</span></td>
                             <td className="py-2 pr-3 text-right font-mono">{row.modifiedP}</td>
                             {results.season_column && <td className="py-2 pr-3 text-right font-mono">{row.seasonalP}</td>}
                             <td className="py-2 pr-3 text-right font-mono whitespace-nowrap">{row.sen}</td>
@@ -392,7 +392,7 @@ const TrendModal = ({ isOpen, onClose, initialAnalysis = null }) => {
                         ))}
                       </tbody>
                     </table>
-                    <p className="mt-3 font-sans text-[10px] leading-relaxed text-slate-400">
+                    <p className="mt-3 font-sans text-[13px] leading-relaxed text-slate-400">
                       MK: Mann-Kendall test for a monotonic trend (α = {results.alpha}); the modified test corrects for autocorrelation and is the one to report when the series is autocorrelated.
                       Change point: first time step after a significant Pettitt break. Homogeneity: useful / doubtful / suspect after Wijngaard et al. (2003).
                     </p>
@@ -407,9 +407,9 @@ const TrendModal = ({ isOpen, onClose, initialAnalysis = null }) => {
 
               {(activeTab === 'details' || activeTab === 'charts') && results.variables.length > 1 && (
                 <div className="flex flex-wrap items-center gap-1.5">
-                  <span className="mr-1 font-sans text-[10px] font-bold uppercase text-slate-400">Variable:</span>
+                  <span className="mr-1 font-sans text-[13px] font-bold uppercase text-slate-400">Variable:</span>
                   {results.variables.map(name => (
-                    <button key={name} type="button" onClick={() => { setActiveVar(name); setChartImage(null); }} className={`rounded-full border px-3 py-1 font-sans text-[11px] font-semibold cursor-pointer ${activeVar === name ? 'border-brand-indigo bg-brand-indigo text-white' : 'border-slate-200 bg-white text-slate-600 hover:border-brand-indigo'}`}>
+                    <button key={name} type="button" onClick={() => { setActiveVar(name); setChartImage(null); }} className={`rounded-full border px-3 py-1 font-sans text-[14px] font-semibold cursor-pointer ${activeVar === name ? 'border-brand-indigo bg-brand-indigo text-white' : 'border-slate-200 bg-white text-slate-600 hover:border-brand-indigo'}`}>
                       {name}
                     </button>
                   ))}

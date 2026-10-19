@@ -57,13 +57,13 @@ export const ProjectDatasets = ({ onChoose, busy }) => {
                 <FolderOpen className="h-3.5 w-3.5 text-brand-orange" />
                 <span>{project.name}</span>
               </span>
-              <span className="font-sans text-[10px] text-slate-400">{project.dataset_count} dataset{project.dataset_count === 1 ? '' : 's'}</span>
+              <span className="font-sans text-[13px] text-slate-400">{project.dataset_count} dataset{project.dataset_count === 1 ? '' : 's'}</span>
             </button>
             {expanded && (
               <div className="border-t border-slate-100 px-3 py-2 space-y-1">
                 {!detail && <div className="flex justify-center py-2"><RefreshCw className="h-4 w-4 animate-spin text-brand-indigo" /></div>}
                 {detail && detail.datasets.length === 0 && (
-                  <p className="py-1 font-sans text-[11px] text-slate-400">This project has no datasets yet.</p>
+                  <p className="py-1 font-sans text-[14px] text-slate-400">This project has no datasets yet.</p>
                 )}
                 {detail?.datasets.map(dataset => (
                   <button
@@ -75,9 +75,9 @@ export const ProjectDatasets = ({ onChoose, busy }) => {
                   >
                     <span className="flex min-w-0 items-center space-x-2">
                       <Database className="h-3.5 w-3.5 shrink-0 text-brand-indigo" />
-                      <span className="truncate font-sans text-[11px] font-semibold text-slate-700">{dataset.filename}</span>
+                      <span className="truncate font-sans text-[14px] font-semibold text-slate-700">{dataset.filename}</span>
                     </span>
-                    <span className="shrink-0 font-sans text-[10px] text-slate-400">
+                    <span className="shrink-0 font-sans text-[13px] text-slate-400">
                       {dataset.n_rows} × {dataset.n_columns} · {formatBytes(dataset.size_bytes)}
                     </span>
                   </button>
@@ -132,9 +132,9 @@ const DatasetPicker = ({ dataset, title, hint, onViewData, onChange }) => {
     return (
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-100 bg-slate-50 p-4">
         <div className="min-w-0">
-          <p className="font-sans text-[10px] font-bold uppercase text-slate-400">Selected dataset</p>
+          <p className="font-sans text-[13px] font-bold uppercase text-slate-400">Selected dataset</p>
           <p className="truncate font-sans text-sm font-semibold text-slate-700">{dataset.file.name}</p>
-          <p className="font-sans text-[10px] text-slate-400">
+          <p className="font-sans text-[13px] text-slate-400">
             {dataset.source?.kind === 'project' ? `From project: ${dataset.source.projectName}` : 'Uploaded from this device'}
             {dataset.columns.length > 0 ? ` · ${dataset.columns.length} columns` : ''}
           </p>
@@ -192,7 +192,7 @@ const DatasetPicker = ({ dataset, title, hint, onViewData, onChange }) => {
       ) : (
         <div className="rounded-3xl border border-slate-200 p-3">
           <ProjectDatasets onChoose={chooseStored} busy={dataset.loading} />
-          <p className="mt-2 font-sans text-[10px] text-slate-400">
+          <p className="mt-2 font-sans text-[13px] text-slate-400">
             Datasets you have saved to a project, ready to analyse without uploading them again.
           </p>
         </div>

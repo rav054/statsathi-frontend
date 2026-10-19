@@ -671,19 +671,19 @@ const LayoutGeneratorModal = ({ isOpen, onClose }) => {
             <div className="flex justify-between items-center mb-4">
               <h3 className="font-display text-xs font-bold text-slate-600">Generated Field Map Preview</h3>
               <div className="flex space-x-2">
-                <label className="flex items-center space-x-1 rounded-xl border border-slate-200 bg-white px-2 py-1 text-[10px] font-bold text-slate-500" title="Enter a seed to regenerate a layout exactly">
+                <label className="flex items-center space-x-1 rounded-xl border border-slate-200 bg-white px-2 py-1 text-[13px] font-bold text-slate-500" title="Enter a seed to regenerate a layout exactly">
                   <span>Seed</span>
                   <input
                     type="number"
                     value={seed}
                     min={1}
                     onChange={(e) => setSeed(Math.max(1, parseInt(e.target.value, 10) || 1))}
-                    className="w-20 border-0 bg-transparent p-0 font-mono text-[11px] text-slate-700 focus:outline-none"
+                    className="w-20 border-0 bg-transparent p-0 font-mono text-[14px] text-slate-700 focus:outline-none"
                   />
                 </label>
                 <button
                   onClick={() => setSeed(newSeed())}
-                  className="rounded-xl border border-slate-200 bg-white px-2.5 py-1.5 text-slate-600 hover:bg-slate-50 text-[10px] font-bold flex items-center space-x-1 cursor-pointer"
+                  className="rounded-xl border border-slate-200 bg-white px-2.5 py-1.5 text-slate-600 hover:bg-slate-50 text-[13px] font-bold flex items-center space-x-1 cursor-pointer"
                   title="Reshuffle with a new seed"
                 >
                   <RefreshCw className="h-3 w-3" />
@@ -691,7 +691,7 @@ const LayoutGeneratorModal = ({ isOpen, onClose }) => {
                 </button>
                 <button
                   onClick={downloadSVG}
-                  className="rounded-xl bg-brand-indigo px-3 py-1.5 text-white hover:bg-indigo-700 text-[10px] font-bold flex items-center space-x-1 shadow-xs cursor-pointer"
+                  className="rounded-xl bg-brand-indigo px-3 py-1.5 text-white hover:bg-indigo-700 text-[13px] font-bold flex items-center space-x-1 shadow-xs cursor-pointer"
                   title="Download Scale-invariant Vector Graphic"
                 >
                   <Download className="h-3 w-3" />
@@ -699,7 +699,7 @@ const LayoutGeneratorModal = ({ isOpen, onClose }) => {
                 </button>
                 <button
                   onClick={downloadPNG}
-                  className="rounded-xl bg-brand-orange px-3 py-1.5 text-white hover:bg-orange-600 text-[10px] font-bold flex items-center space-x-1 shadow-xs cursor-pointer"
+                  className="rounded-xl bg-brand-orange px-3 py-1.5 text-white hover:bg-orange-600 text-[13px] font-bold flex items-center space-x-1 shadow-xs cursor-pointer"
                   title="Download High-Resolution PNG Image"
                 >
                   <Download className="h-3 w-3" />
@@ -714,7 +714,7 @@ const LayoutGeneratorModal = ({ isOpen, onClose }) => {
             </div>
 
             {/* Info notice */}
-            <div className="mt-4 rounded-xl bg-slate-50 border border-slate-100/50 p-3 text-[10px] text-slate-400 font-sans leading-relaxed">
+            <div className="mt-4 rounded-xl bg-slate-50 border border-slate-100/50 p-3 text-[13px] text-slate-400 font-sans leading-relaxed">
               <strong>Randomization rule:</strong> Agronomic layout plots are randomized independently for each block to protect against spatial gradients.
               {' '}<strong>Reproducibility:</strong> this layout was drawn with seed <span className="font-mono text-slate-600">{seed}</span>; entering the same seed with the same design settings regenerates it exactly. The seed is printed on the map and in the file name. The "Plain (No Color)" option is pre-formatted for grayscale publications.
             </div>

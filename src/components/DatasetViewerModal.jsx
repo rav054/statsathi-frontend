@@ -438,7 +438,7 @@ const DatasetViewerModal = ({ isOpen, onClose, file, onSave }) => {
               <h3 className="font-display text-sm font-bold text-slate-800">
                 Data Editor: {file ? file.name : 'N/A'}
               </h3>
-              <p className="font-sans text-[10px] text-slate-400 mt-0.5">
+              <p className="font-sans text-[13px] text-slate-400 mt-0.5">
                 {file ? `${(file.size / 1024).toFixed(1)} KB` : ''} • {data.length} rows × {columns.length} cols
                 {data.length < totalRows && <span className="text-amber-500"> (showing {data.length} of {totalRows})</span>}
               </p>
@@ -456,7 +456,7 @@ const DatasetViewerModal = ({ isOpen, onClose, file, onSave }) => {
             <div className="flex items-center bg-white rounded-lg border border-slate-200 p-0.5 mr-1">
               <button
                 onClick={() => setMode('row')}
-                className={`flex items-center gap-1 rounded-md px-2.5 py-1.5 font-sans text-[10px] font-bold transition-all ${
+                className={`flex items-center gap-1 rounded-md px-2.5 py-1.5 font-sans text-[13px] font-bold transition-all ${
                   mode === 'row' ? 'bg-brand-indigo text-white shadow-sm' : 'text-slate-500 hover:text-slate-700'
                 }`}
               >
@@ -464,7 +464,7 @@ const DatasetViewerModal = ({ isOpen, onClose, file, onSave }) => {
               </button>
               <button
                 onClick={() => setMode('col')}
-                className={`flex items-center gap-1 rounded-md px-2.5 py-1.5 font-sans text-[10px] font-bold transition-all ${
+                className={`flex items-center gap-1 rounded-md px-2.5 py-1.5 font-sans text-[13px] font-bold transition-all ${
                   mode === 'col' ? 'bg-brand-indigo text-white shadow-sm' : 'text-slate-500 hover:text-slate-700'
                 }`}
               >
@@ -511,7 +511,7 @@ const DatasetViewerModal = ({ isOpen, onClose, file, onSave }) => {
 
             {/* Selection info badge */}
             {(hasRowSelection || hasColSelection) && (
-              <span className="ml-auto font-sans text-[10px] font-semibold text-brand-indigo bg-indigo-50 rounded-lg px-2.5 py-1 border border-indigo-100">
+              <span className="ml-auto font-sans text-[13px] font-semibold text-brand-indigo bg-indigo-50 rounded-lg px-2.5 py-1 border border-indigo-100">
                 {hasRowSelection && `${selectedRows.size} row(s)`}
                 {hasRowSelection && hasColSelection && ' · '}
                 {hasColSelection && `${selectedCols.size} col(s)`}
@@ -562,7 +562,7 @@ const DatasetViewerModal = ({ isOpen, onClose, file, onSave }) => {
                         }
                       </button>
                     </th>
-                    <th className="py-2 px-3 text-center w-12 border-r border-slate-100 font-sans text-[10px] text-slate-400">#</th>
+                    <th className="py-2 px-3 text-center w-12 border-r border-slate-100 font-sans text-[13px] text-slate-400">#</th>
                     {columns.map(col => (
                       <th
                         key={col}
@@ -609,7 +609,7 @@ const DatasetViewerModal = ({ isOpen, onClose, file, onSave }) => {
                           </button>
                         </td>
                         {/* Row number */}
-                        <td className="py-1.5 px-3 text-center text-slate-400 bg-slate-50/20 border-r border-slate-100/30 font-sans text-[10px] font-medium">
+                        <td className="py-1.5 px-3 text-center text-slate-400 bg-slate-50/20 border-r border-slate-100/30 font-sans text-[13px] font-medium">
                           {idx + 1}
                         </td>
                         {/* Data cells */}
@@ -639,7 +639,7 @@ const DatasetViewerModal = ({ isOpen, onClose, file, onSave }) => {
                                 <div className="flex items-center">
                                   <span className="truncate">
                                     {row[col] === null || row[col] === undefined
-                                      ? <span className="text-slate-300 italic text-[10px]">null</span>
+                                      ? <span className="text-slate-300 italic text-[13px]">null</span>
                                       : String(row[col])}
                                   </span>
                                   <Pencil className="h-2.5 w-2.5 text-slate-300 ml-auto shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -659,7 +659,7 @@ const DatasetViewerModal = ({ isOpen, onClose, file, onSave }) => {
 
         {/* ── Footer ── */}
         <div className="flex items-center justify-between border-t border-slate-100 px-6 py-3 bg-slate-50/50">
-          <p className="font-sans text-[10px] text-slate-400">
+          <p className="font-sans text-[13px] text-slate-400">
             <Pencil className="h-3 w-3 inline-block mr-1 -mt-px text-slate-300" />
             Double-click any cell to edit • Right-click rows/columns for quick actions
           </p>
@@ -730,7 +730,7 @@ const ToolbarBtn = ({ icon: Icon, label, onClick, disabled, danger, accent }) =>
     onClick={onClick}
     disabled={disabled}
     title={label}
-    className={`flex items-center gap-1 rounded-lg px-2 py-1.5 font-sans text-[10px] font-bold transition-all ${
+    className={`flex items-center gap-1 rounded-lg px-2 py-1.5 font-sans text-[13px] font-bold transition-all ${
       disabled
         ? 'text-slate-300 cursor-not-allowed'
         : danger

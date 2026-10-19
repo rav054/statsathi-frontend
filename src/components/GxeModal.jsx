@@ -53,7 +53,7 @@ const Table = ({ columns, rows, note, minWidth = 640 }) => (
         ))}
       </tbody>
     </table>
-    {note && <p className="mt-3 font-sans text-[10px] leading-relaxed text-slate-400">{note}</p>}
+    {note && <p className="mt-3 font-sans text-[13px] leading-relaxed text-slate-400">{note}</p>}
   </div>
 );
 
@@ -272,7 +272,7 @@ const GxeModal = ({ isOpen, onClose, initialAnalysis = null }) => {
                     <option value="">Choose…</option>
                     {columns.map(c => <option key={c} value={c}>{c}</option>)}
                   </select>
-                  <p className="font-sans text-[10px] text-slate-400">Varieties, lines, hybrids or treatments compared.</p>
+                  <p className="font-sans text-[13px] text-slate-400">Varieties, lines, hybrids or treatments compared.</p>
                 </div>
                 <div className="space-y-1.5">
                   <label className="font-sans text-xs font-bold text-slate-500">Environment column</label>
@@ -280,7 +280,7 @@ const GxeModal = ({ isOpen, onClose, initialAnalysis = null }) => {
                     <option value="">Choose…</option>
                     {columns.filter(c => c !== genotypeCol).map(c => <option key={c} value={c}>{c}</option>)}
                   </select>
-                  <p className="font-sans text-[10px] text-slate-400">Location, year, season or a location-year combination (at least 3).</p>
+                  <p className="font-sans text-[13px] text-slate-400">Location, year, season or a location-year combination (at least 3).</p>
                 </div>
                 <div className="space-y-1.5">
                   <label className="font-sans text-xs font-bold text-slate-500">Response (trait)</label>
@@ -295,7 +295,7 @@ const GxeModal = ({ isOpen, onClose, initialAnalysis = null }) => {
                     <option value="">None</option>
                     {columns.filter(c => ![genotypeCol, environmentCol, responseCol].includes(c)).map(c => <option key={c} value={c}>{c}</option>)}
                   </select>
-                  <p className="font-sans text-[10px] text-slate-400">Adds the replicates-within-environments term; environments are then tested against it.</p>
+                  <p className="font-sans text-[13px] text-slate-400">Adds the replicates-within-environments term; environments are then tested against it.</p>
                 </div>
                 <div className="space-y-1.5">
                   <label className="font-sans text-xs font-bold text-slate-500">Better performance</label>
@@ -369,7 +369,7 @@ const GxeModal = ({ isOpen, onClose, initialAnalysis = null }) => {
                 </div>
               </div>
 
-              <div className="flex flex-wrap gap-2 font-sans text-[11px]">
+              <div className="flex flex-wrap gap-2 font-sans text-[14px]">
                 <span className="rounded-full bg-slate-100 px-3 py-1 text-slate-600">{results.genotypes.length} genotypes × {results.environments.length} environments</span>
                 <span className="rounded-full bg-slate-100 px-3 py-1 text-slate-600">{results.replicates ? `${results.replicates} replicates` : 'means only'}</span>
                 <span className="rounded-full bg-slate-100 px-3 py-1 text-slate-600">Grand mean {fmt(results.means.grand_mean, 2)}</span>
@@ -377,7 +377,7 @@ const GxeModal = ({ isOpen, onClose, initialAnalysis = null }) => {
               </div>
 
               {results.notes.length > 0 && (
-                <div className="rounded-xl border border-amber-100 bg-amber-50/60 p-3 font-sans text-[11px] text-amber-700">{results.notes.join(' ')}</div>
+                <div className="rounded-xl border border-amber-100 bg-amber-50/60 p-3 font-sans text-[14px] text-amber-700">{results.notes.join(' ')}</div>
               )}
 
               {activeTab === 'anova' && (
@@ -402,7 +402,7 @@ const GxeModal = ({ isOpen, onClose, initialAnalysis = null }) => {
                   <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                     {results.gge.mega_environments.map(m => (
                       <div key={m.winner} className="rounded-2xl border border-emerald-100 bg-emerald-50/40 p-3">
-                        <p className="font-sans text-[10px] font-bold uppercase text-emerald-600">Mega-environment</p>
+                        <p className="font-sans text-[13px] font-bold uppercase text-emerald-600">Mega-environment</p>
                         <p className="font-sans text-sm font-bold text-slate-800">{m.winner} wins</p>
                         <p className="font-sans text-xs text-slate-500">{m.environments.join(', ')}</p>
                       </div>

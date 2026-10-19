@@ -470,7 +470,7 @@ const PlotsModal = ({ isOpen, onClose }) => {
                       </optgroup>
                     ))}
                   </select>
-                  {spec.hint && <p className="font-sans text-[11px] leading-snug text-slate-400">{spec.hint}</p>}
+                  {spec.hint && <p className="font-sans text-[14px] leading-snug text-slate-400">{spec.hint}</p>}
                 </div>
 
                 {/* Variable X selection (Hidden for PCA Biplot) */}
@@ -485,7 +485,7 @@ const PlotsModal = ({ isOpen, onClose }) => {
                         <button
                           type="button"
                           onClick={() => { setXSelectionMode('single'); setSelectedXVars([]); }}
-                          className={`px-2 py-0.5 text-[10px] font-bold rounded-lg transition-all cursor-pointer ${
+                          className={`px-2 py-0.5 text-[13px] font-bold rounded-lg transition-all cursor-pointer ${
                             xSelectionMode === 'single' ? 'bg-white text-brand-indigo shadow-xs' : 'text-slate-500 hover:text-slate-800'
                           }`}
                         >
@@ -494,7 +494,7 @@ const PlotsModal = ({ isOpen, onClose }) => {
                         <button
                           type="button"
                           onClick={() => setXSelectionMode('multiple')}
-                          className={`px-2 py-0.5 text-[10px] font-bold rounded-lg transition-all cursor-pointer ${
+                          className={`px-2 py-0.5 text-[13px] font-bold rounded-lg transition-all cursor-pointer ${
                             xSelectionMode === 'multiple' ? 'bg-white text-brand-indigo shadow-xs' : 'text-slate-500 hover:text-slate-800'
                           }`}
                         >
@@ -518,7 +518,7 @@ const PlotsModal = ({ isOpen, onClose }) => {
                       </select>
                     ) : (
                       <div className="space-y-2 animate-fade-in">
-                        <div className="flex items-center justify-between text-[11px]">
+                        <div className="flex items-center justify-between text-[14px]">
                           <span className="text-slate-400 font-semibold">{selectedXVars.length} X variables selected</span>
                           <div className="flex items-center space-x-2">
                             <button type="button" onClick={() => { setSelectedXVars([...numericColumns]); if (numericColumns.length > 0) setXVar(numericColumns[0]); }} className="font-bold text-brand-indigo hover:underline cursor-pointer">
@@ -570,7 +570,7 @@ const PlotsModal = ({ isOpen, onClose }) => {
                         <button
                           type="button"
                           onClick={() => { setYSelectionMode('single'); setSelectedYVars([]); }}
-                          className={`px-2 py-0.5 text-[10px] font-bold rounded-lg transition-all cursor-pointer ${
+                          className={`px-2 py-0.5 text-[13px] font-bold rounded-lg transition-all cursor-pointer ${
                             ySelectionMode === 'single' ? 'bg-white text-brand-indigo shadow-xs' : 'text-slate-500 hover:text-slate-800'
                           }`}
                         >
@@ -579,7 +579,7 @@ const PlotsModal = ({ isOpen, onClose }) => {
                         <button
                           type="button"
                           onClick={() => setYSelectionMode('multiple')}
-                          className={`px-2 py-0.5 text-[10px] font-bold rounded-lg transition-all cursor-pointer ${
+                          className={`px-2 py-0.5 text-[13px] font-bold rounded-lg transition-all cursor-pointer ${
                             ySelectionMode === 'multiple' ? 'bg-white text-brand-indigo shadow-xs' : 'text-slate-500 hover:text-slate-800'
                           }`}
                         >
@@ -600,7 +600,7 @@ const PlotsModal = ({ isOpen, onClose }) => {
                       </select>
                     ) : (
                       <div className="space-y-2 animate-fade-in">
-                        <div className="flex items-center justify-between text-[11px]">
+                        <div className="flex items-center justify-between text-[14px]">
                           <span className="text-slate-400 font-semibold">{selectedYVars.length} Y variables selected</span>
                           <div className="flex items-center space-x-2">
                             <button type="button" onClick={() => { setSelectedYVars([...numericColumns]); if (numericColumns.length > 0) setYVar(numericColumns[0]); }} className="font-bold text-brand-indigo hover:underline cursor-pointer">
@@ -672,7 +672,7 @@ const PlotsModal = ({ isOpen, onClose }) => {
                     </div>
                     {errorbarToggle && (
                       <div className="space-y-1.5 animate-fade-in">
-                        <label className="font-sans text-[10px] font-bold text-slate-400 uppercase">Error Bars Represent</label>
+                        <label className="font-sans text-[13px] font-bold text-slate-400 uppercase">Error Bars Represent</label>
                         <select
                           value={errorbarType}
                           onChange={(e) => setErrorbarType(e.target.value)}
@@ -744,7 +744,7 @@ const PlotsModal = ({ isOpen, onClose }) => {
                     <Sliders className="h-4 w-4 text-brand-indigo" />
                     <span className="font-display text-xs font-bold text-slate-700">Design Customizations & Labels</span>
                   </div>
-                  <span className="font-sans text-[10px] font-bold text-brand-indigo">{showDesignPanel ? 'Hide Controls' : 'Show Controls'}</span>
+                  <span className="font-sans text-[13px] font-bold text-brand-indigo">{showDesignPanel ? 'Hide Controls' : 'Show Controls'}</span>
                 </button>
                 
                 {showDesignPanel && (
@@ -906,7 +906,7 @@ const PlotsModal = ({ isOpen, onClose }) => {
                         <div className="space-y-2 rounded-xl border border-slate-100 bg-slate-50/30 p-3">
                           <label className="font-sans text-xs font-bold text-slate-600 block">Chart Title</label>
                           <div className="space-y-1.5">
-                            <label className="font-sans text-[10px] text-slate-400 uppercase">Family</label>
+                            <label className="font-sans text-[13px] text-slate-400 uppercase">Family</label>
                             <select
                               value={titleFontFamily}
                               onChange={(e) => setTitleFontFamily(e.target.value)}
@@ -918,7 +918,7 @@ const PlotsModal = ({ isOpen, onClose }) => {
                             </select>
                           </div>
                           <div className="space-y-1.5">
-                            <label className="font-sans text-[10px] text-slate-400 uppercase">Size: {titleFontSize}px</label>
+                            <label className="font-sans text-[13px] text-slate-400 uppercase">Size: {titleFontSize}px</label>
                             <input
                               type="range"
                               min="8"
@@ -934,7 +934,7 @@ const PlotsModal = ({ isOpen, onClose }) => {
                         <div className="space-y-2 rounded-xl border border-slate-100 bg-slate-50/30 p-3">
                           <label className="font-sans text-xs font-bold text-slate-600 block">Axis Labels</label>
                           <div className="space-y-1.5">
-                            <label className="font-sans text-[10px] text-slate-400 uppercase">Family</label>
+                            <label className="font-sans text-[13px] text-slate-400 uppercase">Family</label>
                             <select
                               value={labelFontFamily}
                               onChange={(e) => setLabelFontFamily(e.target.value)}
@@ -946,7 +946,7 @@ const PlotsModal = ({ isOpen, onClose }) => {
                             </select>
                           </div>
                           <div className="space-y-1.5">
-                            <label className="font-sans text-[10px] text-slate-400 uppercase">Size: {labelFontSize}px</label>
+                            <label className="font-sans text-[13px] text-slate-400 uppercase">Size: {labelFontSize}px</label>
                             <input
                               type="range"
                               min="7"
@@ -962,7 +962,7 @@ const PlotsModal = ({ isOpen, onClose }) => {
                         <div className="space-y-2 rounded-xl border border-slate-100 bg-slate-50/30 p-3">
                           <label className="font-sans text-xs font-bold text-slate-600 block">Axis Ticks</label>
                           <div className="space-y-1.5">
-                            <label className="font-sans text-[10px] text-slate-400 uppercase">Family</label>
+                            <label className="font-sans text-[13px] text-slate-400 uppercase">Family</label>
                             <select
                               value={tickFontFamily}
                               onChange={(e) => setTickFontFamily(e.target.value)}
@@ -974,7 +974,7 @@ const PlotsModal = ({ isOpen, onClose }) => {
                             </select>
                           </div>
                           <div className="space-y-1.5">
-                            <label className="font-sans text-[10px] text-slate-400 uppercase">Size: {tickFontSize}px</label>
+                            <label className="font-sans text-[13px] text-slate-400 uppercase">Size: {tickFontSize}px</label>
                             <input
                               type="range"
                               min="6"
@@ -998,7 +998,7 @@ const PlotsModal = ({ isOpen, onClose }) => {
                             <label className="font-sans text-xs font-bold text-slate-600 block">X-Axis Range</label>
                             <div className="grid grid-cols-2 gap-2">
                               <div>
-                                <label className="font-sans text-[9px] text-slate-400 uppercase block">Min</label>
+                                <label className="font-sans text-[12px] text-slate-400 uppercase block">Min</label>
                                 <input
                                   type="number"
                                   step="any"
@@ -1009,7 +1009,7 @@ const PlotsModal = ({ isOpen, onClose }) => {
                                 />
                               </div>
                               <div>
-                                <label className="font-sans text-[9px] text-slate-400 uppercase block">Max</label>
+                                <label className="font-sans text-[12px] text-slate-400 uppercase block">Max</label>
                                 <input
                                   type="number"
                                   step="any"
@@ -1027,7 +1027,7 @@ const PlotsModal = ({ isOpen, onClose }) => {
                             <label className="font-sans text-xs font-bold text-slate-600 block">Y-Axis Range</label>
                             <div className="grid grid-cols-2 gap-2">
                               <div>
-                                <label className="font-sans text-[9px] text-slate-400 uppercase block">Min</label>
+                                <label className="font-sans text-[12px] text-slate-400 uppercase block">Min</label>
                                 <input
                                   type="number"
                                   step="any"
@@ -1038,7 +1038,7 @@ const PlotsModal = ({ isOpen, onClose }) => {
                                 />
                               </div>
                               <div>
-                                <label className="font-sans text-[9px] text-slate-400 uppercase block">Max</label>
+                                <label className="font-sans text-[12px] text-slate-400 uppercase block">Max</label>
                                 <input
                                   type="number"
                                   step="any"
@@ -1056,7 +1056,7 @@ const PlotsModal = ({ isOpen, onClose }) => {
                             <label className="font-sans text-xs font-bold text-slate-600 block">Interval Ticks</label>
                             <div className="grid grid-cols-2 gap-2">
                               <div>
-                                <label className="font-sans text-[9px] text-slate-400 uppercase block">X Step</label>
+                                <label className="font-sans text-[12px] text-slate-400 uppercase block">X Step</label>
                                 <input
                                   type="number"
                                   step="any"
@@ -1068,7 +1068,7 @@ const PlotsModal = ({ isOpen, onClose }) => {
                                 />
                               </div>
                               <div>
-                                <label className="font-sans text-[9px] text-slate-400 uppercase block">Y Step</label>
+                                <label className="font-sans text-[12px] text-slate-400 uppercase block">Y Step</label>
                                 <input
                                   type="number"
                                   step="any"
@@ -1123,13 +1123,13 @@ const PlotsModal = ({ isOpen, onClose }) => {
                   <FigurePresetSelect value={figurePrefs.preset} onChange={(preset) => setFigurePrefs({ preset })} />
                   {/* DPI Toggle */}
                   <div className="flex items-center space-x-1 rounded-xl bg-slate-50 border border-slate-100 p-1">
-                    <span className="font-sans text-[9px] font-bold text-slate-400 px-2 uppercase shrink-0">DPI:</span>
+                    <span className="font-sans text-[12px] font-bold text-slate-400 px-2 uppercase shrink-0">DPI:</span>
                     {[150, 300, 600].map(dpiVal => (
                       <button
                         key={dpiVal}
                         type="button"
                         onClick={() => setDownloadDpi(dpiVal)}
-                        className={`flex-1 rounded-lg py-1 text-center font-sans text-[10px] font-bold transition-all ${
+                        className={`flex-1 rounded-lg py-1 text-center font-sans text-[13px] font-bold transition-all ${
                           downloadDpi === dpiVal 
                             ? 'bg-brand-indigo text-white shadow-xs' 
                             : 'text-slate-500 hover:text-slate-800'

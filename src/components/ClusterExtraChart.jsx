@@ -143,13 +143,13 @@ const ClusterExtraChart = ({ kind, results, clusterMethod, colors, figurePrefs, 
       <div className="flex flex-wrap justify-between items-center bg-slate-50/50 p-3 rounded-2xl border border-slate-100 gap-3">
         <div className="flex flex-wrap items-center gap-2">
           <FigurePresetSelect value={figurePrefs.preset} onChange={(preset) => setFigurePrefs({ preset })} />
-          <span className="font-sans text-[10px] font-bold text-slate-400 uppercase">DPI:</span>
+          <span className="font-sans text-[13px] font-bold text-slate-400 uppercase">DPI:</span>
           {[150, 300, 600].map(dpiVal => (
             <button
               key={dpiVal}
               type="button"
               onClick={() => setDownloadDpi(dpiVal)}
-              className={`px-2 py-1 font-sans text-[9px] font-bold rounded-lg cursor-pointer ${
+              className={`px-2 py-1 font-sans text-[12px] font-bold rounded-lg cursor-pointer ${
                 downloadDpi === dpiVal ? 'bg-brand-indigo text-white shadow-xs' : 'bg-white border border-slate-200 text-slate-500 hover:bg-slate-50'
               }`}
             >
@@ -163,7 +163,7 @@ const ClusterExtraChart = ({ kind, results, clusterMethod, colors, figurePrefs, 
               key={fmt}
               type="button"
               onClick={() => download(fmt)}
-              className="px-2 py-1 bg-white border border-slate-200 hover:bg-slate-50 text-slate-600 rounded-lg font-sans text-[9px] font-bold uppercase transition-colors flex items-center space-x-1 cursor-pointer"
+              className="px-2 py-1 bg-white border border-slate-200 hover:bg-slate-50 text-slate-600 rounded-lg font-sans text-[12px] font-bold uppercase transition-colors flex items-center space-x-1 cursor-pointer"
             >
               <Download className="h-3 w-3" />
               <span>{fmt}</span>

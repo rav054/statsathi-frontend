@@ -619,7 +619,7 @@ const DescriptiveModal = ({ isOpen, onClose, initialAnalysis = null }) => {
               <h2 className="font-display text-base font-extrabold text-slate-800">
                 Descriptive Statistics
               </h2>
-              <p className="font-sans text-[10px] text-slate-400 mt-0.5">
+              <p className="font-sans text-[13px] text-slate-400 mt-0.5">
                 Calculate central tendency, dispersion, shape, missing values, outliers, and test normality.
               </p>
             </div>
@@ -694,7 +694,7 @@ const DescriptiveModal = ({ isOpen, onClose, initialAnalysis = null }) => {
                       <option value="">-- No Grouping --</option>
                       {columns.map(c => <option key={c} value={c}>{c}</option>)}
                     </select>
-                    <p className="font-sans text-[10px] text-slate-400 mt-1">
+                    <p className="font-sans text-[13px] text-slate-400 mt-1">
                       Select a categorical column to partition the summary metrics.
                     </p>
                   </div>
@@ -911,7 +911,7 @@ const DescriptiveModal = ({ isOpen, onClose, initialAnalysis = null }) => {
                   <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-xs overflow-x-auto">
                     <div className="flex justify-between items-center mb-3">
                       <h4 className="font-display text-xs font-bold text-slate-700">Flagged Outliers (1.5 * IQR Rule)</h4>
-                      <p className="font-sans text-[9px] text-slate-400 italic bg-slate-50 border border-slate-100 px-2 py-0.5 rounded-lg">
+                      <p className="font-sans text-[12px] text-slate-400 italic bg-slate-50 border border-slate-100 px-2 py-0.5 rounded-lg">
                         Note: Row indices match physical sheet row numbers (with header as row 1)
                       </p>
                     </div>
@@ -1002,19 +1002,19 @@ const DescriptiveModal = ({ isOpen, onClose, initialAnalysis = null }) => {
                     return (
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-xs">
-                          <p className="font-sans text-[10px] font-bold text-slate-400 uppercase tracking-wider">Normality Test</p>
+                          <p className="font-sans text-[13px] font-bold text-slate-400 uppercase tracking-wider">Normality Test</p>
                           <p className="font-display text-sm font-bold text-slate-700 mt-1">Shapiro-Wilk W Test</p>
                         </div>
                         <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-xs">
-                          <p className="font-sans text-[10px] font-bold text-slate-400 uppercase tracking-wider">Test Statistic (W)</p>
+                          <p className="font-sans text-[13px] font-bold text-slate-400 uppercase tracking-wider">Test Statistic (W)</p>
                           <p className="font-display text-sm font-bold text-slate-700 mt-1 font-mono">{shapiro.stat !== undefined ? shapiro.stat.toFixed(4) : 'N/A'}</p>
                         </div>
                         <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-xs">
-                          <p className="font-sans text-[10px] font-bold text-slate-400 uppercase tracking-wider">Significance (p-value)</p>
+                          <p className="font-sans text-[13px] font-bold text-slate-400 uppercase tracking-wider">Significance (p-value)</p>
                           <div className="flex items-center justify-between mt-1">
                             <span className="font-display text-sm font-bold text-slate-700 font-mono">{shapiro.p_value !== undefined ? formatPValue(shapiro.p_value) : 'N/A'}</span>
                             {shapiro.p_value !== undefined && (
-                              <span className={`px-2 py-0.5 rounded-lg text-[10px] font-bold ${
+                              <span className={`px-2 py-0.5 rounded-lg text-[13px] font-bold ${
                                 shapiro.normal
                                   ? 'bg-emerald-50 text-emerald-600'
                                   : 'bg-red-50 text-red-600'
@@ -1055,7 +1055,7 @@ const DescriptiveModal = ({ isOpen, onClose, initialAnalysis = null }) => {
                                 <td className="py-2.5 px-3 text-right font-mono">{symbol} = {t.stat.toFixed(4)}</td>
                                 <td className="py-2.5 px-3 text-right font-mono">{formatPValue(t.p_value)}</td>
                                 <td className="py-2.5 px-3 text-right">
-                                  <span className={`px-2 py-0.5 rounded-lg text-[10px] font-bold ${t.normal ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-600'}`}>
+                                  <span className={`px-2 py-0.5 rounded-lg text-[13px] font-bold ${t.normal ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-600'}`}>
                                     {t.normal ? 'Normally Distributed' : 'Not Normal'}
                                   </span>
                                 </td>
@@ -1072,12 +1072,12 @@ const DescriptiveModal = ({ isOpen, onClose, initialAnalysis = null }) => {
                     <div className="flex justify-between items-center bg-slate-50/50 p-3 rounded-2xl border border-slate-100">
                       <div className="flex items-center space-x-2">
                         <FigurePresetSelect value={figurePrefs.preset} onChange={(preset) => setFigurePrefs({ preset })} className="mr-2" />
-                        <span className="font-sans text-[10px] font-bold text-slate-400 uppercase">Export DPI:</span>
+                        <span className="font-sans text-[13px] font-bold text-slate-400 uppercase">Export DPI:</span>
                         {[150, 300, 600].map(dpiVal => (
                           <button
                             key={dpiVal}
                             onClick={() => setDownloadDpi(dpiVal)}
-                            className={`px-2 py-1 font-sans text-[9px] font-bold rounded-lg cursor-pointer ${
+                            className={`px-2 py-1 font-sans text-[12px] font-bold rounded-lg cursor-pointer ${
                               downloadDpi === dpiVal
                                 ? 'bg-brand-indigo text-white shadow-xs'
                                 : 'bg-white border border-slate-200 text-slate-500 hover:bg-slate-50'
@@ -1092,7 +1092,7 @@ const DescriptiveModal = ({ isOpen, onClose, initialAnalysis = null }) => {
                           <button
                             key={fmt}
                             onClick={() => handleDownloadPlot('qq', fmt)}
-                            className="px-2 py-1 bg-white border border-slate-200 hover:bg-slate-50 text-slate-600 rounded-lg font-sans text-[9px] font-bold uppercase transition-colors flex items-center space-x-1 cursor-pointer"
+                            className="px-2 py-1 bg-white border border-slate-200 hover:bg-slate-50 text-slate-600 rounded-lg font-sans text-[12px] font-bold uppercase transition-colors flex items-center space-x-1 cursor-pointer"
                           >
                             <Download className="h-3 w-3" />
                             <span>{fmt}</span>
@@ -1113,12 +1113,12 @@ const DescriptiveModal = ({ isOpen, onClose, initialAnalysis = null }) => {
                   {/* Share DPI controls at the top of charts panel */}
                   <div className="flex items-center space-x-2 bg-slate-50/50 p-3 rounded-2xl border border-slate-100">
                     <FigurePresetSelect value={figurePrefs.preset} onChange={(preset) => setFigurePrefs({ preset })} className="mr-2" />
-                    <span className="font-sans text-[10px] font-bold text-slate-400 uppercase">Global Export DPI:</span>
+                    <span className="font-sans text-[13px] font-bold text-slate-400 uppercase">Global Export DPI:</span>
                     {[150, 300, 600].map(dpiVal => (
                       <button
                         key={dpiVal}
                         onClick={() => setDownloadDpi(dpiVal)}
-                        className={`px-2 py-1 font-sans text-[9px] font-bold rounded-lg cursor-pointer ${
+                        className={`px-2 py-1 font-sans text-[12px] font-bold rounded-lg cursor-pointer ${
                           downloadDpi === dpiVal
                             ? 'bg-brand-indigo text-white shadow-xs'
                             : 'bg-white border border-slate-200 text-slate-500 hover:bg-slate-50'
@@ -1139,7 +1139,7 @@ const DescriptiveModal = ({ isOpen, onClose, initialAnalysis = null }) => {
                             <button
                               key={fmt}
                               onClick={() => handleDownloadPlot('box', fmt)}
-                              className="px-2 py-1 bg-white border border-slate-200 hover:bg-slate-50 text-slate-600 rounded-lg font-sans text-[9px] font-bold uppercase transition-colors flex items-center space-x-0.5 cursor-pointer"
+                              className="px-2 py-1 bg-white border border-slate-200 hover:bg-slate-50 text-slate-600 rounded-lg font-sans text-[12px] font-bold uppercase transition-colors flex items-center space-x-0.5 cursor-pointer"
                             >
                               <Download className="h-2.5 w-2.5" />
                               <span>{fmt}</span>
@@ -1161,7 +1161,7 @@ const DescriptiveModal = ({ isOpen, onClose, initialAnalysis = null }) => {
                             <button
                               key={fmt}
                               onClick={() => handleDownloadPlot('hist', fmt)}
-                              className="px-2 py-1 bg-white border border-slate-200 hover:bg-slate-50 text-slate-600 rounded-lg font-sans text-[9px] font-bold uppercase transition-colors flex items-center space-x-0.5 cursor-pointer"
+                              className="px-2 py-1 bg-white border border-slate-200 hover:bg-slate-50 text-slate-600 rounded-lg font-sans text-[12px] font-bold uppercase transition-colors flex items-center space-x-0.5 cursor-pointer"
                             >
                               <Download className="h-2.5 w-2.5" />
                               <span>{fmt}</span>
@@ -1186,17 +1186,17 @@ const DescriptiveModal = ({ isOpen, onClose, initialAnalysis = null }) => {
           {results ? (
             <div className="flex space-x-2">
               <div className="flex items-center space-x-1 bg-emerald-50/50 p-1 rounded-xl border border-emerald-100 mr-2">
-                <span className="font-sans text-[9px] font-bold text-emerald-600 px-2 uppercase shrink-0">Report:</span>
+                <span className="font-sans text-[12px] font-bold text-emerald-600 px-2 uppercase shrink-0">Report:</span>
                 <button
                   onClick={() => handleDownloadReport('txt')}
-                  className="rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-sans text-[10px] font-bold px-2.5 py-1.5 transition-colors cursor-pointer"
+                  className="rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-sans text-[13px] font-bold px-2.5 py-1.5 transition-colors cursor-pointer"
                   title="Save as Text"
                 >
                   TXT
                 </button>
                 <button
                   onClick={() => handleDownloadReport('doc')}
-                  className="rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-sans text-[10px] font-bold px-2.5 py-1.5 transition-colors cursor-pointer"
+                  className="rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-sans text-[13px] font-bold px-2.5 py-1.5 transition-colors cursor-pointer"
                   title="Export to Word"
                 >
                   Word

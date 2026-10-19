@@ -26,7 +26,7 @@ class ErrorBoundary extends Component {
             StatSathi hit an unexpected problem while drawing the page. Your saved projects, datasets and results
             are stored on the server and are not affected.
           </p>
-          <p className="mt-3 rounded-xl bg-slate-50 px-3 py-2 font-mono text-[11px] text-slate-500 break-words">
+          <p className="mt-3 rounded-xl bg-slate-50 px-3 py-2 font-mono text-[14px] text-slate-500 break-words">
             {String(error?.message || error)}
           </p>
           <div className="mt-5 flex justify-center gap-2">

@@ -35,7 +35,7 @@ const ToolButton = ({ id, accent, featured = false, onClick, className = '' }) =
         style={featured ? { background: 'rgba(255,255,255,0.22)' } : { backgroundImage: gradient }}>
         <Icon className="h-3.5 w-3.5" strokeWidth={2.2} />
       </span>
-      <span className="font-sans text-[12.5px] font-semibold">{tool.label}</span>
+      <span className="font-sans text-[15.5px] font-semibold">{tool.label}</span>
     </button>
   );
 };

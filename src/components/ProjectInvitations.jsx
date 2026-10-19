@@ -51,11 +51,11 @@ const ProjectInvitations = ({ api, onAccepted, onError }) => {
           </div>
           <div className="flex shrink-0 gap-2">
             <button type="button" onClick={() => answer(invitation, false)} disabled={busyId === invitation.id}
-              className="flex items-center space-x-1 rounded-lg border border-slate-200 bg-white px-3 py-1.5 font-sans text-[11px] font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-60 cursor-pointer dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">
+              className="flex items-center space-x-1 rounded-lg border border-slate-200 bg-white px-3 py-1.5 font-sans text-[14px] font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-60 cursor-pointer dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">
               <X className="h-3 w-3" /><span>Decline</span>
             </button>
             <button type="button" onClick={() => answer(invitation, true)} disabled={busyId === invitation.id}
-              className="flex items-center space-x-1 rounded-lg bg-brand-indigo px-3 py-1.5 font-sans text-[11px] font-bold text-white hover:bg-indigo-700 disabled:opacity-60 cursor-pointer">
+              className="flex items-center space-x-1 rounded-lg bg-brand-indigo px-3 py-1.5 font-sans text-[14px] font-bold text-white hover:bg-indigo-700 disabled:opacity-60 cursor-pointer">
               <Check className="h-3 w-3" /><span>Accept</span>
             </button>
           </div>

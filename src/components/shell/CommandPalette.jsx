@@ -57,9 +57,9 @@ const CommandPalette = ({ open, onClose, projects = [], onTool, onProject }) => 
           <SearchIcon className="h-5 w-5 text-faint" />
           <input ref={inputRef} value={query} onChange={(e) => { setQuery(e.target.value); setActive(0); }} onKeyDown={onKeyDown}
             placeholder="Find a test or project, e.g. “rank test” or “dmrt”" aria-label="Search tests and projects"
-            className="h-14 flex-1 bg-transparent font-sans text-[15px] text-ink outline-hidden placeholder:text-faint dark:text-night-ink" />
+            className="h-14 flex-1 bg-transparent font-sans text-[17px] text-ink outline-hidden placeholder:text-faint dark:text-night-ink" />
           <button type="button" data-dialog-close onClick={onClose}
-            className="rounded-md border border-line px-1.5 py-0.5 font-mono text-[10.5px] text-muted dark:border-night-line cursor-pointer">Esc</button>
+            className="rounded-md border border-line px-1.5 py-0.5 font-mono text-[13.5px] text-muted dark:border-night-line cursor-pointer">Esc</button>
         </div>
         <ul role="listbox" className="max-h-[50vh] overflow-y-auto p-2">
           {query.trim() === '' && (
@@ -74,19 +74,19 @@ const CommandPalette = ({ open, onClose, projects = [], onTool, onProject }) => 
                 className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left cursor-pointer ${index === active ? 'bg-indigo-50 dark:bg-night-soft' : ''}`}>
                 {item.kind === 'tool' ? (
                   <>
-                    <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg font-mono text-[10px] font-semibold text-white"
+                    <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg font-mono text-[13px] font-semibold text-white"
                       style={{ backgroundImage: `linear-gradient(135deg, ${stepOfTool(item.id)?.accent.from}, ${stepOfTool(item.id)?.accent.to})` }}>{stepOfTool(item.id)?.number}</span>
                     <span className="flex min-w-0 flex-1 flex-col">
                       <span className="font-sans text-sm font-semibold text-ink dark:text-night-ink">{item.label}</span>
                       <span className="truncate font-sans text-xs text-muted dark:text-night-muted">{item.description}</span>
                     </span>
-                    <span className="font-sans text-[11px] text-faint">{stepOfTool(item.id)?.title}</span>
+                    <span className="font-sans text-[14px] text-faint">{stepOfTool(item.id)?.title}</span>
                   </>
                 ) : (
                   <>
                     <FolderIcon className="h-4 w-6 text-muted" />
                     <span className="flex-1 font-sans text-sm font-semibold text-ink dark:text-night-ink">{item.project.name}</span>
-                    <span className="font-sans text-[11px] text-faint">Project</span>
+                    <span className="font-sans text-[14px] text-faint">Project</span>
                   </>
                 )}
               </button>

@@ -54,7 +54,7 @@ const importLegacyProjects = async (api) => {
 
 const personTone = (index) => ['bg-brand-navy dark:bg-night-soft', 'bg-brand-emerald', 'bg-brand-orange', 'bg-brand-indigo'][index % 4];
 
-const Avatar = ({ name, index = 0, className = 'h-[34px] w-[34px] text-[13px]' }) => (
+const Avatar = ({ name, index = 0, className = 'h-[34px] w-[34px] text-[16px]' }) => (
   <span className={`flex items-center justify-center rounded-full border-2 border-surface font-bold text-white dark:border-night-surface ${personTone(index)} ${className}`}>
     {(name || '?').charAt(0).toUpperCase()}
   </span>
@@ -77,7 +77,7 @@ const Stage = ({ number, title, state = 'done', last = false, action, children }
   return (
     <div className="flex gap-[18px]">
       <div className="flex w-7 shrink-0 flex-col items-center">
-        <span className={`flex h-7 w-7 items-center justify-center rounded-full border-[1.5px] font-mono text-[11px] font-semibold ${marker}`}>{number}</span>
+        <span className={`flex h-7 w-7 items-center justify-center rounded-full border-[1.5px] font-mono text-[14px] font-semibold ${marker}`}>{number}</span>
         {!last && <span className="w-[1.5px] flex-1 bg-[#DDE1EA] dark:bg-night-line" />}
       </div>
       <div className={`flex min-w-0 flex-1 flex-col gap-2.5 ${last ? '' : 'pb-[26px]'}`}>
@@ -93,7 +93,7 @@ const Stage = ({ number, title, state = 'done', last = false, action, children }
 
 const TextLink = ({ onClick, children, disabled }) => (
   <button type="button" onClick={onClick} disabled={disabled}
-    className="font-sans text-[13px] font-semibold text-brand-indigo hover:text-brand-violet disabled:opacity-40 dark:text-brand-periwinkle cursor-pointer">
+    className="font-sans text-[16px] font-semibold text-brand-indigo hover:text-brand-violet disabled:opacity-40 dark:text-brand-periwinkle cursor-pointer">
     {children}
   </button>
 );
@@ -348,14 +348,14 @@ const Projects = ({ onAuthClick, onOpenDashboard, request = null }) => {
   };
 
   const errorBanner = error && (
-    <div role="alert" className="flex items-center gap-2 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 font-sans text-[13px] text-rose-700 dark:border-rose-900/60 dark:bg-rose-950/30 dark:text-rose-300">
+    <div role="alert" className="flex items-center gap-2 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 font-sans text-[16px] text-rose-700 dark:border-rose-900/60 dark:bg-rose-950/30 dark:text-rose-300">
       <AlertCircle className="h-4 w-4 shrink-0" />
       <span className="flex-1">{error}</span>
       <button type="button" onClick={() => setError(null)} aria-label="Dismiss" className="text-rose-400 hover:text-rose-700 cursor-pointer"><X className="h-4 w-4" /></button>
     </div>
   );
 
-  const inputClass = 'h-[38px] w-full rounded-[9px] border border-[#DDE1EA] bg-surface px-3 font-sans text-[13.5px] text-ink outline-hidden placeholder:text-faint focus:border-brand-indigo read-only:bg-soft dark:border-night-line dark:bg-night dark:text-night-ink';
+  const inputClass = 'h-[38px] w-full rounded-[9px] border border-[#DDE1EA] bg-surface px-3 font-sans text-[16.5px] text-ink outline-hidden placeholder:text-faint focus:border-brand-indigo read-only:bg-soft dark:border-night-line dark:bg-night dark:text-night-ink';
   const cardClass = 'rounded-2xl border border-line bg-surface dark:border-night-line dark:bg-night-surface';
 
   if (!user) {
@@ -394,21 +394,21 @@ const Projects = ({ onAuthClick, onOpenDashboard, request = null }) => {
             <ArrowLeft className="h-4 w-4" />
           </button>
           <div>
-            <h1 className="font-display text-[28px] font-bold leading-tight">New project</h1>
-            <p className="font-sans text-[13.5px] text-muted dark:text-night-muted">A home for one study: its data, analyses and report.</p>
+            <h1 className="font-display text-[30px] font-bold leading-tight">New project</h1>
+            <p className="font-sans text-[16.5px] text-muted dark:text-night-muted">A home for one study: its data, analyses and report.</p>
           </div>
         </div>
 
         <form onSubmit={handleCreateProjectSubmit} className={`${cardClass} flex flex-col gap-6 p-6`}>
-          <label className="flex flex-col gap-1.5 font-sans text-[12.5px] font-semibold text-ink-2 dark:text-night-muted">
+          <label className="flex flex-col gap-1.5 font-sans text-[15.5px] font-semibold text-ink-2 dark:text-night-muted">
             Project name
             <input type="text" required maxLength={200} autoFocus placeholder="e.g. Rice nitrogen trial 2026" value={newProjectName}
               onChange={(e) => setNewProjectName(e.target.value)} className={`${inputClass} h-[42px] font-normal`} />
           </label>
 
           <div className="flex flex-col gap-2">
-            <span className="font-sans text-[12.5px] font-semibold text-ink-2 dark:text-night-muted">Tasks <span className="font-normal text-faint">(optional)</span></span>
-            <p className="-mt-1 font-sans text-[12.5px] text-faint">The steps you plan to take. You can change them later.</p>
+            <span className="font-sans text-[15.5px] font-semibold text-ink-2 dark:text-night-muted">Tasks <span className="font-normal text-faint">(optional)</span></span>
+            <p className="-mt-1 font-sans text-[15.5px] text-faint">The steps you plan to take. You can change them later.</p>
             <div className="flex max-h-[220px] flex-col gap-2 overflow-y-auto pr-1">
               {newProjectTasks.map((task, idx) => (
                 <div key={idx} className="flex items-center gap-2">
@@ -418,7 +418,7 @@ const Projects = ({ onAuthClick, onOpenDashboard, request = null }) => {
               ))}
             </div>
             <button type="button" onClick={() => setNewProjectTasks([...newProjectTasks, ''])}
-              className="flex items-center gap-1.5 self-start font-sans text-[13px] font-semibold text-brand-indigo hover:text-brand-violet dark:text-brand-periwinkle cursor-pointer">
+              className="flex items-center gap-1.5 self-start font-sans text-[16px] font-semibold text-brand-indigo hover:text-brand-violet dark:text-brand-periwinkle cursor-pointer">
               <PlusIcon className="h-4 w-4" /> Add a task
             </button>
           </div>
@@ -466,7 +466,7 @@ const Projects = ({ onAuthClick, onOpenDashboard, request = null }) => {
             <rect width="520" height="190" fill="url(#project-fade)" className="dark:hidden" />
           </svg>
 
-          <div className="relative flex items-center gap-2 font-sans text-[13px] text-muted dark:text-night-muted">
+          <div className="relative flex items-center gap-2 font-sans text-[16px] text-muted dark:text-night-muted">
             <button type="button" onClick={closeProject} className="flex items-center gap-1.5 hover:text-ink dark:hover:text-night-ink cursor-pointer">
               <ArrowLeft className="h-3.5 w-3.5" /> Projects
             </button>
@@ -487,7 +487,7 @@ const Projects = ({ onAuthClick, onOpenDashboard, request = null }) => {
                   </form>
                 ) : (
                   <>
-                    <h1 className="font-display text-[28px] font-bold leading-[1.1] md:text-[34px]">{detail.name}</h1>
+                    <h1 className="font-display text-[30px] font-bold leading-[1.1] md:text-[36px]">{detail.name}</h1>
                     {isOwner && (
                       <IconButton label="Rename project" onClick={() => { setEditedName(detail.name); setIsEditingName(true); }}><Edit2 className="h-4 w-4" /></IconButton>
                     )}
@@ -501,7 +501,7 @@ const Projects = ({ onAuthClick, onOpenDashboard, request = null }) => {
                   </select>
                 </label>
               </div>
-              <div className="flex flex-wrap gap-x-[18px] gap-y-1 font-sans text-[13.5px] text-muted dark:text-night-muted">
+              <div className="flex flex-wrap gap-x-[18px] gap-y-1 font-sans text-[16.5px] text-muted dark:text-night-muted">
                 {detail.test_used && detail.test_used !== 'None' && <span>{detail.test_used}</span>}
                 {(detail.samples > 0 || detail.variables > 0) && <span>{detail.samples} samples · {detail.variables} variables</span>}
                 <span>Started {formatDate(detail.created_at)}</span>
@@ -541,14 +541,14 @@ const Projects = ({ onAuthClick, onOpenDashboard, request = null }) => {
           <section className="flex min-w-0 flex-col xl:col-span-2">
             <div className="flex items-baseline justify-between gap-4 pb-[18px]">
               <h2 className="font-display text-xl font-bold">From data to report</h2>
-              <span className="hidden font-sans text-[13px] text-muted sm:block dark:text-night-muted">Everything in this project, in the order it was done</span>
+              <span className="hidden font-sans text-[16px] text-muted sm:block dark:text-night-muted">Everything in this project, in the order it was done</span>
             </div>
 
             <Stage number="1" title="Data" state={detail.datasets.length ? 'done' : 'pending'}
               action={canEdit && <TextLink onClick={() => fileInputRef.current?.click()} disabled={busy}>Upload</TextLink>}>
               <input ref={fileInputRef} type="file" accept=".csv,.xlsx,.xls" className="hidden" onChange={handleDatasetUpload} />
               {detail.datasets.length === 0 ? (
-                <p className="font-sans text-[13px] text-muted dark:text-night-muted">
+                <p className="font-sans text-[16px] text-muted dark:text-night-muted">
                   {canEdit ? `No datasets yet. Upload a CSV or Excel file (up to ${storage ? formatBytes(storage.max_dataset_bytes) : '10 MB'}).` : 'No datasets in this project yet.'}
                 </p>
               ) : (
@@ -563,7 +563,7 @@ const Projects = ({ onAuthClick, onOpenDashboard, request = null }) => {
                           <IconButton label={`Delete ${d.filename}`} onClick={() => handleDatasetDelete(d)} disabled={busy} danger><Trash2 className="h-4 w-4" /></IconButton>
                         )}
                       </div>
-                      <span className="font-mono text-[11.5px] text-muted dark:text-night-muted">{d.n_rows} rows · {d.n_columns} columns · {formatBytes(d.size_bytes)}</span>
+                      <span className="font-mono text-[14.5px] text-muted dark:text-night-muted">{d.n_rows} rows · {d.n_columns} columns · {formatBytes(d.size_bytes)}</span>
                       <span className="font-sans text-xs text-faint">Added by {who(d)} · {formatDate(d.created_at)}</span>
                     </div>
                   ))}
@@ -573,20 +573,20 @@ const Projects = ({ onAuthClick, onOpenDashboard, request = null }) => {
 
             <Stage number="2" title="Cleaning" state={recipes.length ? 'done' : 'pending'}>
               {recipes.length === 0 ? (
-                <p className="font-sans text-[13px] text-muted dark:text-night-muted">No cleaning recipes yet. Save one from Data preparation to clean new data the same way.</p>
+                <p className="font-sans text-[16px] text-muted dark:text-night-muted">No cleaning recipes yet. Save one from Data preparation to clean new data the same way.</p>
               ) : recipes.map(recipe => (
                 <div key={recipe.id} className={`${cardClass} flex flex-col gap-3 px-4 py-3.5 md:flex-row md:items-center`}>
                   <Wand2 className="hidden h-[18px] w-[18px] shrink-0 text-brand-indigo md:block dark:text-brand-periwinkle" />
                   <div className="flex min-w-0 flex-1 flex-col gap-1">
                     <span className="font-sans text-sm font-semibold" title={recipe.description || recipe.name}>{recipe.name}</span>
-                    <span className="truncate font-sans text-[12.5px] text-muted dark:text-night-muted">
+                    <span className="truncate font-sans text-[15.5px] text-muted dark:text-night-muted">
                       {(recipe.steps || []).map(stepName).join(' → ')}{shared ? ` · by ${who(recipe)}` : ''}
                     </span>
                   </div>
-                  <span className="font-mono text-[11.5px] text-muted dark:text-night-muted">{recipe.step_count} step{recipe.step_count === 1 ? '' : 's'}</span>
+                  <span className="font-mono text-[14.5px] text-muted dark:text-night-muted">{recipe.step_count} step{recipe.step_count === 1 ? '' : 's'}</span>
                   <div className="flex items-center gap-1">
                     <button type="button" onClick={() => handleRecipeOpen(recipe)} disabled={busy}
-                      className="h-8 rounded-lg border border-[#DDE1EA] px-3 font-sans text-[13px] font-semibold hover:bg-soft dark:border-night-line dark:hover:bg-night-soft cursor-pointer">
+                      className="h-8 rounded-lg border border-[#DDE1EA] px-3 font-sans text-[16px] font-semibold hover:bg-soft dark:border-night-line dark:hover:bg-night-soft cursor-pointer">
                       Run on new data
                     </button>
                     <IconButton label="Download recipe file" onClick={() => handleRecipeDownload(recipe)} disabled={busy}><DownloadIcon className="h-4 w-4" /></IconButton>
@@ -601,7 +601,7 @@ const Projects = ({ onAuthClick, onOpenDashboard, request = null }) => {
             <Stage number="3" title="Analyses" state={detail.results.length ? 'current' : 'pending'}
               action={canEdit && <TextLink onClick={() => onOpenDashboard?.()}>New analysis</TextLink>}>
               {detail.results.length === 0 ? (
-                <p className="font-sans text-[13px] text-muted dark:text-night-muted">No saved analyses yet. Run one and use Save to project.</p>
+                <p className="font-sans text-[16px] text-muted dark:text-night-muted">No saved analyses yet. Run one and use Save to project.</p>
               ) : detail.results.map(r => {
                 const summary = summaries[r.id];
                 const latest = r.id === latestResultId;
@@ -613,17 +613,17 @@ const Projects = ({ onAuthClick, onOpenDashboard, request = null }) => {
                       {summary?.bars ? (
                         <MiniBars summary={summary} width={92} height={56} compact />
                       ) : (
-                        <span className="flex h-14 w-[92px] items-center justify-center rounded-lg bg-soft font-mono text-[11px] font-semibold text-brand-indigo dark:bg-night-soft dark:text-brand-periwinkle">
+                        <span className="flex h-14 w-[92px] items-center justify-center rounded-lg bg-soft font-mono text-[14px] font-semibold text-brand-indigo dark:bg-night-soft dark:text-brand-periwinkle">
                           {moduleName(r.module).slice(0, 12)}
                         </span>
                       )}
                     </div>
                     <div className="flex min-w-0 flex-1 flex-col gap-[5px]">
                       <div className="flex items-center gap-2">
-                        <span className="truncate font-sans text-[14.5px] font-semibold">{r.title}</span>
+                        <span className="truncate font-sans text-[16.5px] font-semibold">{r.title}</span>
                         {latest && <span className="h-[7px] w-[7px] shrink-0 rounded-full bg-brand-orange" title="Most recent" />}
                       </div>
-                      <span className="font-sans text-[13px] text-ink-2 dark:text-night-ink">
+                      <span className="font-sans text-[16px] text-ink-2 dark:text-night-ink">
                         {summary
                           ? `${summary.headline} ${summary.stats.map(formatStat).slice(0, 2).join(', ')}.`
                           : `${moduleName(r.module)}${r.parameters?.dependent ? ` of ${r.parameters.dependent}` : ''}`}
@@ -633,7 +633,7 @@ const Projects = ({ onAuthClick, onOpenDashboard, request = null }) => {
                     <div className="flex items-center gap-1">
                       {canReopen(r.module) && (
                         <button type="button" onClick={() => handleResultOpen(r)} disabled={busy}
-                          className={`h-[34px] rounded-[9px] px-3.5 font-sans text-[13px] font-semibold cursor-pointer ${latest
+                          className={`h-[34px] rounded-[9px] px-3.5 font-sans text-[16px] font-semibold cursor-pointer ${latest
                             ? 'bg-brand-navy text-white hover:bg-[#1E293B] dark:bg-night-ink dark:text-night'
                             : 'border border-[#DDE1EA] hover:bg-soft dark:border-night-line dark:hover:bg-night-soft'}`}>
                           Open
@@ -671,11 +671,11 @@ const Projects = ({ onAuthClick, onOpenDashboard, request = null }) => {
                 </div>
               )}
               <div className="flex flex-col gap-1">
-                {detail.tasks.length === 0 && <p className="font-sans text-[13px] text-muted dark:text-night-muted">No tasks yet.</p>}
+                {detail.tasks.length === 0 && <p className="font-sans text-[16px] text-muted dark:text-night-muted">No tasks yet.</p>}
                 {detail.tasks.map(t => (
                   <div key={t.id} className="group flex items-center gap-2.5">
                     <button type="button" onClick={() => handleToggleTask(t.id)} disabled={busy || !canEdit} role="checkbox" aria-checked={t.completed}
-                      className="flex min-h-9 flex-1 items-center gap-2.5 text-left font-sans text-[13.5px] disabled:cursor-default cursor-pointer">
+                      className="flex min-h-9 flex-1 items-center gap-2.5 text-left font-sans text-[16.5px] disabled:cursor-default cursor-pointer">
                       <svg className={`h-[18px] w-[18px] shrink-0 ${t.completed ? 'text-brand-emerald' : 'text-faint'}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                         <rect x="3" y="3" width="18" height="18" rx="5" />{t.completed && <path d="m8 12 3 3 5-6" />}
                       </svg>
@@ -693,7 +693,7 @@ const Projects = ({ onAuthClick, onOpenDashboard, request = null }) => {
                 <form onSubmit={handleAddNewTask} className="flex gap-2">
                   <input type="text" maxLength={500} placeholder="Add a task" value={taskInput} onChange={(e) => setTaskInput(e.target.value)} aria-label="New task" className={inputClass} />
                   <button type="submit" disabled={!taskInput.trim() || busy}
-                    className="h-[38px] rounded-[9px] bg-brand-navy px-3.5 font-sans text-[13px] font-semibold text-white disabled:opacity-40 dark:bg-night-ink dark:text-night cursor-pointer">
+                    className="h-[38px] rounded-[9px] bg-brand-navy px-3.5 font-sans text-[16px] font-semibold text-white disabled:opacity-40 dark:bg-night-ink dark:text-night cursor-pointer">
                     Add
                   </button>
                 </form>
@@ -706,10 +706,10 @@ const Projects = ({ onAuthClick, onOpenDashboard, request = null }) => {
               <div className={`${cardClass} flex flex-col gap-3 p-[18px]`}>
                 <h3 className="font-display text-base font-bold">Recent activity</h3>
                 {activity.map(item => (
-                  <div key={item.key} className="flex gap-2.5 font-sans text-[13px] leading-[1.45]">
+                  <div key={item.key} className="flex gap-2.5 font-sans text-[16px] leading-[1.45]">
                     <span className={`mt-1.5 h-[7px] w-[7px] shrink-0 rounded-full ${item.tone}`} />
                     <span className="min-w-0 flex-1 text-ink-2 dark:text-night-ink">{item.text}</span>
-                    <span className="shrink-0 font-mono text-[11px] text-faint">{relativeTime(item.at)}</span>
+                    <span className="shrink-0 font-mono text-[14px] text-faint">{relativeTime(item.at)}</span>
                   </div>
                 ))}
               </div>
@@ -748,13 +748,13 @@ const Projects = ({ onAuthClick, onOpenDashboard, request = null }) => {
       <ProjectInvitations api={api} onError={setError} onAccepted={async (projectId) => { await refreshList(); await openProject(projectId); }} />
       <header className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
         <div className="flex flex-col gap-1.5">
-          <h1 className="font-display text-[28px] font-bold leading-[1.1] md:text-[36px]">Projects</h1>
+          <h1 className="font-display text-[30px] font-bold leading-[1.1] md:text-[38px]">Projects</h1>
           <p className="font-sans text-sm text-muted dark:text-night-muted">Each project keeps one study together: data, cleaning, analyses and the report.</p>
         </div>
         <div className="flex items-center gap-5">
           {storage && (
             <div className="hidden w-56 flex-col gap-1.5 sm:flex">
-              <div className="flex justify-between font-sans text-[11.5px] text-muted dark:text-night-muted">
+              <div className="flex justify-between font-sans text-[14.5px] text-muted dark:text-night-muted">
                 <span>Storage</span><span className="font-mono">{formatBytes(storage.used_bytes)} / {formatBytes(storage.limit_bytes)}</span>
               </div>
               <div className="h-1 overflow-hidden rounded bg-[#EEF0F4] dark:bg-night-soft">
@@ -788,9 +788,9 @@ const Projects = ({ onAuthClick, onOpenDashboard, request = null }) => {
                   <div className="flex min-w-0 flex-1 flex-col gap-1">
                     <div className="flex flex-wrap items-center gap-2">
                       <h3 className="truncate font-display text-lg font-bold">{p.name}</h3>
-                      <span className={`rounded-full px-2.5 py-0.5 font-sans text-[11.5px] font-semibold ${STATUS_PILL[p.status] || STATUS_PILL.Empty}`}>{p.status}</span>
+                      <span className={`rounded-full px-2.5 py-0.5 font-sans text-[14.5px] font-semibold ${STATUS_PILL[p.status] || STATUS_PILL.Empty}`}>{p.status}</span>
                     </div>
-                    <span className="font-sans text-[13px] text-muted dark:text-night-muted">
+                    <span className="font-sans text-[16px] text-muted dark:text-night-muted">
                       {sharedWithMe
                         ? `Shared by ${p.owner?.full_name || p.owner?.email} · ${p.role === 'editor' ? 'Editor' : 'Viewer'}`
                         : p.member_count > 0 ? `Shared with ${p.member_count} ${p.member_count === 1 ? 'person' : 'people'}` : (p.test_used && p.test_used !== 'None' ? p.test_used : 'Only you')}
@@ -802,11 +802,11 @@ const Projects = ({ onAuthClick, onOpenDashboard, request = null }) => {
                     </span>
                   )}
                 </div>
-                <div className="flex flex-wrap items-center gap-x-5 gap-y-2 font-sans text-[12.5px] text-muted dark:text-night-muted">
+                <div className="flex flex-wrap items-center gap-x-5 gap-y-2 font-sans text-[15.5px] text-muted dark:text-night-muted">
                   <span className="flex items-center gap-1.5"><DatabaseIcon className="h-3.5 w-3.5 text-brand-emerald" />{p.dataset_count} {p.dataset_count === 1 ? 'dataset' : 'datasets'}</span>
                   <span className="flex items-center gap-1.5"><UploadIcon className="h-3.5 w-3.5 rotate-180 text-brand-indigo" />{p.result_count} {p.result_count === 1 ? 'analysis' : 'analyses'}</span>
                   {total > 0 && <span className="font-mono">{completed}/{total} tasks</span>}
-                  <span className="ml-auto font-mono text-[11.5px] text-faint">{relativeTime(p.updated_at)}</span>
+                  <span className="ml-auto font-mono text-[14.5px] text-faint">{relativeTime(p.updated_at)}</span>
                 </div>
               </div>
             );

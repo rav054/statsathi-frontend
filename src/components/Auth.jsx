@@ -214,7 +214,7 @@ const Auth = ({ onSuccess, initialMode = 'login' }) => {
                   </button>
                 </div>
                 {mode === 'signup' && (
-                  <p className="font-sans text-[11px] text-slate-400">At least {PASSWORD_MIN_LENGTH} characters.</p>
+                  <p className="font-sans text-[14px] text-slate-400">At least {PASSWORD_MIN_LENGTH} characters.</p>
                 )}
               </div>
             )}

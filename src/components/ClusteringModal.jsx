@@ -554,7 +554,7 @@ const ClusteringModal = ({ isOpen, onClose, initialAnalysis = null }) => {
               <h2 className="font-display text-base font-extrabold text-slate-800">
                 Clustering Analysis (Risk Zoning)
               </h2>
-              <p className="font-sans text-[10px] text-slate-400 mt-0.5">
+              <p className="font-sans text-[13px] text-slate-400 mt-0.5">
                 Group observations using unsupervised K-Means or Hierarchical Clustering models for environmental risk zoning.
               </p>
             </div>
@@ -644,7 +644,7 @@ const ClusteringModal = ({ isOpen, onClose, initialAnalysis = null }) => {
                         onChange={(e) => setK(parseInt(e.target.value))}
                         className="w-full h-1 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-brand-indigo"
                       />
-                      <span className="text-[10px] text-slate-400 block">Set target risk zones or category groupings.</span>
+                      <span className="text-[13px] text-slate-400 block">Set target risk zones or category groupings.</span>
                     </div>
                   ) : (
                     <div className="space-y-3 border border-slate-100 rounded-2xl p-4 bg-slate-50/50">
@@ -657,7 +657,7 @@ const ClusteringModal = ({ isOpen, onClose, initialAnalysis = null }) => {
                         onChange={(e) => setCutHeight(e.target.value)}
                         className="w-full rounded-xl border border-slate-200 bg-white py-2.5 px-3 font-sans text-xs outline-hidden focus:border-brand-indigo transition-all"
                       />
-                      <span className="text-[10px] text-slate-400 block leading-tight">Cut-off height for separating tree branches. If empty, cuts to yield k = {k} clusters.</span>
+                      <span className="text-[13px] text-slate-400 block leading-tight">Cut-off height for separating tree branches. If empty, cuts to yield k = {k} clusters.</span>
                     </div>
                   )}
 
@@ -682,7 +682,7 @@ const ClusteringModal = ({ isOpen, onClose, initialAnalysis = null }) => {
                 <p className="font-sans text-xs font-bold text-slate-500">Tree options (hierarchical clustering)</p>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                   <label className="space-y-1">
-                    <span className="font-sans text-[11px] font-semibold text-slate-500">Linkage method</span>
+                    <span className="font-sans text-[14px] font-semibold text-slate-500">Linkage method</span>
                     <select
                       value={linkage}
                       onChange={(e) => { const value = e.target.value; setLinkage(value); if (['ward', 'centroid', 'median'].includes(value)) setDistance('euclidean'); }}
@@ -698,7 +698,7 @@ const ClusteringModal = ({ isOpen, onClose, initialAnalysis = null }) => {
                     </select>
                   </label>
                   <label className="space-y-1">
-                    <span className="font-sans text-[11px] font-semibold text-slate-500">Distance measure</span>
+                    <span className="font-sans text-[14px] font-semibold text-slate-500">Distance measure</span>
                     <select
                       value={distance}
                       onChange={(e) => setDistance(e.target.value)}
@@ -712,7 +712,7 @@ const ClusteringModal = ({ isOpen, onClose, initialAnalysis = null }) => {
                     </select>
                   </label>
                   <label className="space-y-1">
-                    <span className="font-sans text-[11px] font-semibold text-slate-500">Label leaves by</span>
+                    <span className="font-sans text-[14px] font-semibold text-slate-500">Label leaves by</span>
                     <select
                       value={labelCol}
                       onChange={(e) => setLabelCol(e.target.value)}
@@ -723,7 +723,7 @@ const ClusteringModal = ({ isOpen, onClose, initialAnalysis = null }) => {
                     </select>
                   </label>
                 </div>
-                <p className="font-sans text-[10px] text-slate-400">
+                <p className="font-sans text-[13px] text-slate-400">
                   Ward, centroid and median linkage need Euclidean distances. Correlation distance groups observations with a similar pattern across variables rather than similar magnitudes. The Dendrogram Styles tab compares every linkage method and suggests a number of clusters.
                 </p>
               </div>
@@ -792,9 +792,9 @@ const ClusteringModal = ({ isOpen, onClose, initialAnalysis = null }) => {
                         ['Clusters Found', (clusterMethod === 'kmeans' ? results.kmeans.summaries : results.hierarchical.summaries).length, 0, clusterMethod === 'kmeans' ? 'K-Means' : 'Ward hierarchical']
                       ].map(([label, value, digits, hint]) => (
                         <div key={label} className="rounded-xl border border-slate-100 bg-white p-3 shadow-xs" title={hint}>
-                          <p className="text-[10px] font-bold text-slate-400 uppercase">{label}</p>
+                          <p className="text-[13px] font-bold text-slate-400 uppercase">{label}</p>
                           <p className="mt-0.5 font-mono text-sm font-bold text-slate-800">{value == null ? 'n/a' : Number(value).toFixed(digits)}</p>
-                          <p className="mt-0.5 text-[10px] text-slate-400 leading-snug">{hint}</p>
+                          <p className="mt-0.5 text-[13px] text-slate-400 leading-snug">{hint}</p>
                         </div>
                       ))}
                     </div>
@@ -802,7 +802,7 @@ const ClusteringModal = ({ isOpen, onClose, initialAnalysis = null }) => {
                   <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-xs overflow-x-auto">
                     <div className="flex justify-between items-center mb-3">
                       <h4 className="font-display text-xs font-bold text-slate-700">Cluster Characteristics (Mean Profiles)</h4>
-                      <span className="font-sans text-[10px] text-slate-400 font-bold bg-indigo-50 text-brand-indigo px-2 py-0.5 rounded-lg">
+                      <span className="font-sans text-[13px] text-slate-400 font-bold bg-indigo-50 text-brand-indigo px-2 py-0.5 rounded-lg">
                         Method: {clusterMethod === 'kmeans' ? 'K-Means' : 'Hierarchical'}
                       </span>
                     </div>
@@ -855,12 +855,12 @@ const ClusteringModal = ({ isOpen, onClose, initialAnalysis = null }) => {
                     <div className="flex items-center space-x-4">
                       <div className="flex items-center space-x-2">
                         <FigurePresetSelect value={figurePrefs.preset} onChange={(preset) => setFigurePrefs({ preset })} className="mr-2" />
-                        <span className="font-sans text-[10px] font-bold text-slate-400 uppercase">Export Resolution:</span>
+                        <span className="font-sans text-[13px] font-bold text-slate-400 uppercase">Export Resolution:</span>
                         {[150, 300, 600].map(dpiVal => (
                           <button
                             key={dpiVal}
                             onClick={() => setDownloadDpi(dpiVal)}
-                            className={`px-2 py-1 font-sans text-[9px] font-bold rounded-lg cursor-pointer ${
+                            className={`px-2 py-1 font-sans text-[12px] font-bold rounded-lg cursor-pointer ${
                               downloadDpi === dpiVal ? 'bg-brand-indigo text-white shadow-xs' : 'bg-white border border-slate-200 text-slate-500 hover:bg-slate-50'
                             }`}
                           >
@@ -869,11 +869,11 @@ const ClusteringModal = ({ isOpen, onClose, initialAnalysis = null }) => {
                         ))}
                       </div>
                       <div className="flex items-center space-x-1.5">
-                        <label className="font-sans text-[10px] font-bold text-slate-400 uppercase">Palette:</label>
+                        <label className="font-sans text-[13px] font-bold text-slate-400 uppercase">Palette:</label>
                         <select
                           value={clusterPalette}
                           onChange={(e) => { setClusterPalette(e.target.value); setFigurePrefs({ palette: e.target.value }); }}
-                          className="rounded-lg border border-slate-200 bg-white px-2 py-1 font-sans text-[11px] text-slate-600 outline-hidden focus:border-brand-indigo focus:ring-1 focus:ring-brand-indigo transition-all"
+                          className="rounded-lg border border-slate-200 bg-white px-2 py-1 font-sans text-[14px] text-slate-600 outline-hidden focus:border-brand-indigo focus:ring-1 focus:ring-brand-indigo transition-all"
                         >
                           {Object.keys(CLUSTER_PALETTES).map(paletteKey => (
                             <option key={paletteKey} value={paletteKey}>
@@ -888,7 +888,7 @@ const ClusteringModal = ({ isOpen, onClose, initialAnalysis = null }) => {
                         <button
                           key={fmt}
                           onClick={() => handleDownloadPlot('dendrogram', fmt)}
-                          className="px-2 py-1 bg-white border border-slate-200 hover:bg-slate-50 text-slate-600 rounded-lg font-sans text-[9px] font-bold uppercase transition-colors flex items-center space-x-1 cursor-pointer"
+                          className="px-2 py-1 bg-white border border-slate-200 hover:bg-slate-50 text-slate-600 rounded-lg font-sans text-[12px] font-bold uppercase transition-colors flex items-center space-x-1 cursor-pointer"
                         >
                           <Download className="h-3 w-3" />
                           <span>{fmt}</span>
@@ -938,7 +938,7 @@ const ClusteringModal = ({ isOpen, onClose, initialAnalysis = null }) => {
                             ))}
                           </tbody>
                         </table>
-                        <p className="mt-2 font-sans text-[10px] text-slate-400">How faithfully each tree preserves the original distances between observations (higher is better; above 0.75 is usually considered good).</p>
+                        <p className="mt-2 font-sans text-[13px] text-slate-400">How faithfully each tree preserves the original distances between observations (higher is better; above 0.75 is usually considered good).</p>
                       </div>
                     )}
                     {results.k_selection?.rows?.length > 0 && (
@@ -967,7 +967,7 @@ const ClusteringModal = ({ isOpen, onClose, initialAnalysis = null }) => {
                             })}
                           </tbody>
                         </table>
-                        <p className="mt-2 font-sans text-[10px] text-slate-400">The star marks the k with the highest average silhouette width for the method you are using. WSS: within-cluster sum of squares; look for the elbow where it stops dropping quickly.</p>
+                        <p className="mt-2 font-sans text-[13px] text-slate-400">The star marks the k with the highest average silhouette width for the method you are using. WSS: within-cluster sum of squares; look for the elbow where it stops dropping quickly.</p>
                       </div>
                     )}
                   </div>
@@ -981,11 +981,11 @@ const ClusteringModal = ({ isOpen, onClose, initialAnalysis = null }) => {
                     {/* Variable Selectors */}
                     <div className="flex items-center space-x-4">
                       <div className="flex items-center space-x-1.5">
-                        <label className="font-sans text-[10px] font-bold text-slate-400 uppercase">X-Axis:</label>
+                        <label className="font-sans text-[13px] font-bold text-slate-400 uppercase">X-Axis:</label>
                         <select
                           value={scatterX}
                           onChange={(e) => setScatterX(e.target.value)}
-                          className="rounded-lg border border-slate-200 bg-white px-2 py-1 font-sans text-[11px] text-slate-600 outline-hidden focus:border-brand-indigo focus:ring-1 focus:ring-brand-indigo"
+                          className="rounded-lg border border-slate-200 bg-white px-2 py-1 font-sans text-[14px] text-slate-600 outline-hidden focus:border-brand-indigo focus:ring-1 focus:ring-brand-indigo"
                         >
                           {results.variables.map(v => (
                             <option key={v} value={v}>{v}</option>
@@ -993,11 +993,11 @@ const ClusteringModal = ({ isOpen, onClose, initialAnalysis = null }) => {
                         </select>
                       </div>
                       <div className="flex items-center space-x-1.5">
-                        <label className="font-sans text-[10px] font-bold text-slate-400 uppercase">Y-Axis:</label>
+                        <label className="font-sans text-[13px] font-bold text-slate-400 uppercase">Y-Axis:</label>
                         <select
                           value={scatterY}
                           onChange={(e) => setScatterY(e.target.value)}
-                          className="rounded-lg border border-slate-200 bg-white px-2 py-1 font-sans text-[11px] text-slate-600 outline-hidden focus:border-brand-indigo focus:ring-1 focus:ring-brand-indigo"
+                          className="rounded-lg border border-slate-200 bg-white px-2 py-1 font-sans text-[14px] text-slate-600 outline-hidden focus:border-brand-indigo focus:ring-1 focus:ring-brand-indigo"
                         >
                           {results.variables.map(v => (
                             <option key={v} value={v}>{v}</option>
@@ -1005,11 +1005,11 @@ const ClusteringModal = ({ isOpen, onClose, initialAnalysis = null }) => {
                         </select>
                       </div>
                       <div className="flex items-center space-x-1.5">
-                        <label className="font-sans text-[10px] font-bold text-slate-400 uppercase">Palette:</label>
+                        <label className="font-sans text-[13px] font-bold text-slate-400 uppercase">Palette:</label>
                         <select
                           value={clusterPalette}
                           onChange={(e) => { setClusterPalette(e.target.value); setFigurePrefs({ palette: e.target.value }); }}
-                          className="rounded-lg border border-slate-200 bg-white px-2 py-1 font-sans text-[11px] text-slate-600 outline-hidden focus:border-brand-indigo focus:ring-1 focus:ring-brand-indigo transition-all"
+                          className="rounded-lg border border-slate-200 bg-white px-2 py-1 font-sans text-[14px] text-slate-600 outline-hidden focus:border-brand-indigo focus:ring-1 focus:ring-brand-indigo transition-all"
                         >
                           {Object.keys(CLUSTER_PALETTES).map(paletteKey => (
                             <option key={paletteKey} value={paletteKey}>
@@ -1022,12 +1022,12 @@ const ClusteringModal = ({ isOpen, onClose, initialAnalysis = null }) => {
 
                     <div className="flex items-center space-x-2">
                       <FigurePresetSelect value={figurePrefs.preset} onChange={(preset) => setFigurePrefs({ preset })} className="mr-2" />
-                      <span className="font-sans text-[10px] font-bold text-slate-400 uppercase">Export Resolution:</span>
+                      <span className="font-sans text-[13px] font-bold text-slate-400 uppercase">Export Resolution:</span>
                       {[150, 300, 600].map(dpiVal => (
                         <button
                           key={dpiVal}
                           onClick={() => setDownloadDpi(dpiVal)}
-                          className={`px-2 py-1 font-sans text-[9px] font-bold rounded-lg cursor-pointer ${
+                          className={`px-2 py-1 font-sans text-[12px] font-bold rounded-lg cursor-pointer ${
                             downloadDpi === dpiVal ? 'bg-brand-indigo text-white shadow-xs' : 'bg-white border border-slate-200 text-slate-500 hover:bg-slate-50'
                           }`}
                         >
@@ -1041,7 +1041,7 @@ const ClusteringModal = ({ isOpen, onClose, initialAnalysis = null }) => {
                         <button
                           key={fmt}
                           onClick={() => handleDownloadPlot('biplot', fmt)}
-                          className="px-2 py-1 bg-white border border-slate-200 hover:bg-slate-50 text-slate-600 rounded-lg font-sans text-[9px] font-bold uppercase transition-colors flex items-center space-x-1 cursor-pointer"
+                          className="px-2 py-1 bg-white border border-slate-200 hover:bg-slate-50 text-slate-600 rounded-lg font-sans text-[12px] font-bold uppercase transition-colors flex items-center space-x-1 cursor-pointer"
                         >
                           <Download className="h-3 w-3" />
                           <span>{fmt}</span>
@@ -1073,10 +1073,10 @@ const ClusteringModal = ({ isOpen, onClose, initialAnalysis = null }) => {
                 <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-xs">
                   <div className="flex justify-between items-center mb-3">
                     <h4 className="font-display text-xs font-bold text-slate-700">Clean Dataset with Cluster Assignment Columns</h4>
-                    <span className="font-sans text-[10px] text-slate-400">Total Observations: {results.records.length}</span>
+                    <span className="font-sans text-[13px] text-slate-400">Total Observations: {results.records.length}</span>
                   </div>
                   <div className="max-h-[300px] overflow-y-auto">
-                    <table className="w-full border-collapse font-sans text-[11px] text-left">
+                    <table className="w-full border-collapse font-sans text-[14px] text-left">
                       <thead>
                         <tr className="border-b border-slate-100 text-slate-400 font-bold bg-slate-50/50 sticky top-0">
                           <th className="py-2 pl-3">Index</th>
@@ -1115,17 +1115,17 @@ const ClusteringModal = ({ isOpen, onClose, initialAnalysis = null }) => {
           {results ? (
             <div className="flex space-x-2">
               <div className="flex items-center space-x-1 bg-emerald-50/50 p-1 rounded-xl border border-emerald-100 mr-2">
-                <span className="font-sans text-[9px] font-bold text-emerald-600 px-2 uppercase shrink-0">Report:</span>
+                <span className="font-sans text-[12px] font-bold text-emerald-600 px-2 uppercase shrink-0">Report:</span>
                 <button
                   onClick={() => handleDownloadReport('txt')}
-                  className="rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-sans text-[10px] font-bold px-2.5 py-1.5 transition-colors cursor-pointer"
+                  className="rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-sans text-[13px] font-bold px-2.5 py-1.5 transition-colors cursor-pointer"
                   title="Save as Text"
                 >
                   TXT
                 </button>
                 <button
                   onClick={() => handleDownloadReport('doc')}
-                  className="rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-sans text-[10px] font-bold px-2.5 py-1.5 transition-colors cursor-pointer"
+                  className="rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-sans text-[13px] font-bold px-2.5 py-1.5 transition-colors cursor-pointer"
                   title="Export to Word"
                 >
                   Word

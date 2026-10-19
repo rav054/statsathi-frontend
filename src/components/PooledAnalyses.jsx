@@ -4,7 +4,7 @@ const inputClass = 'w-full rounded-lg border border-slate-200 bg-white px-2.5 py
 const fmt = (value, digits = 3) => (value === null || value === undefined || Number.isNaN(value)
   ? '–' : Number(value).toLocaleString(undefined, { maximumFractionDigits: digits }));
 
-const Label = ({ children }) => <p className="mb-1 font-sans text-[10px] font-bold uppercase tracking-wide text-slate-400">{children}</p>;
+const Label = ({ children }) => <p className="mb-1 font-sans text-[13px] font-bold uppercase tracking-wide text-slate-400">{children}</p>;
 
 const Chips = ({ options, value, onChange, max }) => (
   <div className="flex flex-wrap gap-1.5">
@@ -13,7 +13,7 @@ const Chips = ({ options, value, onChange, max }) => (
       return (
         <button key={name} type="button"
           onClick={() => onChange(on ? value.filter(v => v !== name) : (max && value.length >= max ? [...value.slice(1), name] : [...value, name]))}
-          className={`rounded-full border px-2.5 py-0.5 font-sans text-[11px] font-semibold cursor-pointer ${on ? 'border-brand-indigo bg-indigo-50 text-brand-indigo' : 'border-slate-200 bg-white text-slate-500'}`}>
+          className={`rounded-full border px-2.5 py-0.5 font-sans text-[14px] font-semibold cursor-pointer ${on ? 'border-brand-indigo bg-indigo-50 text-brand-indigo' : 'border-slate-200 bg-white text-slate-500'}`}>
           {name}
         </button>
       );
@@ -27,7 +27,7 @@ const Section = ({ title, hint, enabled, onToggle, children }) => (
       <input type="checkbox" className="mt-0.5" checked={enabled} onChange={(e) => onToggle(e.target.checked)} />
       <span>
         <span className="block font-display text-xs font-bold text-slate-800">{title}</span>
-        <span className="block font-sans text-[10px] text-slate-500">{hint}</span>
+        <span className="block font-sans text-[13px] text-slate-500">{hint}</span>
       </span>
     </label>
     {enabled && <div className="space-y-2 pl-5">{children}</div>}
@@ -65,7 +65,7 @@ export const PooledAnalysesForm = ({ numeric, categories, value, onChange }) => 
             </select>
           </div>
         </div>
-        {twoLevel.length === 0 && <p className="font-sans text-[10px] text-amber-600">No complete category column has exactly two levels.</p>}
+        {twoLevel.length === 0 && <p className="font-sans text-[13px] text-amber-600">No complete category column has exactly two levels.</p>}
       </Section>
 
       <Section title="Correlations" hint="Every pair, pooled on Fisher's z scale."
@@ -99,7 +99,7 @@ export const PooledAnalysesForm = ({ numeric, categories, value, onChange }) => 
         <Label>Treatment factors (one or two)</Label>
         <Chips options={factorNames.filter(n => n !== a.block)} value={a.factors} max={2} onChange={(factors) => set('anova', { factors })} />
         {a.factors.length === 2 && (
-          <label className="flex items-center space-x-2 font-sans text-[11px] text-slate-600">
+          <label className="flex items-center space-x-2 font-sans text-[14px] text-slate-600">
             <input type="checkbox" checked={a.interaction} onChange={(e) => set('anova', { interaction: e.target.checked })} />
             <span>Include the interaction</span>
           </label>
@@ -108,7 +108,7 @@ export const PooledAnalysesForm = ({ numeric, categories, value, onChange }) => 
           <option value="bonferroni">Bonferroni-adjusted pairwise comparisons</option>
           <option value="lsd">Unadjusted pairwise comparisons (LSD)</option>
         </select>
-        {factorNames.length === 0 && <p className="font-sans text-[10px] text-amber-600">No complete category column to use as a factor.</p>}
+        {factorNames.length === 0 && <p className="font-sans text-[13px] text-amber-600">No complete category column to use as a factor.</p>}
       </Section>
     </div>
   );
@@ -118,7 +118,7 @@ export const PooledAnalysesForm = ({ numeric, categories, value, onChange }) => 
 const Table = ({ title, columns, rows, note }) => (
   <div className="overflow-auto rounded-2xl border border-slate-100">
     <p className="border-b border-slate-100 bg-slate-50 px-3 py-2 font-display text-xs font-bold text-slate-800">{title}</p>
-    <table className="min-w-full whitespace-nowrap text-left font-sans text-[11px] text-slate-700">
+    <table className="min-w-full whitespace-nowrap text-left font-sans text-[14px] text-slate-700">
       <thead><tr className="text-slate-500">{columns.map(h => <th key={h} className="px-3 py-2 font-bold">{h}</th>)}</tr></thead>
       <tbody>
         {rows.map((row, i) => (
@@ -128,7 +128,7 @@ const Table = ({ title, columns, rows, note }) => (
         ))}
       </tbody>
     </table>
-    {note && <p className="border-t border-slate-100 px-3 py-1.5 font-sans text-[10px] text-slate-400">{note}</p>}
+    {note && <p className="border-t border-slate-100 px-3 py-1.5 font-sans text-[13px] text-slate-400">{note}</p>}
   </div>
 );
 

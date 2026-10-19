@@ -82,7 +82,7 @@ export const ResetPasswordPage = ({ onDone, onRequestNewLink }) => {
               </div>
             </div>
           ))}
-          <p className={`font-sans text-[11px] ${password && problem ? 'text-amber-600' : 'text-slate-400'}`}>
+          <p className={`font-sans text-[14px] ${password && problem ? 'text-amber-600' : 'text-slate-400'}`}>
             {password && problem ? problem : `At least ${PASSWORD_MIN_LENGTH} characters.`}
           </p>
           <button type="submit" disabled={saving || Boolean(problem)} className={primaryButton}>

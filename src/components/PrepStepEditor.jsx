@@ -8,7 +8,7 @@ const inputClass = 'w-full rounded-lg border border-slate-200 bg-white px-2.5 py
 
 const ColumnChips = ({ options, value = [], onChange }) => (
   <div className="flex flex-wrap gap-1.5">
-    {options.length === 0 && <span className="font-sans text-[11px] text-slate-400">No columns yet.</span>}
+    {options.length === 0 && <span className="font-sans text-[14px] text-slate-400">No columns yet.</span>}
     {options.map(name => {
       const on = value.includes(name);
       return (
@@ -16,7 +16,7 @@ const ColumnChips = ({ options, value = [], onChange }) => (
           key={name}
           type="button"
           onClick={() => onChange(on ? value.filter(v => v !== name) : [...value, name])}
-          className={`rounded-full border px-2.5 py-0.5 font-sans text-[11px] font-semibold transition-colors cursor-pointer ${
+          className={`rounded-full border px-2.5 py-0.5 font-sans text-[14px] font-semibold transition-colors cursor-pointer ${
             on ? 'border-brand-indigo bg-indigo-50 text-brand-indigo' : 'border-slate-200 bg-white text-slate-500 hover:border-slate-300'
           }`}
         >
@@ -30,11 +30,11 @@ const ColumnChips = ({ options, value = [], onChange }) => (
 // Old → new pairs, for renaming columns or recoding the values of one column
 const MappingEditor = ({ keys, value = {}, onChange }) => (
   <div className="max-h-48 space-y-1 overflow-y-auto pr-1">
-    {keys.length === 0 && <span className="font-sans text-[11px] text-slate-400">Pick a column first.</span>}
+    {keys.length === 0 && <span className="font-sans text-[14px] text-slate-400">Pick a column first.</span>}
     {keys.map(key => (
       <div key={key} className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
-        <span className="truncate font-mono text-[11px] text-slate-600" title={key}>{key}</span>
-        <span className="font-sans text-[11px] text-slate-400">→</span>
+        <span className="truncate font-mono text-[14px] text-slate-600" title={key}>{key}</span>
+        <span className="font-sans text-[14px] text-slate-400">→</span>
         <input
           className={inputClass}
           value={value[key] ?? ''}
@@ -92,7 +92,7 @@ const FormulaEditor = ({ value = '', columns, onChange, onCheck }) => {
       <div className="flex flex-wrap gap-1">
         {columns.map(name => (
           <button key={name} type="button" onClick={() => insert(formulaName(name))}
-            className="rounded-md border border-slate-200 bg-slate-50 px-1.5 py-0.5 font-mono text-[10px] text-slate-600 hover:border-brand-indigo cursor-pointer">
+            className="rounded-md border border-slate-200 bg-slate-50 px-1.5 py-0.5 font-mono text-[13px] text-slate-600 hover:border-brand-indigo cursor-pointer">
             {name}
           </button>
         ))}
@@ -105,7 +105,7 @@ const FormulaEditor = ({ value = '', columns, onChange, onCheck }) => {
         <option value="">Insert a function…</option>
         {FORMULA_FUNCTIONS.map(fn => <option key={fn} value={fn}>{fn}( )</option>)}
       </select>
-      <details className="font-sans text-[10px] text-slate-500">
+      <details className="font-sans text-[13px] text-slate-500">
         <summary className="cursor-pointer text-slate-400">Examples</summary>
         <ul className="mt-1 space-y-0.5">
           {FORMULA_EXAMPLES.map(([example, meaning]) => (
@@ -115,16 +115,16 @@ const FormulaEditor = ({ value = '', columns, onChange, onCheck }) => {
       </details>
       <div className="flex items-start gap-2">
         <button type="button" onClick={runCheck} disabled={!value.trim() || checking}
-          className="shrink-0 rounded-lg border border-slate-200 px-2 py-1 font-sans text-[11px] font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-40 cursor-pointer">
+          className="shrink-0 rounded-lg border border-slate-200 px-2 py-1 font-sans text-[14px] font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-40 cursor-pointer">
           {checking ? 'Checking…' : 'Check'}
         </button>
         {check && (check.ok ? (
-          <p className="font-sans text-[11px] text-emerald-700">
+          <p className="font-sans text-[14px] text-emerald-700">
             First values: {check.sample.map(v => (v === null ? '—' : Number.isFinite(v) ? Number(v.toFixed(4)) : String(v))).join(', ')}
             {check.missing ? ` · ${check.missing} of ${check.rows} rows have no value` : ''}
           </p>
         ) : (
-          <p className="font-sans text-[11px] text-rose-600">{check.message}</p>
+          <p className="font-sans text-[14px] text-rose-600">{check.message}</p>
         ))}
       </div>
     </div>
@@ -186,9 +186,9 @@ const PrepStepEditor = ({ step, index, total, columns, valuesOf, mergeFile, onMe
       case 'file':
         return (
           <div className="flex items-center gap-2">
-            <input type="file" accept=".csv,.xlsx,.xls" className="font-sans text-[11px] text-slate-600"
+            <input type="file" accept=".csv,.xlsx,.xls" className="font-sans text-[14px] text-slate-600"
               onChange={(e) => onMergeFile(e.target.files?.[0] || null)} />
-            {mergeFile && <span className="truncate font-sans text-[11px] text-slate-500">{mergeFile.name}</span>}
+            {mergeFile && <span className="truncate font-sans text-[14px] text-slate-500">{mergeFile.name}</span>}
           </div>
         );
       default:
@@ -200,7 +200,7 @@ const PrepStepEditor = ({ step, index, total, columns, valuesOf, mergeFile, onMe
     <div className="rounded-2xl border border-slate-100 bg-white p-3 shadow-2xs">
       <div className="mb-2 flex items-center justify-between gap-2">
         <div className="flex min-w-0 items-center space-x-2">
-          <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-indigo-50 font-sans text-[10px] font-bold text-brand-indigo">{index + 1}</span>
+          <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-indigo-50 font-sans text-[13px] font-bold text-brand-indigo">{index + 1}</span>
           <span className="truncate font-display text-xs font-bold text-slate-800">{spec.label}</span>
         </div>
         <div className="flex shrink-0 items-center space-x-0.5">
@@ -217,7 +217,7 @@ const PrepStepEditor = ({ step, index, total, columns, valuesOf, mergeFile, onMe
         {visibleFields(step).map((field, i) => (
           <div key={`${field.key}-${i}`}>
             {field.type !== 'boolean' && (
-              <p className="mb-1 font-sans text-[10px] font-bold uppercase tracking-wide text-slate-400">{field.label}</p>
+              <p className="mb-1 font-sans text-[13px] font-bold uppercase tracking-wide text-slate-400">{field.label}</p>
             )}
             {renderField(field)}
           </div>
@@ -225,7 +225,7 @@ const PrepStepEditor = ({ step, index, total, columns, valuesOf, mergeFile, onMe
       </div>
 
       {problem && (
-        <p className="mt-2 flex items-center space-x-1 font-sans text-[11px] text-amber-600">
+        <p className="mt-2 flex items-center space-x-1 font-sans text-[14px] text-amber-600">
           <AlertCircle className="h-3 w-3" /><span>{problem}</span>
         </p>
       )}

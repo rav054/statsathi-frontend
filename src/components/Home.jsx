@@ -172,8 +172,8 @@ const Home = ({ onSignIn, onOpenProject, onNewProject, focusStep }) => {
     <main className="flex flex-col gap-7 px-4 py-6 md:px-10 md:pb-10 md:pt-8 animate-fade-in">
       <header className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
         <div className="flex flex-col gap-1.5">
-          <span className="font-sans text-[13px] text-muted dark:text-night-muted">{today}</span>
-          <h1 className="font-display text-[28px] font-bold leading-[1.1] md:text-[36px]">
+          <span className="font-sans text-[16px] text-muted dark:text-night-muted">{today}</span>
+          <h1 className="font-display text-[30px] font-bold leading-[1.1] md:text-[38px]">
             {user ? `${greeting()}, ${firstName}.` : 'Welcome to StatSathi.'}
           </h1>
         </div>
@@ -203,12 +203,12 @@ const Home = ({ onSignIn, onOpenProject, onNewProject, focusStep }) => {
             </div>
             {latest ? (
               <>
-                <h2 className="font-display text-[22px] font-bold leading-[1.2] md:text-[26px]">{latest.result.title}</h2>
-                <p className="max-w-[440px] font-sans text-[14.5px] leading-[1.55] text-[#CBD5E1]">
+                <h2 className="font-display text-[24px] font-bold leading-[1.2] md:text-[28px]">{latest.result.title}</h2>
+                <p className="max-w-[440px] font-sans text-[16.5px] leading-[1.55] text-[#CBD5E1]">
                   {summary ? `${summary.headline} ${summary.detail || ''}` : `${moduleName(latest.result.module)} saved in ${latest.project.name}.`}
                 </p>
                 {summary && (
-                  <div className="flex flex-wrap gap-x-[18px] gap-y-1 font-mono text-[12.5px] text-faint">
+                  <div className="flex flex-wrap gap-x-[18px] gap-y-1 font-mono text-[15.5px] text-faint">
                     {summary.stats.map(stat => <span key={stat.label}>{formatStat(stat)}</span>)}
                   </div>
                 )}
@@ -225,10 +225,10 @@ const Home = ({ onSignIn, onOpenProject, onNewProject, focusStep }) => {
               </>
             ) : (
               <>
-                <h2 className="font-display text-[22px] font-bold leading-[1.2] md:text-[26px]">
+                <h2 className="font-display text-[24px] font-bold leading-[1.2] md:text-[28px]">
                   {!user ? 'Statistics for field and lab research' : loadError ? 'Your saved work could not be loaded' : loaded ? 'Run your first analysis' : 'Looking for your latest analysis…'}
                 </h2>
-                <p className="max-w-[440px] font-sans text-[14.5px] leading-[1.55] text-[#CBD5E1]">
+                <p className="max-w-[440px] font-sans text-[16.5px] leading-[1.55] text-[#CBD5E1]">
                   {!user
                     ? 'Prepare data, compare treatments, model responses and write up the methods, all in one place. Sign in to save your work to projects.'
                     : loadError || 'Add a dataset, choose a step below and save the result to a project. Your latest analysis then waits here, ready to pick up.'}
@@ -254,7 +254,7 @@ const Home = ({ onSignIn, onOpenProject, onNewProject, focusStep }) => {
           </div>
           {summary?.bars && (
             <div className="relative flex w-full shrink-0 flex-col gap-2 rounded-[14px] border border-[#1E293B] bg-white/[0.04] p-4 md:w-[300px]">
-              <span className="font-sans text-[11.5px] text-faint">{latest.result.parameters?.dependent || 'Response'} · group means</span>
+              <span className="font-sans text-[14.5px] text-faint">{latest.result.parameters?.dependent || 'Response'} · group means</span>
               <MiniBars summary={summary} />
             </div>
           )}
@@ -269,26 +269,26 @@ const Home = ({ onSignIn, onOpenProject, onNewProject, focusStep }) => {
           <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#EEF0FF] text-brand-indigo dark:bg-night-soft dark:text-brand-periwinkle">
             <DocumentIcon />
           </div>
-          <h3 className="font-display text-[19px] font-bold">Start with your data</h3>
-          <p className="font-sans text-[13.5px] leading-[1.55] text-muted dark:text-night-muted">
+          <h3 className="font-display text-[21px] font-bold">Start with your data</h3>
+          <p className="font-sans text-[16.5px] leading-[1.55] text-muted dark:text-night-muted">
             Drop a CSV file here or choose one. It is shared with every analysis until you remove it.
           </p>
           {datasetError && <p role="alert" className="font-sans text-xs text-rose-600">{datasetError}</p>}
           <div className="flex-1" />
           <div className="flex flex-col gap-2">
             {file ? (
-              <div className="flex items-center gap-2.5 rounded-[10px] bg-[#F6F7FA] px-3 py-2.5 font-sans text-[13px] dark:bg-night-soft">
+              <div className="flex items-center gap-2.5 rounded-[10px] bg-[#F6F7FA] px-3 py-2.5 font-sans text-[16px] dark:bg-night-soft">
                 <DatabaseIcon className="h-4 w-4 shrink-0 text-brand-emerald" />
                 <span className="flex min-w-0 flex-1 flex-col">
                   <span className="truncate font-medium">{file.name}</span>
-                  <span className="truncate text-[11px] text-faint">{source?.kind === 'project' ? `From ${source.projectName}` : 'From this device'}</span>
+                  <span className="truncate text-[14px] text-faint">{source?.kind === 'project' ? `From ${source.projectName}` : 'From this device'}</span>
                 </span>
                 <button type="button" onClick={openViewer} className="font-semibold text-brand-indigo hover:text-brand-violet dark:text-brand-periwinkle cursor-pointer">View</button>
                 <button type="button" onClick={removeFile} className="text-muted hover:text-rose-600 cursor-pointer">Remove</button>
               </div>
             ) : (
               <button type="button" onClick={chooseUpload}
-                className="flex h-10 items-center justify-center gap-2 rounded-[10px] bg-[#F6F7FA] font-sans text-[13px] font-semibold text-ink-2 hover:bg-[#EEF0FF] dark:bg-night-soft dark:text-night-ink cursor-pointer">
+                className="flex h-10 items-center justify-center gap-2 rounded-[10px] bg-[#F6F7FA] font-sans text-[16px] font-semibold text-ink-2 hover:bg-[#EEF0FF] dark:bg-night-soft dark:text-night-ink cursor-pointer">
                 <UploadIcon className="h-4 w-4" /> Choose a CSV file
               </button>
             )}
@@ -302,8 +302,8 @@ const Home = ({ onSignIn, onOpenProject, onNewProject, focusStep }) => {
       {/* What do you want to do? */}
       <section className="flex flex-col gap-3.5">
         <div className="flex items-baseline justify-between gap-4">
-          <h2 className="font-display text-[21px] font-bold">What do you want to do?</h2>
-          <span className="hidden font-sans text-[13px] text-muted sm:block dark:text-night-muted">Every tool, grouped by research step</span>
+          <h2 className="font-display text-[23px] font-bold">What do you want to do?</h2>
+          <span className="hidden font-sans text-[16px] text-muted sm:block dark:text-night-muted">Every tool, grouped by research step</span>
         </div>
         {/* Phones: one compact list; a step opens to show its tools */}
         <div className="flex flex-col rounded-2xl border border-line bg-surface sm:hidden dark:border-night-line dark:bg-night-surface">
@@ -313,9 +313,9 @@ const Home = ({ onSignIn, onOpenProject, onNewProject, focusStep }) => {
               <div key={step.id} className={index > 0 ? 'border-t border-[#F0F2F6] dark:border-night-line' : ''}>
                 <button type="button" onClick={() => setOpenStep(expanded ? null : step.id)} aria-expanded={expanded}
                   className="flex min-h-[52px] w-full items-center gap-3 px-3.5 text-left cursor-pointer">
-                  <span className="w-5 font-mono text-[11.5px] font-semibold text-brand-indigo dark:text-brand-periwinkle">{step.number}</span>
+                  <span className="w-5 font-mono text-[14.5px] font-semibold text-brand-indigo dark:text-brand-periwinkle">{step.number}</span>
                   <span className="flex min-w-0 flex-1 flex-col py-2">
-                    <span className="font-sans text-[14.5px] font-semibold">{step.title}</span>
+                    <span className="font-sans text-[16.5px] font-semibold">{step.title}</span>
                     <span className="truncate font-sans text-xs text-muted dark:text-night-muted">{step.tools.map(id => TOOLS[id].label).join(', ')}</span>
                   </span>
                   <ChevronRightIcon className={`h-4 w-4 text-faint transition-transform ${expanded ? 'rotate-90' : ''}`} />
@@ -342,11 +342,11 @@ const Home = ({ onSignIn, onOpenProject, onNewProject, focusStep }) => {
                   ? 'border-[#C7CCF9] shadow-[0_10px_24px_-18px_rgba(79,70,229,0.55)] dark:border-brand-indigo/50'
                   : 'border-line dark:border-night-line'} ${highlight === step.id ? 'ring-2 ring-brand-orange ring-offset-2 ring-offset-canvas dark:ring-offset-night' : ''}`}>
                 <div className="flex items-center gap-2.5">
-                  <span className="flex h-6 w-6 items-center justify-center rounded-lg font-mono text-[11px] font-semibold text-white"
+                  <span className="flex h-6 w-6 items-center justify-center rounded-lg font-mono text-[14px] font-semibold text-white"
                     style={{ backgroundImage: `linear-gradient(135deg, ${step.accent.from}, ${step.accent.to})` }}>{step.number}</span>
-                  <h3 className="font-display text-[17px] font-bold">{step.title}</h3>
+                  <h3 className="font-display text-[19px] font-bold">{step.title}</h3>
                 </div>
-                <p className="font-sans text-[13px] leading-[1.5] text-muted dark:text-night-muted">{step.blurb}</p>
+                <p className="font-sans text-[16px] leading-[1.5] text-muted dark:text-night-muted">{step.blurb}</p>
                 <div className="flex flex-wrap gap-2">
                   {step.tools.map(toolId => (
                     <ToolButton key={toolId} id={toolId} accent={step.accent} featured={step.featured === toolId}
@@ -364,7 +364,7 @@ const Home = ({ onSignIn, onOpenProject, onNewProject, focusStep }) => {
           <Card className={`flex flex-col py-1.5 ${invitations.length > 0 ? 'lg:col-span-2' : 'lg:col-span-3'}`}>
             <div className="flex items-center justify-between px-[18px] pb-2 pt-3">
               <h3 className="font-display text-base font-bold">Recent projects</h3>
-              <button type="button" onClick={() => onOpenProject(null)} className="font-sans text-[13px] font-semibold text-brand-indigo hover:text-brand-violet dark:text-brand-periwinkle cursor-pointer">All projects</button>
+              <button type="button" onClick={() => onOpenProject(null)} className="font-sans text-[16px] font-semibold text-brand-indigo hover:text-brand-violet dark:text-brand-periwinkle cursor-pointer">All projects</button>
             </div>
             {recentProjects.map((project, index) => {
               const shared = project.role && project.role !== 'owner';
@@ -373,22 +373,22 @@ const Home = ({ onSignIn, onOpenProject, onNewProject, focusStep }) => {
                   className="flex items-center gap-3.5 border-t border-[#F0F2F6] px-[18px] py-3 text-left hover:bg-soft dark:border-night-line dark:hover:bg-night-soft cursor-pointer">
                   <span className={`h-[9px] w-[9px] shrink-0 rounded-full ${PROJECT_DOTS[index % PROJECT_DOTS.length]}`} />
                   <span className="min-w-0 flex-1 truncate font-sans text-sm font-semibold">{project.name}</span>
-                  <span className="hidden w-[210px] truncate font-sans text-[12.5px] text-muted sm:block dark:text-night-muted">
+                  <span className="hidden w-[210px] truncate font-sans text-[15.5px] text-muted sm:block dark:text-night-muted">
                     {shared
                       ? `${project.result_count} analyses · shared by ${project.owner?.full_name?.split(' ')[0] || 'a colleague'}`
                       : `${project.result_count} ${project.result_count === 1 ? 'analysis' : 'analyses'} · ${project.dataset_count} ${project.dataset_count === 1 ? 'dataset' : 'datasets'}`}
                   </span>
                   <span className="hidden sm:flex">
-                    <span className={`flex h-6 w-6 items-center justify-center rounded-full border-2 border-surface text-[10.5px] font-bold text-white dark:border-night-surface ${shared ? 'bg-brand-orange' : 'bg-brand-navy dark:bg-night-soft'}`}>
+                    <span className={`flex h-6 w-6 items-center justify-center rounded-full border-2 border-surface text-[13.5px] font-bold text-white dark:border-night-surface ${shared ? 'bg-brand-orange' : 'bg-brand-navy dark:bg-night-soft'}`}>
                       {(project.owner?.full_name || '?').charAt(0).toUpperCase()}
                     </span>
                     {project.member_count > 0 && (
-                      <span className="-ml-[7px] flex h-6 w-6 items-center justify-center rounded-full border-2 border-surface bg-brand-emerald text-[10px] font-bold text-white dark:border-night-surface">
+                      <span className="-ml-[7px] flex h-6 w-6 items-center justify-center rounded-full border-2 border-surface bg-brand-emerald text-[13px] font-bold text-white dark:border-night-surface">
                         +{project.member_count}
                       </span>
                     )}
                   </span>
-                  <span className="shrink-0 whitespace-nowrap text-right font-mono text-[11.5px] text-faint sm:w-[96px]">{relativeTime(project.updated_at)}</span>
+                  <span className="shrink-0 whitespace-nowrap text-right font-mono text-[14.5px] text-faint sm:w-[96px]">{relativeTime(project.updated_at)}</span>
                 </button>
               );
             })}
@@ -399,13 +399,13 @@ const Home = ({ onSignIn, onOpenProject, onNewProject, focusStep }) => {
               <h3 className="font-display text-base font-bold">Invitations</h3>
               {invitations.slice(0, 2).map(invitation => (
                 <div key={invitation.id} className="flex flex-col gap-3">
-                  <p className="font-sans text-[13.5px] leading-[1.5] text-ink-2 dark:text-night-ink">
+                  <p className="font-sans text-[16.5px] leading-[1.5] text-ink-2 dark:text-night-ink">
                     <strong>{invitation.invited_by?.full_name || invitation.invited_by?.email}</strong> invited you to{' '}
                     <strong>{invitation.project_name}</strong> as {invitation.role === 'editor' ? 'an editor' : 'a viewer'}.
                   </p>
                   <div className="flex gap-2">
-                    <button type="button" onClick={() => answerInvitation(invitation, true)} className="h-9 rounded-[9px] bg-brand-navy px-4 font-sans text-[13px] font-semibold text-white hover:bg-[#1E293B] dark:bg-night-ink dark:text-night cursor-pointer">Accept</button>
-                    <button type="button" onClick={() => answerInvitation(invitation, false)} className="h-9 rounded-[9px] border border-[#DDE1EA] px-3.5 font-sans text-[13px] font-medium text-ink-2 hover:bg-soft dark:border-night-line dark:text-night-muted cursor-pointer">Decline</button>
+                    <button type="button" onClick={() => answerInvitation(invitation, true)} className="h-9 rounded-[9px] bg-brand-navy px-4 font-sans text-[16px] font-semibold text-white hover:bg-[#1E293B] dark:bg-night-ink dark:text-night cursor-pointer">Accept</button>
+                    <button type="button" onClick={() => answerInvitation(invitation, false)} className="h-9 rounded-[9px] border border-[#DDE1EA] px-3.5 font-sans text-[16px] font-medium text-ink-2 hover:bg-soft dark:border-night-line dark:text-night-muted cursor-pointer">Decline</button>
                   </div>
                 </div>
               ))}

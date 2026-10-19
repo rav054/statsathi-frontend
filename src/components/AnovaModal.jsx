@@ -652,7 +652,7 @@ const AnovaModal = ({ isOpen, onClose, initialAnalysis = null }) => {
               <Table className="h-4 w-4 text-brand-orange" />
               <span>Multi-Factor Structured Interaction Grid Table & Chart</span>
             </h5>
-            <p className="font-sans text-[10px] text-slate-400 mt-0.5">
+            <p className="font-sans text-[13px] text-slate-400 mt-0.5">
               Cross-tabulated mean comparison grid & multi-series interaction graph (Word/Excel exportable format).
             </p>
           </div>
@@ -679,7 +679,7 @@ const AnovaModal = ({ isOpen, onClose, initialAnalysis = null }) => {
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 bg-slate-50/60 p-3 rounded-xl border border-slate-100">
           {/* Row Factor */}
           <div className="space-y-1">
-            <label className="font-sans text-[9px] font-bold text-slate-400 uppercase">Row Factor (Vertical)</label>
+            <label className="font-sans text-[12px] font-bold text-slate-400 uppercase">Row Factor (Vertical)</label>
             <select
               value={gridRowFactor || rFactor}
               onChange={(e) => setGridRowFactor(e.target.value)}
@@ -693,7 +693,7 @@ const AnovaModal = ({ isOpen, onClose, initialAnalysis = null }) => {
 
           {/* Col Factor 1 */}
           <div className="space-y-1">
-            <label className="font-sans text-[9px] font-bold text-slate-400 uppercase">Column Factor 1 (Primary)</label>
+            <label className="font-sans text-[12px] font-bold text-slate-400 uppercase">Column Factor 1 (Primary)</label>
             <select
               value={gridColFactor1 || c1Factor}
               onChange={(e) => setGridColFactor1(e.target.value)}
@@ -707,7 +707,7 @@ const AnovaModal = ({ isOpen, onClose, initialAnalysis = null }) => {
 
           {/* Col Factor 2 */}
           <div className="space-y-1">
-            <label className="font-sans text-[9px] font-bold text-slate-400 uppercase">Column Factor 2 (Sub-header)</label>
+            <label className="font-sans text-[12px] font-bold text-slate-400 uppercase">Column Factor 2 (Sub-header)</label>
             <select
               value={gridColFactor2}
               onChange={(e) => setGridColFactor2(e.target.value)}
@@ -722,7 +722,7 @@ const AnovaModal = ({ isOpen, onClose, initialAnalysis = null }) => {
 
           {/* Display Value */}
           <div className="space-y-1">
-            <label className="font-sans text-[9px] font-bold text-slate-400 uppercase">Cell Content Format</label>
+            <label className="font-sans text-[12px] font-bold text-slate-400 uppercase">Cell Content Format</label>
             <select
               value={gridCellDisplay}
               onChange={(e) => setGridCellDisplay(e.target.value)}
@@ -818,7 +818,7 @@ const AnovaModal = ({ isOpen, onClose, initialAnalysis = null }) => {
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 {/* Font Size */}
                 <div className="space-y-1">
-                  <label className="font-sans text-[9px] font-bold text-slate-400 uppercase">FONT SIZE (PX)</label>
+                  <label className="font-sans text-[12px] font-bold text-slate-400 uppercase">FONT SIZE (PX)</label>
                   <input
                     type="number"
                     min="6"
@@ -831,7 +831,7 @@ const AnovaModal = ({ isOpen, onClose, initialAnalysis = null }) => {
 
                 {/* Font Color */}
                 <div className="space-y-1">
-                  <label className="font-sans text-[9px] font-bold text-slate-400 uppercase">FONT COLOR</label>
+                  <label className="font-sans text-[12px] font-bold text-slate-400 uppercase">FONT COLOR</label>
                   <div className="flex space-x-2">
                     <input
                       type="color"
@@ -851,7 +851,7 @@ const AnovaModal = ({ isOpen, onClose, initialAnalysis = null }) => {
 
                 {/* Color Scheme */}
                 <div className="space-y-1">
-                  <label className="font-sans text-[9px] font-bold text-slate-400 uppercase">COLOR SCHEME</label>
+                  <label className="font-sans text-[12px] font-bold text-slate-400 uppercase">COLOR SCHEME</label>
                   <select
                     value={gridTheme}
                     onChange={(e) => setGridTheme(e.target.value)}
@@ -875,7 +875,7 @@ const AnovaModal = ({ isOpen, onClose, initialAnalysis = null }) => {
 
                 {/* Bar Color */}
                 <div className="space-y-1">
-                  <label className="font-sans text-[9px] font-bold text-slate-400 uppercase">BAR COLOR</label>
+                  <label className="font-sans text-[12px] font-bold text-slate-400 uppercase">BAR COLOR</label>
                   <div className="flex space-x-2">
                     <input
                       type="color"
@@ -904,7 +904,7 @@ const AnovaModal = ({ isOpen, onClose, initialAnalysis = null }) => {
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4 pt-1">
                 {/* Chart Type */}
                 <div className="space-y-1">
-                  <label className="font-sans text-[9px] font-bold text-slate-400 uppercase">CHART TYPE</label>
+                  <label className="font-sans text-[12px] font-bold text-slate-400 uppercase">CHART TYPE</label>
                   <select
                     value={gridChartType}
                     onChange={(e) => setGridChartType(e.target.value)}
@@ -917,7 +917,7 @@ const AnovaModal = ({ isOpen, onClose, initialAnalysis = null }) => {
 
                 {/* Chart Title */}
                 <div className="space-y-1">
-                  <label className="font-sans text-[9px] font-bold text-slate-400 uppercase">CHART TITLE</label>
+                  <label className="font-sans text-[12px] font-bold text-slate-400 uppercase">CHART TITLE</label>
                   <input
                     type="text"
                     placeholder="e.g. Mean Separation Plot"
@@ -929,7 +929,7 @@ const AnovaModal = ({ isOpen, onClose, initialAnalysis = null }) => {
 
                 {/* X-Axis Label */}
                 <div className="space-y-1">
-                  <label className="font-sans text-[9px] font-bold text-slate-400 uppercase">X-AXIS LABEL</label>
+                  <label className="font-sans text-[12px] font-bold text-slate-400 uppercase">X-AXIS LABEL</label>
                   <input
                     type="text"
                     placeholder={rFactor || "Treatment Groups"}
@@ -941,7 +941,7 @@ const AnovaModal = ({ isOpen, onClose, initialAnalysis = null }) => {
 
                 {/* Y-Axis Label */}
                 <div className="space-y-1">
-                  <label className="font-sans text-[9px] font-bold text-slate-400 uppercase">Y-AXIS LABEL</label>
+                  <label className="font-sans text-[12px] font-bold text-slate-400 uppercase">Y-AXIS LABEL</label>
                   <input
                     type="text"
                     placeholder={depVar || "Response Mean"}
@@ -956,7 +956,7 @@ const AnovaModal = ({ isOpen, onClose, initialAnalysis = null }) => {
             {/* Plot Container */}
             <div className="w-full bg-white rounded-xl p-3 border border-slate-100 shadow-xs flex flex-col items-center">
               <div className="w-full flex items-center justify-between border-b border-slate-100 pb-2 mb-2">
-                <span className="font-sans text-[11px] font-semibold text-slate-600">
+                <span className="font-sans text-[14px] font-semibold text-slate-600">
                   {rFactor} × {c1Factor}{c2Factor ? ' × ' + c2Factor : ''} Interaction Graph
                 </span>
                 <div className="flex items-center space-x-2">
@@ -964,7 +964,7 @@ const AnovaModal = ({ isOpen, onClose, initialAnalysis = null }) => {
                   <button
                     type="button"
                     onClick={() => handleDownloadGridChart('png', elementId)}
-                    className="inline-flex items-center space-x-1 rounded-lg border border-slate-200 bg-white px-2 py-1 font-sans text-[10px] font-semibold text-slate-600 hover:bg-slate-50 transition-colors cursor-pointer"
+                    className="inline-flex items-center space-x-1 rounded-lg border border-slate-200 bg-white px-2 py-1 font-sans text-[13px] font-semibold text-slate-600 hover:bg-slate-50 transition-colors cursor-pointer"
                   >
                     <Download className="h-3 w-3" />
                     <span>PNG</span>
@@ -972,7 +972,7 @@ const AnovaModal = ({ isOpen, onClose, initialAnalysis = null }) => {
                   <button
                     type="button"
                     onClick={() => handleDownloadGridChart('svg', elementId)}
-                    className="inline-flex items-center space-x-1 rounded-lg border border-slate-200 bg-white px-2 py-1 font-sans text-[10px] font-semibold text-slate-600 hover:bg-slate-50 transition-colors cursor-pointer"
+                    className="inline-flex items-center space-x-1 rounded-lg border border-slate-200 bg-white px-2 py-1 font-sans text-[13px] font-semibold text-slate-600 hover:bg-slate-50 transition-colors cursor-pointer"
                   >
                     <Download className="h-3 w-3" />
                     <span>SVG</span>
@@ -1886,19 +1886,19 @@ const AnovaModal = ({ isOpen, onClose, initialAnalysis = null }) => {
                           <h4 className="font-sans text-xs font-bold text-slate-800">
                             {DATA_FORMAT_GUIDES[testType].title}
                           </h4>
-                          <p className="font-sans text-[11px] text-slate-500 mt-0.5">
+                          <p className="font-sans text-[14px] text-slate-500 mt-0.5">
                             {DATA_FORMAT_GUIDES[testType].description}
                           </p>
                         </div>
-                        <span className="rounded-full bg-brand-indigo/10 p-1 text-brand-indigo text-[10px] font-bold px-2.5">
+                        <span className="rounded-full bg-brand-indigo/10 p-1 text-brand-indigo text-[13px] font-bold px-2.5">
                           Required Columns
                         </span>
                       </div>
 
                       {/* Sample Table */}
                       <div className="overflow-x-auto rounded-xl border border-slate-200/60 bg-white shadow-xs">
-                        <table className="min-w-full divide-y divide-slate-100 text-left font-sans text-[11px]">
-                          <thead className="bg-slate-50 text-slate-500 font-bold uppercase tracking-wider text-[10px]">
+                        <table className="min-w-full divide-y divide-slate-100 text-left font-sans text-[14px]">
+                          <thead className="bg-slate-50 text-slate-500 font-bold uppercase tracking-wider text-[13px]">
                             <tr>
                               {DATA_FORMAT_GUIDES[testType].headers.map(hdr => (
                                 <th key={hdr} className="px-4 py-2 border-b border-slate-100">{hdr}</th>
@@ -1917,7 +1917,7 @@ const AnovaModal = ({ isOpen, onClose, initialAnalysis = null }) => {
                         </table>
                       </div>
 
-                      <div className="flex items-start space-x-1.5 text-[10px] text-slate-500 bg-amber-50/40 border border-amber-100/50 rounded-xl p-2.5">
+                      <div className="flex items-start space-x-1.5 text-[13px] text-slate-500 bg-amber-50/40 border border-amber-100/50 rounded-xl p-2.5">
                         <Info className="h-3.5 w-3.5 text-brand-orange shrink-0 mt-0.5" />
                         <span>
                           <strong>Layout Tip:</strong> {DATA_FORMAT_GUIDES[testType].note}
@@ -2092,17 +2092,17 @@ const AnovaModal = ({ isOpen, onClose, initialAnalysis = null }) => {
                 </div>
                 <div className="flex flex-wrap gap-2">
                   <div className="flex items-center space-x-1 bg-emerald-50/50 p-1 rounded-xl border border-emerald-100">
-                    <span className="font-sans text-[9px] font-bold text-emerald-600 px-2 uppercase shrink-0">Report:</span>
+                    <span className="font-sans text-[12px] font-bold text-emerald-600 px-2 uppercase shrink-0">Report:</span>
                     <button
                       onClick={() => handleDownloadReport('txt')}
-                      className="rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-sans text-[10px] font-bold px-2.5 py-1.5 transition-colors cursor-pointer"
+                      className="rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-sans text-[13px] font-bold px-2.5 py-1.5 transition-colors cursor-pointer"
                       title="Save as Text"
                     >
                       TXT
                     </button>
                     <button
                       onClick={() => handleDownloadReport('doc')}
-                      className="rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-sans text-[10px] font-bold px-2.5 py-1.5 transition-colors cursor-pointer"
+                      className="rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-sans text-[13px] font-bold px-2.5 py-1.5 transition-colors cursor-pointer"
                       title="Export to Word"
                     >
                       Word
@@ -2167,27 +2167,27 @@ const AnovaModal = ({ isOpen, onClose, initialAnalysis = null }) => {
               {testType === 'oneway' && (
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
-                    <p className="font-sans text-[10px] font-bold text-slate-400 uppercase">Treatment F-Statistic</p>
+                    <p className="font-sans text-[13px] font-bold text-slate-400 uppercase">Treatment F-Statistic</p>
                     <p className="font-display text-lg font-bold text-slate-800 mt-1">
                       {results.anova_table?.f_statistic !== undefined ? `F = ${results.anova_table.f_statistic.toFixed(3)}` : 'N/A'}
                     </p>
-                    <p className="font-sans text-[10px] text-slate-400 mt-0.5">
+                    <p className="font-sans text-[13px] text-slate-400 mt-0.5">
                       df = ({results.anova_table?.df_between}, {results.anova_table?.df_within?.toFixed(2).replace(/\.00$/, '')})
                     </p>
                   </div>
                   <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
-                    <p className="font-sans text-[10px] font-bold text-slate-400 uppercase">Treatment p-value</p>
+                    <p className="font-sans text-[13px] font-bold text-slate-400 uppercase">Treatment p-value</p>
                     <p className="font-display text-lg font-bold text-slate-800 mt-1">
                       {formatPValue(results.anova_table?.p_value)}
                     </p>
-                    <span className={`inline-block mt-1 rounded px-1.5 py-0.5 font-sans text-[8px] font-bold ${
+                    <span className={`inline-block mt-1 rounded px-1.5 py-0.5 font-sans text-[11px] font-bold ${
                       results.anova_table?.significant ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-50 text-slate-400'
                     }`}>
                       {results.anova_table?.significant ? 'Significant' : 'Not Significant'}
                     </span>
                   </div>
                   <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
-                    <p className="font-sans text-[10px] font-bold text-slate-400 uppercase">Treatment Effect (H₀)</p>
+                    <p className="font-sans text-[13px] font-bold text-slate-400 uppercase">Treatment Effect (H₀)</p>
                     <p className="font-sans text-xs font-semibold text-slate-600 mt-2">
                       {results.anova_table?.significant ? 'Reject Null. Treatments differ significantly.' : 'Fail to Reject Null. No treatment differences.'}
                     </p>
@@ -2198,31 +2198,31 @@ const AnovaModal = ({ isOpen, onClose, initialAnalysis = null }) => {
               {testType === 'rbd_oneway' && (
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
-                    <p className="font-sans text-[10px] font-bold text-slate-400 uppercase">Treatment F-Statistic</p>
+                    <p className="font-sans text-[13px] font-bold text-slate-400 uppercase">Treatment F-Statistic</p>
                     <p className="font-display text-lg font-bold text-slate-800 mt-1">
                       {results.anova_table?.f_statistic !== undefined ? `F = ${results.anova_table.f_statistic.toFixed(3)}` : 'N/A'}
                     </p>
-                    <p className="font-sans text-[10px] text-slate-400 mt-0.5">
+                    <p className="font-sans text-[13px] text-slate-400 mt-0.5">
                       df = ({results.anova_table?.df_between}, {results.anova_table?.df_within})
                     </p>
                   </div>
                   <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
-                    <p className="font-sans text-[10px] font-bold text-slate-400 uppercase">Treatment p-value</p>
+                    <p className="font-sans text-[13px] font-bold text-slate-400 uppercase">Treatment p-value</p>
                     <p className="font-display text-lg font-bold text-slate-800 mt-1">
                       {formatPValue(results.anova_table?.p_value)}
                     </p>
-                    <span className={`inline-block mt-1 rounded px-1.5 py-0.5 font-sans text-[8px] font-bold ${
+                    <span className={`inline-block mt-1 rounded px-1.5 py-0.5 font-sans text-[11px] font-bold ${
                       results.anova_table?.significant ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-50 text-slate-400'
                     }`}>
                       {results.anova_table?.significant ? 'Significant' : 'Not Significant'}
                     </span>
                   </div>
                   <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
-                    <p className="font-sans text-[10px] font-bold text-slate-400 uppercase">Replications / Blocks</p>
+                    <p className="font-sans text-[13px] font-bold text-slate-400 uppercase">Replications / Blocks</p>
                     <p className="font-display text-lg font-bold text-slate-800 mt-1">
                       {formatPValue(results.anova_table?.p_rep)}
                     </p>
-                    <span className={`inline-block mt-1 rounded px-1.5 py-0.5 font-sans text-[8px] font-bold ${
+                    <span className={`inline-block mt-1 rounded px-1.5 py-0.5 font-sans text-[11px] font-bold ${
                       results.anova_table?.significant_rep ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-50 text-slate-400'
                     }`}>
                       {results.anova_table?.significant_rep ? 'Significant Block Effect' : 'No Block Effect'}
@@ -2234,33 +2234,33 @@ const AnovaModal = ({ isOpen, onClose, initialAnalysis = null }) => {
               {testType === 'lsd' && (
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
-                    <p className="font-sans text-[10px] font-bold text-slate-400 uppercase">Rows ({repVar || 'Row Factor'})</p>
+                    <p className="font-sans text-[13px] font-bold text-slate-400 uppercase">Rows ({repVar || 'Row Factor'})</p>
                     <p className="font-display text-lg font-bold text-slate-800 mt-1">
                       {results.anova_table?.p_row !== undefined ? formatPValue(results.anova_table.p_row) : 'N/A'}
                     </p>
-                    <span className={`inline-block mt-1 rounded px-1.5 py-0.5 font-sans text-[8px] font-bold ${
+                    <span className={`inline-block mt-1 rounded px-1.5 py-0.5 font-sans text-[11px] font-bold ${
                       results.anova_table?.significant_row ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-50 text-slate-400'
                     }`}>
                       {results.anova_table?.significant_row ? 'Significant Row Effect' : 'No Row Effect'}
                     </span>
                   </div>
                   <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
-                    <p className="font-sans text-[10px] font-bold text-slate-400 uppercase">Columns ({indVar2 || 'Column Factor'})</p>
+                    <p className="font-sans text-[13px] font-bold text-slate-400 uppercase">Columns ({indVar2 || 'Column Factor'})</p>
                     <p className="font-display text-lg font-bold text-slate-800 mt-1">
                       {results.anova_table?.p_col !== undefined ? formatPValue(results.anova_table.p_col) : 'N/A'}
                     </p>
-                    <span className={`inline-block mt-1 rounded px-1.5 py-0.5 font-sans text-[8px] font-bold ${
+                    <span className={`inline-block mt-1 rounded px-1.5 py-0.5 font-sans text-[11px] font-bold ${
                       results.anova_table?.significant_col ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-50 text-slate-400'
                     }`}>
                       {results.anova_table?.significant_col ? 'Significant Column Effect' : 'No Column Effect'}
                     </span>
                   </div>
                   <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
-                    <p className="font-sans text-[10px] font-bold text-slate-400 uppercase">Treatments ({indVar1})</p>
+                    <p className="font-sans text-[13px] font-bold text-slate-400 uppercase">Treatments ({indVar1})</p>
                     <p className="font-display text-lg font-bold text-slate-800 mt-1">
                       {results.anova_table?.p_value !== undefined ? formatPValue(results.anova_table.p_value) : 'N/A'}
                     </p>
-                    <span className={`inline-block mt-1 rounded px-1.5 py-0.5 font-sans text-[8px] font-bold ${
+                    <span className={`inline-block mt-1 rounded px-1.5 py-0.5 font-sans text-[11px] font-bold ${
                       results.anova_table?.significant ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-50 text-slate-400'
                     }`}>
                       {results.anova_table?.significant ? 'Significant' : 'Not Significant'}
@@ -2272,33 +2272,33 @@ const AnovaModal = ({ isOpen, onClose, initialAnalysis = null }) => {
               {['twoway', 'rbd_twoway', 'splitplot'].includes(testType) && (
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
-                    <p className="font-sans text-[10px] font-bold text-slate-400 uppercase">{indVar1} Main Effect</p>
+                    <p className="font-sans text-[13px] font-bold text-slate-400 uppercase">{indVar1} Main Effect</p>
                     <p className="font-display text-lg font-bold text-slate-800 mt-1">
                       {formatPValue(results.anova_table?.factorA?.p_value)}
                     </p>
-                    <span className={`inline-block mt-1 rounded px-1.5 py-0.5 font-sans text-[8px] font-bold ${
+                    <span className={`inline-block mt-1 rounded px-1.5 py-0.5 font-sans text-[11px] font-bold ${
                       results.anova_table?.factorA?.significant ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-50 text-slate-400'
                     }`}>
                       {results.anova_table?.factorA?.significant ? 'Significant' : 'Not Significant'}
                     </span>
                   </div>
                   <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
-                    <p className="font-sans text-[10px] font-bold text-slate-400 uppercase">{indVar2} Main Effect</p>
+                    <p className="font-sans text-[13px] font-bold text-slate-400 uppercase">{indVar2} Main Effect</p>
                     <p className="font-display text-lg font-bold text-slate-800 mt-1">
                       {formatPValue(results.anova_table?.factorB?.p_value)}
                     </p>
-                    <span className={`inline-block mt-1 rounded px-1.5 py-0.5 font-sans text-[8px] font-bold ${
+                    <span className={`inline-block mt-1 rounded px-1.5 py-0.5 font-sans text-[11px] font-bold ${
                       results.anova_table?.factorB?.significant ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-50 text-slate-400'
                     }`}>
                       {results.anova_table?.factorB?.significant ? 'Significant' : 'Not Significant'}
                     </span>
                   </div>
                   <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
-                    <p className="font-sans text-[10px] font-bold text-slate-400 uppercase">Interaction Effect (A x B)</p>
+                    <p className="font-sans text-[13px] font-bold text-slate-400 uppercase">Interaction Effect (A x B)</p>
                     <p className="font-display text-lg font-bold text-slate-800 mt-1">
                       {formatPValue(results.anova_table?.interaction?.p_value)}
                     </p>
-                    <span className={`inline-block mt-1 rounded px-1.5 py-0.5 font-sans text-[8px] font-bold ${
+                    <span className={`inline-block mt-1 rounded px-1.5 py-0.5 font-sans text-[11px] font-bold ${
                       results.anova_table?.interaction?.significant ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-50 text-slate-400'
                     }`}>
                       {results.anova_table?.interaction?.significant ? 'Significant' : 'Not Significant'}
@@ -2335,7 +2335,7 @@ const AnovaModal = ({ isOpen, onClose, initialAnalysis = null }) => {
                             <td className="py-2.5 text-right font-medium">{results.anova_table?.f_statistic?.toFixed(3)}</td>
                             <td className="py-2.5 text-right">{formatPValue(results.anova_table?.p_value)}</td>
                             <td className="py-2.5 text-right">
-                              <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                              <span className={`px-1.5 py-0.5 rounded text-[13px] font-bold ${
                                 results.anova_table?.significant ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-50 text-slate-400'
                               }`}>
                                 {results.anova_table?.significant ? 'Significant' : 'Not Significant'}
@@ -2374,7 +2374,7 @@ const AnovaModal = ({ isOpen, onClose, initialAnalysis = null }) => {
                             <td className="py-2.5 text-right font-medium">{results.anova_table?.f_rep?.toFixed(3)}</td>
                             <td className="py-2.5 text-right">{formatPValue(results.anova_table?.p_rep)}</td>
                             <td className="py-2.5 text-right">
-                              <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                              <span className={`px-1.5 py-0.5 rounded text-[13px] font-bold ${
                                 results.anova_table?.significant_rep ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-50 text-slate-400'
                               }`}>
                                 {results.anova_table?.significant_rep ? 'Significant' : 'Not Significant'}
@@ -2389,7 +2389,7 @@ const AnovaModal = ({ isOpen, onClose, initialAnalysis = null }) => {
                             <td className="py-2.5 text-right font-medium">{results.anova_table?.f_statistic?.toFixed(3)}</td>
                             <td className="py-2.5 text-right">{formatPValue(results.anova_table?.p_value)}</td>
                             <td className="py-2.5 text-right">
-                              <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                              <span className={`px-1.5 py-0.5 rounded text-[13px] font-bold ${
                                 results.anova_table?.significant ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-50 text-slate-400'
                               }`}>
                                 {results.anova_table?.significant ? 'Significant' : 'Not Significant'}
@@ -2428,7 +2428,7 @@ const AnovaModal = ({ isOpen, onClose, initialAnalysis = null }) => {
                             <td className="py-2.5 text-right font-medium">{results.anova_table?.f_row?.toFixed(3)}</td>
                             <td className="py-2.5 text-right">{formatPValue(results.anova_table?.p_row)}</td>
                             <td className="py-2.5 text-right">
-                              <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                              <span className={`px-1.5 py-0.5 rounded text-[13px] font-bold ${
                                 results.anova_table?.significant_row ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-50 text-slate-400'
                               }`}>
                                 {results.anova_table?.significant_row ? 'Significant' : 'Not Significant'}
@@ -2443,7 +2443,7 @@ const AnovaModal = ({ isOpen, onClose, initialAnalysis = null }) => {
                             <td className="py-2.5 text-right font-medium">{results.anova_table?.f_col?.toFixed(3)}</td>
                             <td className="py-2.5 text-right">{formatPValue(results.anova_table?.p_col)}</td>
                             <td className="py-2.5 text-right">
-                              <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                              <span className={`px-1.5 py-0.5 rounded text-[13px] font-bold ${
                                 results.anova_table?.significant_col ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-50 text-slate-400'
                               }`}>
                                 {results.anova_table?.significant_col ? 'Significant' : 'Not Significant'}
@@ -2458,7 +2458,7 @@ const AnovaModal = ({ isOpen, onClose, initialAnalysis = null }) => {
                             <td className="py-2.5 text-right font-medium">{results.anova_table?.f_statistic?.toFixed(3)}</td>
                             <td className="py-2.5 text-right">{formatPValue(results.anova_table?.p_value)}</td>
                             <td className="py-2.5 text-right">
-                              <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                              <span className={`px-1.5 py-0.5 rounded text-[13px] font-bold ${
                                 results.anova_table?.significant ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-50 text-slate-400'
                               }`}>
                                 {results.anova_table?.significant ? 'Significant' : 'Not Significant'}
@@ -2497,7 +2497,7 @@ const AnovaModal = ({ isOpen, onClose, initialAnalysis = null }) => {
                             <td className="py-2.5 text-right font-medium">{results.anova_table?.factorA?.f_statistic?.toFixed(3)}</td>
                             <td className="py-2.5 text-right">{formatPValue(results.anova_table?.factorA?.p_value)}</td>
                             <td className="py-2.5 text-right">
-                              <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                              <span className={`px-1.5 py-0.5 rounded text-[13px] font-bold ${
                                 results.anova_table?.factorA?.significant ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-50 text-slate-400'
                               }`}>
                                 {results.anova_table?.factorA?.significant ? 'Significant' : 'Not Significant'}
@@ -2512,7 +2512,7 @@ const AnovaModal = ({ isOpen, onClose, initialAnalysis = null }) => {
                             <td className="py-2.5 text-right font-medium">{results.anova_table?.factorB?.f_statistic?.toFixed(3)}</td>
                             <td className="py-2.5 text-right">{formatPValue(results.anova_table?.factorB?.p_value)}</td>
                             <td className="py-2.5 text-right">
-                              <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                              <span className={`px-1.5 py-0.5 rounded text-[13px] font-bold ${
                                 results.anova_table?.factorB?.significant ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-50 text-slate-400'
                               }`}>
                                 {results.anova_table?.factorB?.significant ? 'Significant' : 'Not Significant'}
@@ -2527,7 +2527,7 @@ const AnovaModal = ({ isOpen, onClose, initialAnalysis = null }) => {
                             <td className="py-2.5 text-right font-medium">{results.anova_table?.interaction?.f_statistic?.toFixed(3)}</td>
                             <td className="py-2.5 text-right">{formatPValue(results.anova_table?.interaction?.p_value)}</td>
                             <td className="py-2.5 text-right">
-                              <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                              <span className={`px-1.5 py-0.5 rounded text-[13px] font-bold ${
                                 results.anova_table?.interaction?.significant ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-50 text-slate-400'
                               }`}>
                                 {results.anova_table?.interaction?.significant ? 'Significant' : 'Not Significant'}
@@ -2566,7 +2566,7 @@ const AnovaModal = ({ isOpen, onClose, initialAnalysis = null }) => {
                             <td className="py-2.5 text-right font-medium">{results.anova_table?.f_rep?.toFixed(3)}</td>
                             <td className="py-2.5 text-right">{formatPValue(results.anova_table?.p_rep)}</td>
                             <td className="py-2.5 text-right">
-                              <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                              <span className={`px-1.5 py-0.5 rounded text-[13px] font-bold ${
                                 results.anova_table?.significant_rep ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-50 text-slate-400'
                               }`}>
                                 {results.anova_table?.significant_rep ? 'Significant' : 'Not Significant'}
@@ -2581,7 +2581,7 @@ const AnovaModal = ({ isOpen, onClose, initialAnalysis = null }) => {
                             <td className="py-2.5 text-right font-medium">{results.anova_table?.factorA?.f_statistic?.toFixed(3)}</td>
                             <td className="py-2.5 text-right">{formatPValue(results.anova_table?.factorA?.p_value)}</td>
                             <td className="py-2.5 text-right">
-                              <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                              <span className={`px-1.5 py-0.5 rounded text-[13px] font-bold ${
                                 results.anova_table?.factorA?.significant ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-50 text-slate-400'
                               }`}>
                                 {results.anova_table?.factorA?.significant ? 'Significant' : 'Not Significant'}
@@ -2596,7 +2596,7 @@ const AnovaModal = ({ isOpen, onClose, initialAnalysis = null }) => {
                             <td className="py-2.5 text-right font-medium">{results.anova_table?.factorB?.f_statistic?.toFixed(3)}</td>
                             <td className="py-2.5 text-right">{formatPValue(results.anova_table?.factorB?.p_value)}</td>
                             <td className="py-2.5 text-right">
-                              <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                              <span className={`px-1.5 py-0.5 rounded text-[13px] font-bold ${
                                 results.anova_table?.factorB?.significant ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-50 text-slate-400'
                               }`}>
                                 {results.anova_table?.factorB?.significant ? 'Significant' : 'Not Significant'}
@@ -2611,7 +2611,7 @@ const AnovaModal = ({ isOpen, onClose, initialAnalysis = null }) => {
                             <td className="py-2.5 text-right font-medium">{results.anova_table?.interaction?.f_statistic?.toFixed(3)}</td>
                             <td className="py-2.5 text-right">{formatPValue(results.anova_table?.interaction?.p_value)}</td>
                             <td className="py-2.5 text-right">
-                              <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                              <span className={`px-1.5 py-0.5 rounded text-[13px] font-bold ${
                                 results.anova_table?.interaction?.significant ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-50 text-slate-400'
                               }`}>
                                 {results.anova_table?.interaction?.significant ? 'Significant' : 'Not Significant'}
@@ -2650,7 +2650,7 @@ const AnovaModal = ({ isOpen, onClose, initialAnalysis = null }) => {
                               <td className="py-2.5 text-right font-medium">{eff.f_statistic?.toFixed(3)}</td>
                               <td className="py-2.5 text-right">{formatPValue(eff.p_value)}</td>
                               <td className="py-2.5 text-right">
-                                <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                                <span className={`px-1.5 py-0.5 rounded text-[13px] font-bold ${
                                   eff.significant ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-50 text-slate-400'
                                 }`}>
                                   {eff.significant ? 'Significant' : 'Not Significant'}
@@ -2690,7 +2690,7 @@ const AnovaModal = ({ isOpen, onClose, initialAnalysis = null }) => {
                             <td className="py-2.5 text-right font-medium">{results.anova_table?.f_rep?.toFixed(3)}</td>
                             <td className="py-2.5 text-right">{formatPValue(results.anova_table?.p_rep)}</td>
                             <td className="py-2.5 text-right">
-                              <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                              <span className={`px-1.5 py-0.5 rounded text-[13px] font-bold ${
                                 results.anova_table?.significant_rep ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-50 text-slate-400'
                               }`}>
                                 {results.anova_table?.significant_rep ? 'Significant' : 'Not Significant'}
@@ -2705,7 +2705,7 @@ const AnovaModal = ({ isOpen, onClose, initialAnalysis = null }) => {
                             <td className="py-2.5 text-right font-medium">{results.anova_table?.factorA?.f_statistic?.toFixed(3)}</td>
                             <td className="py-2.5 text-right">{formatPValue(results.anova_table?.factorA?.p_value)}</td>
                             <td className="py-2.5 text-right">
-                              <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                              <span className={`px-1.5 py-0.5 rounded text-[13px] font-bold ${
                                 results.anova_table?.factorA?.significant ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-50 text-slate-400'
                               }`}>
                                 {results.anova_table?.factorA?.significant ? 'Significant' : 'Not Significant'}
@@ -2729,7 +2729,7 @@ const AnovaModal = ({ isOpen, onClose, initialAnalysis = null }) => {
                             <td className="py-2.5 text-right font-medium">{results.anova_table?.factorB?.f_statistic?.toFixed(3)}</td>
                             <td className="py-2.5 text-right">{formatPValue(results.anova_table?.factorB?.p_value)}</td>
                             <td className="py-2.5 text-right">
-                              <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                              <span className={`px-1.5 py-0.5 rounded text-[13px] font-bold ${
                                 results.anova_table?.factorB?.significant ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-50 text-slate-400'
                               }`}>
                                 {results.anova_table?.factorB?.significant ? 'Significant' : 'Not Significant'}
@@ -2744,7 +2744,7 @@ const AnovaModal = ({ isOpen, onClose, initialAnalysis = null }) => {
                             <td className="py-2.5 text-right font-medium">{results.anova_table?.interaction?.f_statistic?.toFixed(3)}</td>
                             <td className="py-2.5 text-right">{formatPValue(results.anova_table?.interaction?.p_value)}</td>
                             <td className="py-2.5 text-right">
-                              <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                              <span className={`px-1.5 py-0.5 rounded text-[13px] font-bold ${
                                 results.anova_table?.interaction?.significant ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-50 text-slate-400'
                               }`}>
                                 {results.anova_table?.interaction?.significant ? 'Significant' : 'Not Significant'}
@@ -2896,7 +2896,7 @@ const AnovaModal = ({ isOpen, onClose, initialAnalysis = null }) => {
                             <td className="py-2.5 text-right font-mono">{comp.mean_diff.toFixed(3)}</td>
                             <td className="py-2.5 text-right">{formatPValue(comp.p_value)}</td>
                             <td className="py-2.5 text-right">
-                              <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                              <span className={`px-1.5 py-0.5 rounded text-[13px] font-bold ${
                                 comp.significant ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-50 text-slate-400'
                               }`}>
                                 {comp.significant ? 'Significant' : 'Not Significant'}
@@ -2916,13 +2916,13 @@ const AnovaModal = ({ isOpen, onClose, initialAnalysis = null }) => {
                   <Info className="h-4 w-4 text-brand-indigo" />
                   <h5 className="font-display text-xs font-bold text-slate-700">Assumption Checks</h5>
                 </div>
-                <p className="font-sans text-[10px] text-slate-400 mb-3 leading-normal">
+                <p className="font-sans text-[13px] text-slate-400 mb-3 leading-normal">
                   ANOVA models assume normally distributed data and homogeneous variances within groups.
                 </p>
                 <div className="space-y-3">
                   {/* Shapiro-Wilk Normality Checks */}
                   <div className="space-y-2">
-                    <p className="font-sans text-[10px] font-bold text-slate-500 uppercase tracking-wider">Normality Check (Shapiro-Wilk)</p>
+                    <p className="font-sans text-[13px] font-bold text-slate-500 uppercase tracking-wider">Normality Check (Shapiro-Wilk)</p>
                     {Object.entries(results.shapiro_results || {}).map(([column, meta]) => (
                       <div key={column} className="flex justify-between items-center text-xs border-b border-slate-50 pb-2">
                         <span className="font-semibold text-slate-700 font-sans">{column}</span>
@@ -2932,7 +2932,7 @@ const AnovaModal = ({ isOpen, onClose, initialAnalysis = null }) => {
                           <div className="flex space-x-4 items-center">
                             <span className="text-slate-500 font-mono">W = {meta.stat.toFixed(3)}</span>
                             <span className="text-slate-500 font-mono">{formatPValue(meta.p_value)}</span>
-                            <span className={`font-bold px-1.5 py-0.5 rounded text-[10px] ${
+                            <span className={`font-bold px-1.5 py-0.5 rounded text-[13px] ${
                               meta.normal ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'
                             }`}>
                               {meta.normal ? 'Normally Distributed' : (column === 'Model Residuals' ? 'Not Normal' : 'Non-Normal Distribution')}
@@ -2949,20 +2949,20 @@ const AnovaModal = ({ isOpen, onClose, initialAnalysis = null }) => {
                   {/* Levene's Equality of Variances Check */}
                   {results.levene_results && (
                     <div className="pt-2 border-t border-slate-100">
-                      <p className="font-sans text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">Homogeneity of Variance Check (Levene's Test)</p>
+                      <p className="font-sans text-[13px] font-bold text-slate-500 uppercase tracking-wider mb-2">Homogeneity of Variance Check (Levene's Test)</p>
                       <div className="flex justify-between items-center text-xs pb-1">
                         <span className="font-semibold text-slate-700">Levene's Test (Across groups)</span>
                         <div className="flex space-x-4 items-center">
                           <span className="text-slate-500 font-mono">Statistic = {results.levene_results.stat.toFixed(3)}</span>
                           <span className="text-slate-500 font-mono">{formatPValue(results.levene_results.p_value)}</span>
-                          <span className={`font-bold px-1.5 py-0.5 rounded text-[10px] ${
+                          <span className={`font-bold px-1.5 py-0.5 rounded text-[13px] ${
                             results.levene_results.equal_var ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'
                           }`}>
                             {results.levene_results.equal_var ? 'Homogeneous Variances' : 'Heterogeneous Variances'}
                           </span>
                         </div>
                       </div>
-                      <p className="font-sans text-[9px] text-slate-400 mt-1 italic leading-normal">
+                      <p className="font-sans text-[12px] text-slate-400 mt-1 italic leading-normal">
                         * Levene's test p &ge; 0.05 indicates equal variances.
                       </p>
                     </div>
@@ -3099,7 +3099,7 @@ const AnovaModal = ({ isOpen, onClose, initialAnalysis = null }) => {
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                       {/* Font Size */}
                       <div className="space-y-1">
-                        <label className="font-sans text-[9px] font-bold text-slate-400 uppercase">Font Size (px)</label>
+                        <label className="font-sans text-[12px] font-bold text-slate-400 uppercase">Font Size (px)</label>
                         <input
                           type="number"
                           min="6"
@@ -3111,7 +3111,7 @@ const AnovaModal = ({ isOpen, onClose, initialAnalysis = null }) => {
                       </div>
                       {/* Font Color */}
                       <div className="space-y-1">
-                        <label className="font-sans text-[9px] font-bold text-slate-400 uppercase">Font Color</label>
+                        <label className="font-sans text-[12px] font-bold text-slate-400 uppercase">Font Color</label>
                         <div className="flex space-x-2">
                           <input
                             type="color"
@@ -3130,7 +3130,7 @@ const AnovaModal = ({ isOpen, onClose, initialAnalysis = null }) => {
                       </div>
                       {/* Color Scheme */}
                       <div className="space-y-1">
-                        <label className="font-sans text-[9px] font-bold text-slate-400 uppercase">Color Scheme</label>
+                        <label className="font-sans text-[12px] font-bold text-slate-400 uppercase">Color Scheme</label>
                         <select
                           value={palette}
                           onChange={(e) => { setPalette(e.target.value); setFigurePrefs({ palette: e.target.value }); }}
@@ -3143,7 +3143,7 @@ const AnovaModal = ({ isOpen, onClose, initialAnalysis = null }) => {
                       </div>
                       {/* Bar Color */}
                       <div className="space-y-1">
-                        <label className="font-sans text-[9px] font-bold text-slate-400 uppercase">Bar Color</label>
+                        <label className="font-sans text-[12px] font-bold text-slate-400 uppercase">Bar Color</label>
                         <div className="flex space-x-2">
                           <input
                             type="color"
@@ -3165,7 +3165,7 @@ const AnovaModal = ({ isOpen, onClose, initialAnalysis = null }) => {
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-1">
                       {/* Chart Title */}
                       <div className="space-y-1">
-                        <label className="font-sans text-[9px] font-bold text-slate-400 uppercase">Chart Title</label>
+                        <label className="font-sans text-[12px] font-bold text-slate-400 uppercase">Chart Title</label>
                         <input
                           type="text"
                           placeholder="e.g. Mean Separation Plot"
@@ -3176,7 +3176,7 @@ const AnovaModal = ({ isOpen, onClose, initialAnalysis = null }) => {
                       </div>
                       {/* X-Axis Label */}
                       <div className="space-y-1">
-                        <label className="font-sans text-[9px] font-bold text-slate-400 uppercase">X-Axis Label</label>
+                        <label className="font-sans text-[12px] font-bold text-slate-400 uppercase">X-Axis Label</label>
                         <input
                           type="text"
                           placeholder="e.g. Treatments"
@@ -3187,7 +3187,7 @@ const AnovaModal = ({ isOpen, onClose, initialAnalysis = null }) => {
                       </div>
                       {/* Y-Axis Label */}
                       <div className="space-y-1">
-                        <label className="font-sans text-[9px] font-bold text-slate-400 uppercase">Y-Axis Label</label>
+                        <label className="font-sans text-[12px] font-bold text-slate-400 uppercase">Y-Axis Label</label>
                         <input
                           type="text"
                           placeholder="e.g. Yield"
@@ -3205,12 +3205,12 @@ const AnovaModal = ({ isOpen, onClose, initialAnalysis = null }) => {
                       <h5 className="font-display text-xs font-bold text-slate-700">Mean Separation Chart (with Error Bars & Groupings)</h5>
                       <div className="flex items-center space-x-3">
                         <div className="flex items-center space-x-1">
-                          <span className="font-sans text-[9px] font-bold text-slate-400 uppercase">DPI:</span>
+                          <span className="font-sans text-[12px] font-bold text-slate-400 uppercase">DPI:</span>
                           {[150, 300, 600].map(dpiVal => (
                             <button
                               key={dpiVal}
                               onClick={() => setDownloadDpi(dpiVal)}
-                              className={`px-1.5 py-0.5 font-sans text-[8px] font-bold rounded-md cursor-pointer transition-colors ${
+                              className={`px-1.5 py-0.5 font-sans text-[11px] font-bold rounded-md cursor-pointer transition-colors ${
                                 downloadDpi === dpiVal ? 'bg-brand-indigo text-white shadow-xs' : 'bg-white border border-slate-200 text-slate-500 hover:bg-slate-50'
                               }`}
                             >
@@ -3222,7 +3222,7 @@ const AnovaModal = ({ isOpen, onClose, initialAnalysis = null }) => {
                         <div className="h-4 w-px bg-slate-200" />
                         <button
                           onClick={() => handleDownloadPostHocChart('png')}
-                          className="inline-flex items-center space-x-1 rounded-lg border border-slate-200 bg-white px-2 py-1 font-sans text-[10px] font-semibold text-slate-600 hover:bg-slate-50 hover:text-slate-800 transition-colors cursor-pointer"
+                          className="inline-flex items-center space-x-1 rounded-lg border border-slate-200 bg-white px-2 py-1 font-sans text-[13px] font-semibold text-slate-600 hover:bg-slate-50 hover:text-slate-800 transition-colors cursor-pointer"
                           title="Download Chart as PNG"
                         >
                           <Download className="h-3 w-3" />
@@ -3230,7 +3230,7 @@ const AnovaModal = ({ isOpen, onClose, initialAnalysis = null }) => {
                         </button>
                         <button
                           onClick={() => handleDownloadPostHocChart('svg')}
-                          className="inline-flex items-center space-x-1 rounded-lg border border-slate-200 bg-white px-2 py-1 font-sans text-[10px] font-semibold text-slate-600 hover:bg-slate-50 hover:text-slate-800 transition-colors cursor-pointer"
+                          className="inline-flex items-center space-x-1 rounded-lg border border-slate-200 bg-white px-2 py-1 font-sans text-[13px] font-semibold text-slate-600 hover:bg-slate-50 hover:text-slate-800 transition-colors cursor-pointer"
                           title="Download Chart as SVG"
                         >
                           <Download className="h-3 w-3" />
@@ -3250,17 +3250,17 @@ const AnovaModal = ({ isOpen, onClose, initialAnalysis = null }) => {
             {/* Footer */}
             <div className="flex items-center justify-between border-t border-slate-100 px-6 py-4 bg-slate-50/50">
               <div className="flex items-center space-x-1 bg-brand-indigo/10 p-1 rounded-xl border border-brand-indigo/20">
-                <span className="font-sans text-[9px] font-bold text-brand-indigo px-2 uppercase shrink-0">Post-Hoc:</span>
+                <span className="font-sans text-[12px] font-bold text-brand-indigo px-2 uppercase shrink-0">Post-Hoc:</span>
                 <button
                   onClick={() => handleDownloadPostHocReport('txt')}
-                  className="rounded-lg bg-brand-indigo hover:bg-indigo-700 text-white font-sans text-[10px] font-bold px-2.5 py-1.5 transition-colors cursor-pointer"
+                  className="rounded-lg bg-brand-indigo hover:bg-indigo-700 text-white font-sans text-[13px] font-bold px-2.5 py-1.5 transition-colors cursor-pointer"
                   title="Save as Text"
                 >
                   TXT
                 </button>
                 <button
                   onClick={() => handleDownloadPostHocReport('doc')}
-                  className="rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-sans text-[10px] font-bold px-2.5 py-1.5 transition-colors cursor-pointer"
+                  className="rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-sans text-[13px] font-bold px-2.5 py-1.5 transition-colors cursor-pointer"
                   title="Export to Word"
                 >
                   Word

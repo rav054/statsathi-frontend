@@ -218,7 +218,7 @@ const DataTransformModal = ({ isOpen, onClose, file: propFile, onSaveTransformed
                     setError(null);
                     setSuggestedMethod(null);
                   }}
-                  className="inline-flex items-center space-x-1.5 rounded-xl bg-red-600 px-3 py-1.5 font-sans text-[11px] font-bold text-white shadow-xs hover:bg-red-700 transition-all cursor-pointer"
+                  className="inline-flex items-center space-x-1.5 rounded-xl bg-red-600 px-3 py-1.5 font-sans text-[14px] font-bold text-white shadow-xs hover:bg-red-700 transition-all cursor-pointer"
                 >
                   <Zap className="h-3.5 w-3.5" />
                   <span>Switch to Yeo-Johnson Transformation</span>
@@ -269,7 +269,7 @@ const DataTransformModal = ({ isOpen, onClose, file: propFile, onSaveTransformed
                 </table>
               </div>
               {transformResult.notes.length > 0 && (
-                <ul className="list-disc space-y-1 rounded-xl border border-amber-200 bg-amber-50 py-2 pl-6 pr-3 text-[11px] text-amber-800">
+                <ul className="list-disc space-y-1 rounded-xl border border-amber-200 bg-amber-50 py-2 pl-6 pr-3 text-[14px] text-amber-800">
                   {transformResult.notes.map((note, idx) => <li key={idx}>{note}</li>)}
                 </ul>
               )}
@@ -296,7 +296,7 @@ const DataTransformModal = ({ isOpen, onClose, file: propFile, onSaveTransformed
             <div className="flex items-center justify-between">
               <label className="font-display text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center space-x-1.5">
                 <span>1. Select Variable(s) to Transform</span>
-                <span className="text-[10px] text-slate-400 font-normal">({selectedCols.length} selected)</span>
+                <span className="text-[13px] text-slate-400 font-normal">({selectedCols.length} selected)</span>
               </label>
               <button
                 type="button"
@@ -353,7 +353,7 @@ const DataTransformModal = ({ isOpen, onClose, file: propFile, onSaveTransformed
             <div className="space-y-4">
               {TRANSFORM_METHODS.map((group) => (
                 <div key={group.category} className="space-y-2">
-                  <h4 className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                  <h4 className="text-[14px] font-bold text-slate-400 uppercase tracking-wider">
                     {group.category}
                   </h4>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
@@ -375,11 +375,11 @@ const DataTransformModal = ({ isOpen, onClose, file: propFile, onSaveTransformed
                               <span className={`font-sans text-xs font-bold ${isSelected ? 'text-brand-indigo' : 'text-slate-800'}`}>
                                 {method.label}
                               </span>
-                              <span className="font-mono text-[9px] text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded-md">
+                              <span className="font-mono text-[12px] text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded-md">
                                 {method.suffix}
                               </span>
                             </div>
-                            <p className="text-[11px] text-slate-500 leading-snug">
+                            <p className="text-[14px] text-slate-500 leading-snug">
                               {method.desc}
                             </p>
                           </div>

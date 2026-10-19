@@ -48,7 +48,7 @@ const LearningHub = () => {
         
         <div class="my-6">
           <img src="/normal_distribution_stats.png" alt="Normal Distribution Curve & Parameters" />
-          <p class="text-[11px] text-slate-400 mt-2 italic text-center">Figure 1: Standard Normal Distribution Curve showing Mean, Median, and Mode centered, along with Standard Deviation (SD) band regions.</p>
+          <p class="text-[14px] text-slate-400 mt-2 italic text-center">Figure 1: Standard Normal Distribution Curve showing Mean, Median, and Mode centered, along with Standard Deviation (SD) band regions.</p>
         </div>
 
         <h4>1. Parameters of Central Tendency</h4>
@@ -104,7 +104,7 @@ const LearningHub = () => {
         
         <div class="my-6">
           <img src="/correlation_types.png" alt="Correlation Types Scatter Plots" />
-          <p class="text-[11px] text-slate-400 mt-2 italic text-center">Figure 2: Comparison of Correlation Strengths: Strong Positive (left), Strong Negative (center), and No Correlation (right).</p>
+          <p class="text-[14px] text-slate-400 mt-2 italic text-center">Figure 2: Comparison of Correlation Strengths: Strong Positive (left), Strong Negative (center), and No Correlation (right).</p>
         </div>
 
         <h4>1. Correlation Coefficients Comparison</h4>
@@ -149,7 +149,7 @@ const LearningHub = () => {
         
         <div class="my-6">
           <img src="/regression_residuals.png" alt="OLS Regression Line and Residuals" />
-          <p class="text-[11px] text-slate-400 mt-2 italic text-center">Figure 3: Ordinary Least Squares (OLS) Linear Regression line fitted to a scatter plot, showing residual error gaps.</p>
+          <p class="text-[14px] text-slate-400 mt-2 italic text-center">Figure 3: Ordinary Least Squares (OLS) Linear Regression line fitted to a scatter plot, showing residual error gaps.</p>
         </div>
 
         <h4>1. Ordinary Least Squares (OLS) Parameters</h4>
@@ -214,7 +214,7 @@ const LearningHub = () => {
         
         <div class="my-6">
           <img src="/experimental_layouts.png" alt="Agricultural Experimental Layouts CRD vs RBD" />
-          <p class="text-[11px] text-slate-400 mt-2 italic text-center">Figure 4: Field Layout Schemes: Completely Randomized Design (CRD, left) vs. Randomized Block Design with blocking rows (RBD, right).</p>
+          <p class="text-[14px] text-slate-400 mt-2 italic text-center">Figure 4: Field Layout Schemes: Completely Randomized Design (CRD, left) vs. Randomized Block Design with blocking rows (RBD, right).</p>
         </div>
 
         <h4>1. Primary Experimental Layout Parameters</h4>
@@ -275,7 +275,7 @@ const LearningHub = () => {
         
         <div class="my-6">
           <img src="/cluster_convex_hulls.png" alt="K-Means Clusters with Convex Hull Clouds" />
-          <p class="text-[11px] text-slate-400 mt-2 italic text-center">Figure 5: K-Means Clustering scatter plot showing 3 distinct groups enclosed in transparent convex hull boundary clouds with star centroid markers.</p>
+          <p class="text-[14px] text-slate-400 mt-2 italic text-center">Figure 5: K-Means Clustering scatter plot showing 3 distinct groups enclosed in transparent convex hull boundary clouds with star centroid markers.</p>
         </div>
 
         <h4>1. Clustering Parameters & Algorithms</h4>

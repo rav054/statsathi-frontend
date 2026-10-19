@@ -396,14 +396,14 @@ const PcaModal = ({ isOpen, onClose, initialAnalysis = null }) => {
                       <option value="">-- No Grouping --</option>
                       {columns.map(c => <option key={c} value={c}>{c}</option>)}
                     </select>
-                    <p className="font-sans text-[10px] text-slate-400">Used for color-coding points in the PCA Biplot.</p>
+                    <p className="font-sans text-[13px] text-slate-400">Used for color-coding points in the PCA Biplot.</p>
                   </div>
 
                   {/* Standardize Toggle */}
                   <div className="rounded-xl border border-slate-100 bg-slate-50 p-4 flex items-center justify-between">
                     <div>
                       <p className="font-sans text-xs font-bold text-slate-700">Standardize Variables</p>
-                      <p className="font-sans text-[10px] text-slate-400 mt-0.5">Scale data to unit variance before PCA.</p>
+                      <p className="font-sans text-[13px] text-slate-400 mt-0.5">Scale data to unit variance before PCA.</p>
                     </div>
                     <input
                       type="checkbox"
@@ -433,26 +433,26 @@ const PcaModal = ({ isOpen, onClose, initialAnalysis = null }) => {
                 <p className="font-sans text-xs font-bold text-slate-500">Biplot and rotation options</p>
                 <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
                   <label className="space-y-1">
-                    <span className="font-sans text-[11px] font-semibold text-slate-500">Horizontal axis</span>
+                    <span className="font-sans text-[14px] font-semibold text-slate-500">Horizontal axis</span>
                     <select value={xComponent} onChange={(e) => setXComponent(Number(e.target.value))} className={optionSelect}>
                       {componentOptions.map(n => <option key={n} value={n}>PC{n}</option>)}
                     </select>
                   </label>
                   <label className="space-y-1">
-                    <span className="font-sans text-[11px] font-semibold text-slate-500">Vertical axis</span>
+                    <span className="font-sans text-[14px] font-semibold text-slate-500">Vertical axis</span>
                     <select value={yComponent} onChange={(e) => setYComponent(Number(e.target.value))} className={optionSelect}>
                       {componentOptions.map(n => <option key={n} value={n}>PC{n}</option>)}
                     </select>
                   </label>
                   <label className="space-y-1">
-                    <span className="font-sans text-[11px] font-semibold text-slate-500">Biplot type</span>
+                    <span className="font-sans text-[14px] font-semibold text-slate-500">Biplot type</span>
                     <select value={biplotType} onChange={(e) => setBiplotType(e.target.value)} className={optionSelect}>
                       <option value="distance">Distance (compare observations)</option>
                       <option value="correlation">Correlation (compare variables)</option>
                     </select>
                   </label>
                   <label className="space-y-1">
-                    <span className="font-sans text-[11px] font-semibold text-slate-500">Group outline</span>
+                    <span className="font-sans text-[14px] font-semibold text-slate-500">Group outline</span>
                     <select value={ellipse} onChange={(e) => setEllipse(e.target.value)} disabled={!hueVar} className={optionSelect}>
                       <option value="confidence">95% confidence ellipse of the mean</option>
                       <option value="data">95% data ellipse</option>
@@ -461,21 +461,21 @@ const PcaModal = ({ isOpen, onClose, initialAnalysis = null }) => {
                     </select>
                   </label>
                   <label className="space-y-1">
-                    <span className="font-sans text-[11px] font-semibold text-slate-500">Label points by</span>
+                    <span className="font-sans text-[14px] font-semibold text-slate-500">Label points by</span>
                     <select value={labelCol} onChange={(e) => setLabelCol(e.target.value)} className={optionSelect}>
                       <option value="">No labels</option>
                       {columns.map(c => <option key={c} value={c}>{c}</option>)}
                     </select>
                   </label>
                   <label className="space-y-1">
-                    <span className="font-sans text-[11px] font-semibold text-slate-500">Varimax components</span>
+                    <span className="font-sans text-[14px] font-semibold text-slate-500">Varimax components</span>
                     <select value={rotateComponents} onChange={(e) => setRotateComponents(e.target.value)} className={optionSelect}>
                       <option value="">Automatic{scale ? ' (parallel analysis)' : ''}</option>
                       {componentOptions.filter(n => n >= 2).map(n => <option key={n} value={n}>{n} components</option>)}
                     </select>
                   </label>
                 </div>
-                <p className="font-sans text-[10px] text-slate-400">
+                <p className="font-sans text-[13px] text-slate-400">
                   Distance biplots keep distances between observations; correlation biplots show correlations between variables as angles. Group outlines need a grouping variable. With more than 40 observations only the 12 furthest from the centre are labelled.
                 </p>
               </div>
@@ -551,20 +551,20 @@ const PcaModal = ({ isOpen, onClose, initialAnalysis = null }) => {
                     </tbody>
                   </table>
                   {results.kaiser_retained != null && (
-                    <p className="mt-3 font-sans text-[11px] text-slate-500">
+                    <p className="mt-3 font-sans text-[14px] text-slate-500">
                       Kaiser criterion (eigenvalue ≥ 1): retain <span className="font-bold text-brand-indigo">{results.kaiser_retained}</span> component{results.kaiser_retained === 1 ? '' : 's'}.
                       Eigenvalues are from the sample correlation matrix, so they sum to the number of variables.
                     </p>
                   )}
                   {results.parallel_analysis && (
-                    <p className="mt-1 font-sans text-[11px] text-slate-500">
+                    <p className="mt-1 font-sans text-[14px] text-slate-500">
                       Parallel analysis ({results.parallel_analysis.iterations} random datasets, 95th percentile): retain{' '}
                       <span className="font-bold text-brand-indigo">{results.parallel_analysis.retained}</span> component{results.parallel_analysis.retained === 1 ? '' : 's'}.
                       This is usually more reliable than the Kaiser rule; see the scree plot under Charts.
                     </p>
                   )}
                   {results.scaled === false && (
-                    <p className="mt-3 font-sans text-[11px] text-slate-500">Covariance-matrix PCA (variables not standardized): the Kaiser criterion does not apply.</p>
+                    <p className="mt-3 font-sans text-[14px] text-slate-500">Covariance-matrix PCA (variables not standardized): the Kaiser criterion does not apply.</p>
                   )}
                 </div>
               )}
@@ -584,7 +584,7 @@ const PcaModal = ({ isOpen, onClose, initialAnalysis = null }) => {
                           <button
                             key={id}
                             onClick={() => setLoadingView(id)}
-                            className={`rounded-lg px-2.5 py-1 font-sans text-[10px] font-bold transition-all ${loadingView === id ? 'bg-brand-indigo text-white' : 'bg-white border border-slate-200 text-slate-500 hover:bg-slate-50'}`}
+                            className={`rounded-lg px-2.5 py-1 font-sans text-[13px] font-bold transition-all ${loadingView === id ? 'bg-brand-indigo text-white' : 'bg-white border border-slate-200 text-slate-500 hover:bg-slate-50'}`}
                           >
                             {label}
                           </button>
@@ -622,10 +622,10 @@ const PcaModal = ({ isOpen, onClose, initialAnalysis = null }) => {
                 <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-xs overflow-x-auto">
                   <div className="flex justify-between items-center mb-3">
                     <h4 className="font-display text-xs font-bold text-slate-700">Projected Observation PC Scores (First 100 Rows)</h4>
-                    <p className="font-sans text-[10px] text-slate-400">Total Observations: {results.sample_scores.length}</p>
+                    <p className="font-sans text-[13px] text-slate-400">Total Observations: {results.sample_scores.length}</p>
                   </div>
                   <div className="max-h-[300px] overflow-y-auto">
-                    <table className="w-full border-collapse font-sans text-[11px] text-left">
+                    <table className="w-full border-collapse font-sans text-[14px] text-left">
                       <thead>
                         <tr className="border-b border-slate-100 text-slate-400 font-bold bg-slate-50/50">
                           <th className="py-2 pl-3 pr-4">Row Index</th>
@@ -656,7 +656,7 @@ const PcaModal = ({ isOpen, onClose, initialAnalysis = null }) => {
               {activeTab === 'rotation' && results.varimax && (
                 <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-xs overflow-x-auto">
                   <h4 className="font-display text-xs font-bold text-slate-700 mb-1">Varimax-Rotated Loadings ({results.varimax.components} components)</h4>
-                  <p className="mb-3 font-sans text-[11px] text-slate-500">
+                  <p className="mb-3 font-sans text-[14px] text-slate-500">
                     Correlation loadings rotated by varimax (Kaiser normalization), so each variable loads mainly on one component and the components are easier to name.
                     The rotation redistributes variance among the retained components; each variable&apos;s communality (h²) is unchanged. Bold: |loading| ≥ 0.5.
                   </p>
@@ -692,11 +692,11 @@ const PcaModal = ({ isOpen, onClose, initialAnalysis = null }) => {
               {activeTab === 'biplot' && (
                 <div className="space-y-3">
                   <div className="flex items-center justify-end space-x-1.5">
-                    <label className="font-sans text-[10px] font-bold text-slate-400 uppercase">Palette:</label>
+                    <label className="font-sans text-[13px] font-bold text-slate-400 uppercase">Palette:</label>
                     <select
               value={palette}
               onChange={(e) => { setPalette(e.target.value); setFigurePrefs({ palette: e.target.value }); }}
-              className="rounded-lg border border-slate-200 bg-white px-2 py-1 font-sans text-[11px] text-slate-600 outline-hidden focus:border-brand-indigo focus:ring-1 focus:ring-brand-indigo transition-all animate-fade-in"
+              className="rounded-lg border border-slate-200 bg-white px-2 py-1 font-sans text-[14px] text-slate-600 outline-hidden focus:border-brand-indigo focus:ring-1 focus:ring-brand-indigo transition-all animate-fade-in"
               >
               {pcaPalettes.map(p => (
               <option key={p.value} value={p.value}>{p.label}</option>
@@ -729,17 +729,17 @@ const PcaModal = ({ isOpen, onClose, initialAnalysis = null }) => {
         <div className="flex items-center justify-between border-t border-slate-100 px-6 py-4 bg-slate-50/50">
           {results ? (
             <div className="flex items-center space-x-1 bg-emerald-50/50 p-1 rounded-xl border border-emerald-100">
-              <span className="font-sans text-[9px] font-bold text-emerald-600 px-2 uppercase shrink-0">Report:</span>
+              <span className="font-sans text-[12px] font-bold text-emerald-600 px-2 uppercase shrink-0">Report:</span>
               <button
                 onClick={() => handleDownloadReport('txt')}
-                className="rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-sans text-[10px] font-bold px-2.5 py-1.5 transition-colors cursor-pointer"
+                className="rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-sans text-[13px] font-bold px-2.5 py-1.5 transition-colors cursor-pointer"
                 title="Save as Text"
               >
                 TXT
               </button>
               <button
                 onClick={() => handleDownloadReport('doc')}
-                className="rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-sans text-[10px] font-bold px-2.5 py-1.5 transition-colors cursor-pointer"
+                className="rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-sans text-[13px] font-bold px-2.5 py-1.5 transition-colors cursor-pointer"
                 title="Export to Word"
               >
                 Word

@@ -17,13 +17,13 @@ const NAV = [
   { id: 'learning', label: 'Learning Hub', Icon: BookIcon },
 ];
 
-export const Wordmark = ({ className = 'text-[19px]' }) => (
+export const Wordmark = ({ className = 'text-[21px]' }) => (
   <span className={`font-display font-bold tracking-tight text-ink dark:text-night-ink ${className}`}>
     Stat<span className="text-brand-indigo dark:text-brand-periwinkle">Sathi</span>
   </span>
 );
 
-const Avatar = ({ name, className = 'h-[34px] w-[34px] text-[13px]' }) => (
+const Avatar = ({ name, className = 'h-[34px] w-[34px] text-[16px]' }) => (
   <span className={`flex shrink-0 items-center justify-center rounded-full bg-brand-navy font-bold text-white dark:bg-night-ink dark:text-night ${className}`}>
     {(name || '?').charAt(0).toUpperCase()}
   </span>
@@ -116,15 +116,15 @@ const AppShell = ({ activeTab, onNavigate, onOpenProject, onSignIn, onWorkflowSt
           <img src="/statsathi-mark.svg" alt="" className="h-[34px] w-[34px]" />
           <span className="flex flex-col">
             <Wordmark />
-            <span className="font-sans text-[10.5px] tracking-[0.02em] text-muted dark:text-night-muted">Research analytics companion</span>
+            <span className="font-sans text-[13.5px] tracking-[0.02em] text-muted dark:text-night-muted">Research analytics companion</span>
           </span>
         </button>
 
         <button type="button" onClick={() => setPaletteOpen(true)}
-          className="flex h-[38px] items-center gap-2 rounded-[10px] border border-line bg-[#F8F9FB] px-2.5 font-sans text-[13px] text-faint hover:border-[#C7CCF9] dark:border-night-line dark:bg-night cursor-pointer">
+          className="flex h-[38px] items-center gap-2 rounded-[10px] border border-line bg-[#F8F9FB] px-2.5 font-sans text-[16px] text-faint hover:border-[#C7CCF9] dark:border-night-line dark:bg-night cursor-pointer">
           <SearchIcon className="h-4 w-4" />
           <span className="flex-1 truncate whitespace-nowrap text-left">Find a test or project</span>
-          <span className="rounded-[5px] border border-line bg-surface px-[5px] py-px font-mono text-[10.5px] text-muted dark:border-night-line dark:bg-night-soft">Ctrl K</span>
+          <span className="rounded-[5px] border border-line bg-surface px-[5px] py-px font-mono text-[13.5px] text-muted dark:border-night-line dark:bg-night-soft">Ctrl K</span>
         </button>
 
         <nav aria-label="Workspace" className="flex flex-col gap-0.5">
@@ -139,7 +139,7 @@ const AppShell = ({ activeTab, onNavigate, onOpenProject, onSignIn, onWorkflowSt
                 <span className="flex-1 text-left">{label}</span>
                 {active && <span className="h-[7px] w-[7px] rounded-full bg-brand-orange" />}
                 {!active && id === 'projects' && visibleProjects.length > 0 && (
-                  <span className="font-mono text-[11px] text-faint">{visibleProjects.length}</span>
+                  <span className="font-mono text-[14px] text-faint">{visibleProjects.length}</span>
                 )}
               </button>
             );
@@ -147,11 +147,11 @@ const AppShell = ({ activeTab, onNavigate, onOpenProject, onSignIn, onWorkflowSt
         </nav>
 
         <div className="flex flex-col gap-0.5">
-          <span className="px-2.5 pb-1.5 font-sans text-[10.5px] font-bold tracking-[0.1em] text-faint">WORKFLOW</span>
+          <span className="px-2.5 pb-1.5 font-sans text-[13.5px] font-bold tracking-[0.1em] text-faint">WORKFLOW</span>
           {WORKFLOW.map(step => (
             <button key={step.id} type="button" onClick={() => onWorkflowStep(step.id)}
-              className="flex h-9 items-center gap-2.5 rounded-[10px] px-2.5 text-left font-sans text-[13.5px] text-ink-2 hover:bg-soft dark:text-night-muted dark:hover:bg-night-soft cursor-pointer">
-              <span className="flex h-[18px] w-[18px] items-center justify-center rounded-[5px] font-mono text-[9.5px] font-semibold text-white"
+              className="flex h-9 items-center gap-2.5 rounded-[10px] px-2.5 text-left font-sans text-[16.5px] text-ink-2 hover:bg-soft dark:text-night-muted dark:hover:bg-night-soft cursor-pointer">
+              <span className="flex h-[18px] w-[18px] items-center justify-center rounded-[5px] font-mono text-[12.5px] font-semibold text-white"
                 style={{ backgroundImage: `linear-gradient(135deg, ${step.accent.from}, ${step.accent.to})` }}>{step.number}</span>
               {step.title}
             </button>
@@ -162,7 +162,7 @@ const AppShell = ({ activeTab, onNavigate, onOpenProject, onSignIn, onWorkflowSt
 
         {user && storage && (
           <div className="flex flex-col gap-2 px-2.5">
-            <div className="flex justify-between font-sans text-[11.5px] text-muted dark:text-night-muted">
+            <div className="flex justify-between font-sans text-[14.5px] text-muted dark:text-night-muted">
               <span>Storage</span>
               <span className="font-mono">{formatMb(storage.used_bytes)} / {formatMb(storage.limit_bytes)} MB</span>
             </div>
@@ -178,8 +178,8 @@ const AppShell = ({ activeTab, onNavigate, onOpenProject, onSignIn, onWorkflowSt
               className="flex w-full items-center gap-2.5 rounded-xl border border-line p-2.5 text-left hover:bg-soft dark:border-night-line dark:hover:bg-night-soft cursor-pointer">
               <Avatar name={user.full_name} />
               <span className="flex min-w-0 flex-1 flex-col">
-                <span className="truncate font-sans text-[13px] font-semibold">{user.full_name}</span>
-                <span className="truncate font-sans text-[11px] text-muted dark:text-night-muted">{user.institution || user.email}</span>
+                <span className="truncate font-sans text-[16px] font-semibold">{user.full_name}</span>
+                <span className="truncate font-sans text-[14px] text-muted dark:text-night-muted">{user.institution || user.email}</span>
               </span>
               <DotsIcon className="h-4 w-4 text-faint" />
             </button>
@@ -192,7 +192,7 @@ const AppShell = ({ activeTab, onNavigate, onOpenProject, onSignIn, onWorkflowSt
               Log in
             </button>
             <button type="button" onClick={toggleTheme}
-              className="flex h-9 items-center justify-center gap-2 rounded-xl border border-line font-sans text-[13px] text-ink-2 dark:border-night-line dark:text-night-muted cursor-pointer">
+              className="flex h-9 items-center justify-center gap-2 rounded-xl border border-line font-sans text-[16px] text-ink-2 dark:border-night-line dark:text-night-muted cursor-pointer">
               {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
               {isDark ? 'Light mode' : 'Dark mode'}
             </button>
@@ -214,7 +214,7 @@ const AppShell = ({ activeTab, onNavigate, onOpenProject, onSignIn, onWorkflowSt
           {user ? (
             <div ref={topMenuRef} className="relative">
               <button type="button" onClick={() => setMenuOpen(menuOpen === 'top' ? null : 'top')} aria-label="Account menu" className="flex h-11 w-11 items-center justify-center cursor-pointer">
-                <Avatar name={user.full_name} className="h-9 w-9 text-[13px]" />
+                <Avatar name={user.full_name} className="h-9 w-9 text-[16px]" />
               </button>
               <UserMenu open={menuOpen === 'top'} onClose={closeMenu} onEditProfile={() => setProfileOpen(true)} placement="right-0 top-full mt-2" />
             </div>
@@ -238,7 +238,7 @@ const AppShell = ({ activeTab, onNavigate, onOpenProject, onSignIn, onWorkflowSt
             const active = activeTab === id;
             return (
               <button key={id} type="button" onClick={action} aria-current={active ? 'page' : undefined}
-                className={`flex flex-col items-center justify-center gap-[3px] font-sans text-[11.5px] cursor-pointer ${active ? 'font-semibold text-brand-violet dark:text-brand-periwinkle' : 'text-muted dark:text-night-muted'}`}>
+                className={`flex flex-col items-center justify-center gap-[3px] font-sans text-[14.5px] cursor-pointer ${active ? 'font-semibold text-brand-violet dark:text-brand-periwinkle' : 'text-muted dark:text-night-muted'}`}>
                 <Icon className={`h-[22px] w-[22px] ${active ? 'text-brand-indigo dark:text-brand-periwinkle' : ''}`} />
                 {label}
               </button>

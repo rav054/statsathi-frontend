@@ -22,8 +22,8 @@
   --color-line: #E4E7EE;
   --color-ink: #0F172A;
   --color-ink-2: #334155;
-  --color-muted: #64748B;
-  --color-faint: #94A3B8;
+  --color-muted: #475569;   /* 7.0:1 on white */
+  --color-faint: #64748B;   /* 4.8:1 on white - the lightest that still reads */
 
   /* Surfaces and text, dark */
   --color-night: #0B1120;
@@ -41,13 +41,29 @@
      laptop screen beside a field notebook, so body copy sits at 17px rather than 16. Each step keeps Tailwind's
      own line-height ratio, so leading grows with the text instead of crowding it. Headings rise by less than
      body copy does, which keeps the scale from turning top-heavy. */
-  --text-xs: 0.8125rem;    /* 13px - captions, table footnotes */
-  --text-sm: 0.9375rem;    /* 15px - labels, secondary text */
-  --text-base: 1.0625rem;  /* 17px - body copy */
-  --text-lg: 1.1875rem;    /* 19px */
-  --text-xl: 1.3125rem;    /* 21px */
-  --text-2xl: 1.5625rem;   /* 25px */
-  --text-3xl: 1.9375rem;   /* 31px */
+  --text-xs: 0.875rem;     /* 14px - captions, table footnotes */
+  --text-sm: 1rem;         /* 16px - labels, secondary text */
+  --text-base: 1.125rem;   /* 18px - body copy */
+  --text-lg: 1.25rem;      /* 20px */
+  --text-xl: 1.4375rem;    /* 23px */
+  --text-2xl: 1.75rem;     /* 28px */
+  --text-3xl: 2.125rem;    /* 34px */
+}
+
+/* Secondary text is read, not decoration. Tailwind's slate-400 sits at 2.8:1 on white, under the 4.5:1 that
+   small text needs, and the UI uses it for form labels and helper lines - so the two greys are redefined here.
+   They are only ever used as text colours in this app. Dark mode needs the opposite correction, and gets its
+   own values below: a grey dark enough to read on white disappears on navy. */
+:root {
+  --color-slate-400: #64748B;
+  --color-slate-500: #475569;
+}
+
+html.dark {
+  --color-slate-400: #9AA7BE;
+  --color-slate-500: #AEB9CC;
+  --color-muted: #9AA7BE;
+  --color-faint: #8A96AD;
 }
 
 /* Custom global rules */

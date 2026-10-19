@@ -19,12 +19,12 @@ const inputClass = 'w-full rounded-lg border border-slate-200 bg-white px-2.5 py
 
 const Chips = ({ options, value, onChange }) => (
   <div className="flex flex-wrap gap-1.5">
-    {options.length === 0 && <span className="font-sans text-[11px] text-slate-400">None available.</span>}
+    {options.length === 0 && <span className="font-sans text-[14px] text-slate-400">None available.</span>}
     {options.map(name => {
       const on = value.includes(name);
       return (
         <button key={name} type="button" onClick={() => onChange(on ? value.filter(v => v !== name) : [...value, name])}
-          className={`rounded-full border px-2.5 py-0.5 font-sans text-[11px] font-semibold cursor-pointer ${on ? 'border-brand-indigo bg-indigo-50 text-brand-indigo' : 'border-slate-200 bg-white text-slate-500'}`}>
+          className={`rounded-full border px-2.5 py-0.5 font-sans text-[14px] font-semibold cursor-pointer ${on ? 'border-brand-indigo bg-indigo-50 text-brand-indigo' : 'border-slate-200 bg-white text-slate-500'}`}>
           {name}
         </button>
       );
@@ -32,12 +32,12 @@ const Chips = ({ options, value, onChange }) => (
   </div>
 );
 
-const Label = ({ children }) => <p className="mb-1 font-sans text-[10px] font-bold uppercase tracking-wide text-slate-400">{children}</p>;
+const Label = ({ children }) => <p className="mb-1 font-sans text-[13px] font-bold uppercase tracking-wide text-slate-400">{children}</p>;
 
 const PooledTable = ({ title, rows, firstHeader }) => (
   <div className="overflow-auto rounded-2xl border border-slate-100">
     <p className="border-b border-slate-100 bg-slate-50 px-3 py-2 font-display text-xs font-bold text-slate-800">{title}</p>
-    <table className="min-w-full whitespace-nowrap text-left font-sans text-[11px] text-slate-700">
+    <table className="min-w-full whitespace-nowrap text-left font-sans text-[14px] text-slate-700">
       <thead>
         <tr className="text-slate-500">
           {[firstHeader, 'Estimate', 'SE', '95% CI', 'df', 'p', 'FMI', 'Between-imp. var.'].map(h => (
@@ -135,7 +135,7 @@ const MultipleImputationPanel = ({ token, file, profile }) => {
 
   return (
     <div className="space-y-4">
-      <div className="rounded-2xl border border-indigo-100 bg-indigo-50/50 p-3 font-sans text-[11px] text-indigo-900">
+      <div className="rounded-2xl border border-indigo-100 bg-indigo-50/50 p-3 font-sans text-[14px] text-indigo-900">
         Filling each gap once and then analysing the table treats guesses as measurements, so standard errors come out
         too small. Here the gaps are filled <b>m</b> times with random draws, the summary is repeated on every completed
         table, and the answers are combined with <b>Rubin&apos;s rules</b> - the spread between imputations stays in the
@@ -182,7 +182,7 @@ const MultipleImputationPanel = ({ token, file, profile }) => {
               <Chips options={regressionOptions.filter(n => numeric.some(c => c.name === n))} value={regressors} onChange={setRegressors} />
             </div>
           )}
-          <p className="font-sans text-[10px] text-slate-400">
+          <p className="font-sans text-[13px] text-slate-400">
             Fitted by OLS on every completed table; coefficients pooled with Rubin&apos;s rules, R² on Fisher&apos;s z scale.
           </p>
         </div>
@@ -212,7 +212,7 @@ const MultipleImputationPanel = ({ token, file, profile }) => {
         <div className="space-y-4">
           <div className="overflow-auto rounded-2xl border border-slate-100">
             <p className="border-b border-slate-100 bg-slate-50 px-3 py-2 font-display text-xs font-bold text-slate-800">Observed and imputed values</p>
-            <table className="min-w-full whitespace-nowrap text-left font-sans text-[11px] text-slate-700">
+            <table className="min-w-full whitespace-nowrap text-left font-sans text-[14px] text-slate-700">
               <thead>
                 <tr className="text-slate-500">
                   {['Column', 'Missing', 'Observed mean (SD)', 'Observed range', 'Imputed mean (SD)', 'Imputed range'].map(h => (
@@ -233,7 +233,7 @@ const MultipleImputationPanel = ({ token, file, profile }) => {
                 ))}
               </tbody>
             </table>
-            <p className="border-t border-slate-100 px-3 py-1.5 font-sans text-[10px] text-slate-400">
+            <p className="border-t border-slate-100 px-3 py-1.5 font-sans text-[13px] text-slate-400">
               Imputed values far outside the observed range suggest the imputation model does not fit; consider other predictors or bounds.
             </p>
           </div>
@@ -247,11 +247,11 @@ const MultipleImputationPanel = ({ token, file, profile }) => {
             <div className="space-y-1">
               <PooledTable title={`Pooled regression of ${outcome.regression.dependent} (n = ${outcome.regression.n})`} firstHeader="Term"
                 rows={outcome.regression.coefficients.map(c => ({ label: c.term, pooled: c }))} />
-              <p className="font-sans text-[11px] text-slate-500">Pooled R² = {fmt(outcome.regression.r_squared, 4)}</p>
+              <p className="font-sans text-[14px] text-slate-500">Pooled R² = {fmt(outcome.regression.r_squared, 4)}</p>
             </div>
           )}
 
-          <ul className="list-disc space-y-1 rounded-2xl border border-slate-100 py-2 pl-6 pr-3 font-sans text-[11px] text-slate-600">
+          <ul className="list-disc space-y-1 rounded-2xl border border-slate-100 py-2 pl-6 pr-3 font-sans text-[14px] text-slate-600">
             {outcome.notes.map(note => <li key={note}>{note}</li>)}
           </ul>
 

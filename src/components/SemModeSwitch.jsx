@@ -5,7 +5,7 @@ const MODES = [
 ];
 
 const SemModeSwitch = ({ mode, onChange }) => (
-  <div className="flex rounded-xl border border-slate-200 bg-white p-0.5 font-sans text-[11px] font-bold">
+  <div className="flex rounded-xl border border-slate-200 bg-white p-0.5 font-sans text-[14px] font-bold">
     {MODES.map(([id, label]) => (
       <button
         key={id}

@@ -105,6 +105,8 @@ const PLOT_SPECS = {
   }
 };
 
+const EDITABLE_IN_POWERPOINT = new Set(['barplot', 'line', 'multiline', 'scatter', 'qqplot', 'histogram', 'pie']);
+
 const PlotsModal = ({ isOpen, onClose }) => {
   const { token } = useAuth();
   
@@ -1165,6 +1167,16 @@ const PlotsModal = ({ isOpen, onClose }) => {
                     >
                       <Download className="h-3.5 w-3.5" />
                       <span>SVG</span>
+                    </button>
+                    <button
+                      onClick={() => triggerDownload('pptx')}
+                      className="flex-1 min-w-[50px] flex items-center justify-center space-x-1 rounded-lg bg-brand-emerald hover:bg-emerald-700 text-white p-1 px-2 font-sans text-xs font-semibold transition-colors"
+                      title={EDITABLE_IN_POWERPOINT.has(plotType)
+                        ? 'PowerPoint slide with an editable chart: change the numbers, colours or chart type in PowerPoint'
+                        : 'PowerPoint slide: this chart type has no PowerPoint equivalent, so the figure is placed as an image with its data table'}
+                    >
+                      <Download className="h-3.5 w-3.5" />
+                      <span>PPTX</span>
                     </button>
                     {['tiff', 'pdf', 'eps'].map(fmt => (
                       <button

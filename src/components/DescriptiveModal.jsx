@@ -472,6 +472,36 @@ const DescriptiveModal = ({ isOpen, onClose, initialAnalysis = null }) => {
     };
   };
 
+  // The box and frequency figures are drawn by the server, so changing the palette or the figure
+  // size has to ask for them again - unlike the Plotly Q-Q chart, they cannot be re-coloured here.
+  const refreshFigures = async (overrides = {}) => {
+    if (!results?.variables || !file) return;
+    const prefs = { palette: figurePrefs.palette, preset: figurePrefs.preset, ...overrides };
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('columns_str', Object.keys(results.variables).join(','));
+    if (results.group_var) formData.append('group_var', results.group_var);
+    if (prefs.palette) formData.append('palette', prefs.palette);
+    if (prefs.preset) formData.append('preset', prefs.preset);
+    try {
+      const response = await apiFetch(`${API_URL}/analyze/descriptive`, {
+        method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: formData
+      });
+      if (!response.ok) return;  // the statistics on screen are still right; only the colours are stale
+      const data = await response.json();
+      setResults(current => (current?.variables ? {
+        ...current,
+        variables: Object.fromEntries(Object.entries(current.variables).map(([col, variable]) => [col, {
+          ...variable,
+          box_plot: data.variables?.[col]?.box_plot ?? variable.box_plot,
+          frequency_plot: data.variables?.[col]?.frequency_plot ?? variable.frequency_plot
+        }]))
+      } : current));
+    } catch {
+      // a failed refresh leaves the previous figures in place rather than blanking them
+    }
+  };
+
   // Saved results are re-run when reopened, so the stored copy keeps the numbers and drops the
   // figures - two PNGs per variable would otherwise be written to the database for every save.
   const resultWithoutFigures = (data) => {
@@ -690,7 +720,7 @@ const DescriptiveModal = ({ isOpen, onClose, initialAnalysis = null }) => {
                     <label className="font-sans text-xs font-bold text-slate-500">Chart Theme:</label>
                     <select
                       value={chartTheme}
-                      onChange={(e) => { setChartTheme(e.target.value); setFigurePrefs({ palette: e.target.value }); }}
+                      onChange={(e) => { setChartTheme(e.target.value); setFigurePrefs({ palette: e.target.value }); refreshFigures({ palette: e.target.value }); }}
                       className="rounded-xl border border-slate-200 bg-white py-1.5 px-3 font-sans text-xs outline-hidden focus:border-brand-indigo transition-all"
                     >
                       {Object.keys(CHART_THEMES).map(themeKey => (
@@ -994,7 +1024,7 @@ const DescriptiveModal = ({ isOpen, onClose, initialAnalysis = null }) => {
                   <div className="space-y-3">
                     <div className="flex justify-between items-center bg-slate-50/50 p-3 rounded-2xl border border-slate-100">
                       <div className="flex items-center space-x-2">
-                        <FigurePresetSelect value={figurePrefs.preset} onChange={(preset) => setFigurePrefs({ preset })} className="mr-2" />
+                        <FigurePresetSelect value={figurePrefs.preset} onChange={(preset) => { setFigurePrefs({ preset }); refreshFigures({ preset }); }} className="mr-2" />
                         <span className="font-sans text-[13px] font-bold text-slate-400 uppercase">Export DPI:</span>
                         {[150, 300, 600].map(dpiVal => (
                           <button
@@ -1035,7 +1065,7 @@ const DescriptiveModal = ({ isOpen, onClose, initialAnalysis = null }) => {
                 <div className="space-y-6">
                   {/* Share DPI controls at the top of charts panel */}
                   <div className="flex items-center space-x-2 bg-slate-50/50 p-3 rounded-2xl border border-slate-100">
-                    <FigurePresetSelect value={figurePrefs.preset} onChange={(preset) => setFigurePrefs({ preset })} className="mr-2" />
+                    <FigurePresetSelect value={figurePrefs.preset} onChange={(preset) => { setFigurePrefs({ preset }); refreshFigures({ preset }); }} className="mr-2" />
                     <span className="font-sans text-[13px] font-bold text-slate-400 uppercase">Global Export DPI:</span>
                     {[150, 300, 600].map(dpiVal => (
                       <button

@@ -115,8 +115,6 @@ const DescriptiveModal = ({ isOpen, onClose, initialAnalysis = null }) => {
 
   // Chart DOM refs
   const qqChartRef = useRef(null);
-  const boxChartRef = useRef(null);
-  const histChartRef = useRef(null);
 
   // Auto-select first variable for chart tabs when results load
   useEffect(() => {
@@ -196,108 +194,6 @@ const DescriptiveModal = ({ isOpen, onClose, initialAnalysis = null }) => {
       Plotly.newPlot(qqChartRef.current, [scatterTrace, lineTrace], themedLayout(layout, { palette: chartTheme }), config);
     }
 
-    // 2. Boxplot rendering
-    if (activeTab === 'distribution' && boxChartRef.current) {
-      let traces;
-      if (results.group_var && Object.keys(colData.groups).length > 0) {
-        // Grouped Boxplot
-        traces = Object.keys(colData.groups).map((g, idx) => {
-          const gData = colData.groups[g];
-          const color = currentTheme.colors[idx % currentTheme.colors.length];
-          return {
-            y: gData.raw_data,
-            type: 'box',
-            name: g,
-            boxpoints: 'suspectedoutliers',
-            marker: {
-              color: color,
-              outliercolor: '#EF4444',
-              line: { width: 1.5 }
-            }
-          };
-        });
-      } else {
-        // Overall Boxplot
-        traces = [{
-          y: colData.overall.raw_data,
-          type: 'box',
-          name: 'Overall',
-          boxpoints: 'suspectedoutliers',
-          marker: {
-            color: currentTheme.primary,
-            outliercolor: '#EF4444',
-            line: { width: 1.5 }
-          }
-        }];
-      }
-
-      const layout = {
-        title: {
-          text: `Box & Whisker Plot: ${activeChartVar} ${results.group_var ? `by ${results.group_var}` : ''}`
-        },
-        xaxis: {
-          title: { text: results.group_var || 'All Data' },
-        },
-        yaxis: {
-          title: { text: activeChartVar },
-        },
-        margin: { t: 50, r: 40, l: 60, b: 50 },
-        showlegend: results.group_var ? true : false
-      };
-
-      Plotly.newPlot(boxChartRef.current, traces, themedLayout(layout, { palette: chartTheme }), config);
-    }
-
-    // 3. Histogram rendering
-    if (activeTab === 'distribution' && histChartRef.current) {
-      let traces;
-      if (results.group_var && Object.keys(colData.groups).length > 0) {
-        // Grouped overlay histograms
-        traces = Object.keys(colData.groups).map((g, idx) => {
-          const gData = colData.groups[g];
-          const color = currentTheme.colors[idx % currentTheme.colors.length];
-          return {
-            x: gData.raw_data,
-            type: 'histogram',
-            name: g,
-            opacity: 0.6,
-            marker: {
-              color: color,
-              line: { color: '#ffffff', width: 0.5 }
-            }
-          };
-        });
-      } else {
-        // Overall histogram
-        traces = [{
-          x: colData.overall.raw_data,
-          type: 'histogram',
-          name: 'Frequency',
-          marker: {
-            color: currentTheme.primary,
-            line: { color: '#ffffff', width: 1 }
-          }
-        }];
-      }
-
-      const layout = {
-        title: {
-          text: `Frequency Histogram: ${activeChartVar} ${results.group_var ? `by ${results.group_var}` : ''}`
-        },
-        xaxis: {
-          title: { text: activeChartVar },
-        },
-        yaxis: {
-          title: { text: 'Observation Frequency' },
-        },
-        barmode: 'overlay',
-        margin: { t: 50, r: 40, l: 60, b: 50 },
-        showlegend: results.group_var ? true : false
-      };
-
-      Plotly.newPlot(histChartRef.current, traces, themedLayout(layout, { palette: chartTheme }), config);
-    }
-
   }, [results, activeChartVar, activeTab, chartTheme]);
 
   if (!isOpen) return null;
@@ -336,6 +232,10 @@ const DescriptiveModal = ({ isOpen, onClose, initialAnalysis = null }) => {
     if (groupVar) {
       formData.append('group_var', groupVar);
     }
+    // The server draws the box and frequency figures, so it needs the same palette and size the
+    // rest of the app exports with.
+    if (figurePrefs.palette) formData.append('palette', figurePrefs.palette);
+    if (figurePrefs.preset) formData.append('preset', figurePrefs.preset);
 
     try {
       const response = await apiFetch(`${API_URL}/analyze/descriptive`, {
@@ -547,12 +447,41 @@ const DescriptiveModal = ({ isOpen, onClose, initialAnalysis = null }) => {
       if (groupTables.length > 0) sections.push({ heading: `4. Grouped Statistics by ${results.group_var}`, tables: groupTables });
     }
 
+    // One pair of figures per variable, so a report on several variables shows each of them.
+    const figures = variablesList.flatMap(col => {
+      const variable = results.variables[col];
+      return [
+        variable.box_plot && { data: variable.box_plot, caption: `Distribution of ${col}${results.group_var ? ` by ${results.group_var}` : ''}`, width_inches: 5.4 },
+        variable.frequency_plot && { data: variable.frequency_plot, caption: `Frequency of ${col}`, width_inches: 5.4 }
+      ].filter(Boolean);
+    });
+    if (figures.length > 0) {
+      sections.push({
+        heading: `${results.group_var ? 5 : 4}. Figures`,
+        paragraphs: ['Each box shows the median, quartiles and range, with every observation drawn over it.'],
+        images: figures
+      });
+    }
+
     return {
       title: 'Descriptive Statistics Report',
       test_applied: 'Descriptive statistics and normality checks',
       dataset_name: file?.name,
       filename: fileName,
       sections
+    };
+  };
+
+  // Saved results are re-run when reopened, so the stored copy keeps the numbers and drops the
+  // figures - two PNGs per variable would otherwise be written to the database for every save.
+  const resultWithoutFigures = (data) => {
+    if (!data?.variables) return data;
+    return {
+      ...data,
+      variables: Object.fromEntries(Object.entries(data.variables).map(([col, variable]) => {
+        const { box_plot, frequency_plot, ...rest } = variable;  // eslint-disable-line no-unused-vars
+        return [col, rest];
+      }))
     };
   };
 
@@ -563,12 +492,6 @@ const DescriptiveModal = ({ isOpen, onClose, initialAnalysis = null }) => {
     if (chartType === 'qq') {
       targetRef = qqChartRef.current;
       titleStr = 'QQ_Plot';
-    } else if (chartType === 'box') {
-      targetRef = boxChartRef.current;
-      titleStr = 'Boxplot';
-    } else if (chartType === 'hist') {
-      targetRef = histChartRef.current;
-      titleStr = 'Histogram';
     }
 
     if (!targetRef) return;
@@ -1129,50 +1052,44 @@ const DescriptiveModal = ({ isOpen, onClose, initialAnalysis = null }) => {
                     ))}
                   </div>
 
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    {/* Boxplot Card */}
-                    <div className="space-y-3">
-                      <div className="flex justify-between items-center bg-slate-50/50 p-3 rounded-2xl border border-slate-100">
-                        <h5 className="font-display text-xs font-bold text-slate-600 uppercase">Box & Whisker Plot</h5>
-                        <div className="flex space-x-1">
-                          {['png', 'jpeg', 'svg'].map(fmt => (
-                            <button
-                              key={fmt}
-                              onClick={() => handleDownloadPlot('box', fmt)}
-                              className="px-2 py-1 bg-white border border-slate-200 hover:bg-slate-50 text-slate-600 rounded-lg font-sans text-[12px] font-bold uppercase transition-colors flex items-center space-x-0.5 cursor-pointer"
-                            >
-                              <Download className="h-2.5 w-2.5" />
-                              <span>{fmt}</span>
-                            </button>
-                          ))}
+                  {/* Every selected variable, not just the one chosen for the Q-Q plot: a summary of
+                      several variables is read by comparing their spreads side by side. */}
+                  <div className="space-y-6">
+                    {Object.keys(results.variables).map(col => {
+                      const variable = results.variables[col];
+                      if (!variable.box_plot && !variable.frequency_plot) return null;
+                      return (
+                        <div key={col} className="space-y-3">
+                          <div className="flex items-center justify-between bg-slate-50/50 p-3 rounded-2xl border border-slate-100">
+                            <h5 className="font-display text-sm font-bold text-slate-600">{col}</h5>
+                            <span className="font-sans text-[13px] text-slate-500">
+                              n = {variable.overall?.n ?? 0}
+                              {results.group_var ? ` · grouped by ${results.group_var}` : ''}
+                            </span>
+                          </div>
+                          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                            {[['box_plot', 'Box & whisker, with every observation'], ['frequency_plot', 'Frequency']].map(([key, label]) => (
+                              variable[key] ? (
+                                <figure key={key} className="space-y-2 rounded-2xl border border-slate-100 bg-white p-3 shadow-xs">
+                                  <img src={`data:image/png;base64,${variable[key]}`} alt={`${label} of ${col}`} className="w-full rounded-lg" />
+                                  <figcaption className="flex items-center justify-between">
+                                    <span className="font-sans text-[13px] text-slate-500">{label}</span>
+                                    <a
+                                      href={`data:image/png;base64,${variable[key]}`}
+                                      download={`StatSathi_${col}_${key}.png`}
+                                      className="flex items-center space-x-0.5 rounded-lg border border-slate-200 bg-white px-2 py-1 font-sans text-[12px] font-bold uppercase text-slate-600 hover:bg-slate-50 transition-colors cursor-pointer"
+                                    >
+                                      <Download className="h-2.5 w-2.5" />
+                                      <span>PNG</span>
+                                    </a>
+                                  </figcaption>
+                                </figure>
+                              ) : null
+                            ))}
+                          </div>
                         </div>
-                      </div>
-                      <div className="bg-white rounded-2xl border border-slate-100 p-3 shadow-xs">
-                        <div ref={boxChartRef} className="w-full h-[350px]"></div>
-                      </div>
-                    </div>
-
-                    {/* Histogram Card */}
-                    <div className="space-y-3">
-                      <div className="flex justify-between items-center bg-slate-50/50 p-3 rounded-2xl border border-slate-100">
-                        <h5 className="font-display text-xs font-bold text-slate-600 uppercase">Frequency Histogram</h5>
-                        <div className="flex space-x-1">
-                          {['png', 'jpeg', 'svg'].map(fmt => (
-                            <button
-                              key={fmt}
-                              onClick={() => handleDownloadPlot('hist', fmt)}
-                              className="px-2 py-1 bg-white border border-slate-200 hover:bg-slate-50 text-slate-600 rounded-lg font-sans text-[12px] font-bold uppercase transition-colors flex items-center space-x-0.5 cursor-pointer"
-                            >
-                              <Download className="h-2.5 w-2.5" />
-                              <span>{fmt}</span>
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                      <div className="bg-white rounded-2xl border border-slate-100 p-3 shadow-xs">
-                        <div ref={histChartRef} className="w-full h-[350px]"></div>
-                      </div>
-                    </div>
+                      );
+                    })}
                   </div>
                 </div>
               )}
@@ -1208,7 +1125,7 @@ const DescriptiveModal = ({ isOpen, onClose, initialAnalysis = null }) => {
                 source={dataset.source}
                 defaultTitle={`Descriptive statistics – ${file?.name || 'dataset'}`}
                 parameters={{ variables: Object.keys(results?.variables || {}), group_var: results?.group_var || null, dataset: file?.name }}
-                result={results}
+                result={resultWithoutFigures(results)}
               />
               <button
                 onClick={() => setViewerOpen(true)}
